@@ -1,0 +1,4 @@
+example/project/.godot/
+example/project/bin/
+*.uid
+__pycache__/
