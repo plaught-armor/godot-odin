@@ -109,6 +109,33 @@ array_name_at :: proc "contextless" (array: ^Array, index: i64) -> (out: StringN
 	return
 }
 
+// True only on the thread `entry` ran on, the engine's main thread; debug builds assert every call
+// arrives on it.
+@(thread_local)
+on_main_thread: bool
+
+// Opens a call from the engine, after `context = ctx`. Marks this library's temp arena; the deferred
+// `leave` rolls it back at scope exit, so the call frees the temp it took and nothing older. Debug
+// builds assert the call is on the main thread.
+@(deferred_out = leave)
+enter :: #force_inline proc(loc := #caller_location) -> runtime.Arena_Temp {
+	when ODIN_DEBUG {
+		assert(on_main_thread, "godot_odin: an engine call off the main thread", loc)
+	}
+	return runtime.default_temp_allocator_temp_begin(loc)
+}
+
+// Rolls the temp arena back to `temp`, the mark `enter` took.
+leave :: #force_inline proc(temp: runtime.Arena_Temp) {
+	runtime.default_temp_allocator_temp_end(temp)
+}
+
+// Bytes the temp arena of `ctx`, the context every engine call runs in, holds now. For debug lanes
+// that prove a call frees its temp use.
+temp_used :: proc "contextless" () -> i64 {
+	return i64((^runtime.Default_Temp_Allocator)(ctx.temp_allocator.data).arena.total_used)
+}
+
 // Logs a formatted warning in the engine's log and editor, as `push_warning` does.
 warn :: proc(format: string, args: ..any, loc := #caller_location) {
 	gde.print_warning(fmt.ctprintf(format, ..args), fmt.ctprintf("%s", loc.procedure), fmt.ctprintf("%s", loc.file_path), loc.line, 1)

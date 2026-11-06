@@ -100,6 +100,7 @@ entry :: proc "contextless" (
 ) -> gde.Bool {
 	context = runtime.default_context()
 	ctx = context
+	on_main_thread = true
 	gde.load_interface(get_proc_address)
 	library = lib
 	on_register = register
@@ -155,6 +156,7 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 		h := (^Header)(gde.mem_alloc2(uint(HEADER + size_of(T)), 0))
 		intrinsics.mem_zero(h, HEADER + size_of(T))
 		context = ctx
+		enter()
 		fields_init(&c.layout, rawptr(uintptr(h) + HEADER), size_of(T))
 		h.object = Object(object)
 		h.class = c
@@ -165,11 +167,13 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 	}
 	free :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr) {
 		context = ctx
+		enter()
 		fields_release(&(^Class(T))(userdata).layout, rawptr(uintptr(instance) + HEADER))
 		gde.mem_free2(instance, 0)
 	}
 	notify :: proc "c" (instance: gde.ClassInstancePtr, what: i32, reversed: gde.Bool) {
 		context = ctx
+		enter()
 		h := (^Header)(instance)
 		c := (^Class(T))(h.class)
 		if c.notification != nil { c.notification(self_of(T, instance), i64(what)) }
@@ -242,6 +246,7 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 
 	ptrcall :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstTypePtr, ret: gde.TypePtr) {
 		context = ctx
+		enter()
 		m := (^Method)(userdata)
 		c := Call{self = self_of(T, instance) if SELF else nil, slots = args}
 		when RET == 1 {
@@ -253,6 +258,7 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 	}
 	call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 		context = ctx
+		enter()
 		variant_calls += 1
 		m := (^Method)(userdata)
 		filled: [MAX_ARGS + 1]gde.ConstVariantPtr

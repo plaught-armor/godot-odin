@@ -29,6 +29,7 @@ callable :: proc(self: ^$T, f: $P, binds: ..Variant) -> (out: Callable) where in
 
 	call :: proc "c" (userdata: rawptr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 		context = ctx
+		enter()
 		h := (^Hook)(userdata)
 		want := i32(N - 1) - h.n
 		if i32(count) != want {
@@ -77,6 +78,7 @@ callable :: proc(self: ^$T, f: $P, binds: ..Variant) -> (out: Callable) where in
 @(private)
 hook_free :: proc "c" (userdata: rawptr) {
 	context = ctx
+	enter()
 	h := (^Hook)(userdata)
 	for i in 0 ..< h.n { gde.variant_destroy(&h.binds[i]) }
 	free(h)

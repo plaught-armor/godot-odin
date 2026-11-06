@@ -577,6 +577,7 @@ field_get_ptr :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, arg
 	case .OBJECT:
 		// The slot is a Ref or a Variant's object, either unreferenced on destroy.
 		context = ctx
+		enter()
 		obj := (^rawptr)(p)^
 		if f.counted && counted_object(obj) != nil {
 			gde.ref_set_object(ret, gde.ObjectPtr(obj))
@@ -636,6 +637,7 @@ field_set_ptr :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, arg
 		write_float(p, f.size, (^f64)(a)^)
 	case .OBJECT:
 		context = ctx
+		enter()
 		store_object(f, p, (^rawptr)(a)^)
 	case .ARRAY:
 		// A typed field keeps its type: assign converts the elements or refuses and leaves it.
@@ -666,9 +668,14 @@ field_set_ptr :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, arg
 @(private)
 MOST_FIELD :: 16
 
+// Bytes of the largest builtin a field can be: a Projection.
+@(private)
+MOST_VALUE :: 64
+
 @(private)
 field_set_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 	context = ctx
+	enter()
 	variant_calls += 1
 	f := (^Field)(userdata)
 	if count != 1 {
@@ -709,7 +716,9 @@ field_set_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, ar
 	case .OBJECT:
 		store_object(f, p, obj)
 	case:
-		tmp: [MOST_FIELD]u8
+		// Holds any builtin a field can be, counted or not.
+		tmp: [MOST_VALUE]u8
+		#assert(MOST_VALUE >= size_of(Projection))
 		to_type[f.type](&tmp, auto_cast v)
 		if f.type == .ARRAY && f.array_of != nil {
 			array_assign((^Array)(p), (^Array)(&tmp)^)
