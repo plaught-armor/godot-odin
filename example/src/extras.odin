@@ -111,6 +111,8 @@ register_extras :: proc() {
 	godot.method(b, "load_speed", bag_load_speed, {"path"})
 	godot.method(b, "greet", bag_greet, {"name"})
 	godot.method(b, "kinds", bag_kinds, {"label"})
+	godot.method(b, "describe", bag_describe, {"node", "n"})
+	godot.method(b, "temp_live", bag_temp_live)
 	godot.method(b, "count", bag_count)
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
@@ -486,6 +488,29 @@ bag_ghost_seen :: proc(self: ^Bag, root: godot.Node) -> i64 {
 // `name` and `path` as Odin text, joined by "|".
 bag_texts :: proc(self: ^Bag, name: godot.StringName, path: godot.NodePath) -> string {
 	return fmt.tprintf("%s|%s", godot.utf8(name, context.temp_allocator), godot.utf8(path, context.temp_allocator))
+}
+
+// Sets `node`'s editor description from Odin text: a cached constant for `n` = 0, else text built
+// at run time. Answers the live temp_text count, and for `n` != 0 first the count inside a nested
+// engine-call scope times 10: 0, or 21 when the nested scope's own text ended with it.
+bag_describe :: proc(self: ^Bag, node: godot.Node, n: i64) -> i64 {
+	if n == 0 {
+		godot.node_set_editor_description(node, godot.intern_text("fixed"))
+		return i64(godot.temp_texts_live())
+	}
+	godot.node_set_editor_description(node, godot.temp_text(fmt.tprintf("item %d", n)))
+	inner: int
+	{
+		godot.enter()
+		_ = godot.temp_text("inner")
+		inner = godot.temp_texts_live()
+	}
+	return i64(inner * 10 + godot.temp_texts_live())
+}
+
+// The live temp_text count between calls: 0.
+bag_temp_live :: proc() -> i64 {
+	return i64(godot.temp_texts_live())
 }
 
 // `label`, then the Variant type of each extra argument: a vararg method.

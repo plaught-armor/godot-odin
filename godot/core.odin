@@ -118,6 +118,68 @@ intern_path :: #force_inline proc "contextless" ($text: string) -> NodePath {
 	return transmute(NodePath)bits
 }
 
+// The String for the constant `text`, such as "Score", made on the first call and kept like
+// `intern`'s names: pass it to any engine call that takes a String, at about the cost of a load
+// after the first call. Do not destroy it. Safe from any thread.
+intern_text :: #force_inline proc "contextless" ($text: string) -> String {
+	@(static) cache: u64
+	bits := intrinsics.atomic_load_explicit(&cache, .Acquire)
+	if bits == 0 {
+		made := string_of(text)
+		stored: bool
+		bits, stored = intern_store(&cache, transmute(u64)made)
+		if !stored { destroy[.STRING](&made) }
+	}
+	return transmute(String)bits
+}
+
+// A String for Odin `text` that lives until the call from the engine it was made in returns, for
+// text built at run time: pass it to engine calls that take a String, and never destroy it. Only
+// inside a call from the engine (a method, virtual, notification or callable), on the main thread.
+temp_text :: proc "contextless" (text: string) -> String {
+	context = ctx
+	depth := temp_arena.temp_count
+	assert(depth > 0, "godot_odin: temp_text outside a call from the engine")
+	when ODIN_DEBUG {
+		assert(on_main_thread, "godot_odin: temp_text off the main thread; its list is the main thread's")
+	}
+	// Kept off the temp arena, so a temp guard of the caller's own cannot free a record still
+	// listed: the String outlives such a guard, to the end of the engine call.
+	append(&temp_texts, Temp_Text{text = string_of(text), depth = depth})
+	return temp_texts[len(temp_texts) - 1].text
+}
+
+// How many `temp_text` Strings are alive now: 0 once every call from the engine has returned. For
+// debug lanes that prove a call drops its own.
+temp_texts_live :: proc "contextless" () -> int {
+	return len(temp_texts)
+}
+
+// One `temp_text` String and the temp arena depth it was made at.
+@(private)
+Temp_Text :: struct {
+	text:  String,
+	depth: uint,
+}
+
+// The live `temp_text` Strings, oldest first: a call's own are at the end. While any is live,
+// `leave` goes to `roll_back`, which drops them.
+@(private)
+temp_texts: [dynamic]Temp_Text
+
+// Destroys the `temp_text` Strings made at temp arena depth `depth` or deeper: those of the call
+// now returning and of any it made.
+@(private)
+drop_temp_texts :: proc "contextless" (depth: uint) {
+	// Each pass drops one, so the list's length bounds the loop.
+	for _ in 0 ..< len(temp_texts) {
+		last := len(temp_texts) - 1
+		if temp_texts[last].depth < depth { return }
+		destroy[.STRING](&temp_texts[last].text)
+		(^runtime.Raw_Dynamic_Array)(&temp_texts).len = last
+	}
+}
+
 // Stores `made`, a new StringName or NodePath as its one pointer word, in the empty `cache`.
 // False when another thread stored one first: the caller drops `made` and uses the stored word.
 // An empty name or path is the null word, made again on each call, and holds nothing to drop.
@@ -355,10 +417,10 @@ temp_arena: ^runtime.Arena
 
 // Rolls the temp arena back to `temp`, the mark `enter` took. Most calls take no temp, and then
 // only the mark's count changes: the runtime's rollback, which is a call, runs when there is
-// something to roll back.
+// something to roll back or a `temp_text` String to drop.
 leave :: #force_inline proc(temp: runtime.Arena_Temp) {
 	a := temp.arena
-	if a.curr_block == temp.block && (temp.block == nil || temp.block.used == temp.used) {
+	if a.curr_block == temp.block && (temp.block == nil || temp.block.used == temp.used) && len(temp_texts) == 0 {
 		when ODIN_DEBUG {
 			assert(a.temp_count > 0, "godot_odin: leave without enter")
 		}
@@ -373,6 +435,8 @@ leave :: #force_inline proc(temp: runtime.Arena_Temp) {
 @(private)
 roll_back :: #force_no_inline proc "contextless" (temp: runtime.Arena_Temp) {
 	context = ctx
+	// A call that took temp, or made a `temp_text`, gets here.
+	if len(temp_texts) > 0 { drop_temp_texts(temp.arena.temp_count) }
 	runtime.default_temp_allocator_temp_end(temp)
 }
 

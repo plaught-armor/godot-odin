@@ -59,6 +59,8 @@ func _initialize() -> void:
 	_report("Odin utf8, short identifier", func() -> float: return b.ident_ns(3, N))
 	_report("Odin intern, short identifier", func() -> float: return b.ident_ns(4, N))
 	_report("Odin intern_path, short path", func() -> float: return b.ident_ns(5, N))
+	_report("Odin intern_text, short identifier", func() -> float: return b.ident_ns(6, N))
+	_report("Odin temp_text in an engine-call scope", func() -> float: return b.ident_ns(7, N))
 	_report("GDScript -> Odin, typed, String param", func() -> float: return _string_param(b, false))
 	_report("GDScript -> Odin, typed, string param", func() -> float: return _string_param(b, true))
 	var table: Dictionary = {}

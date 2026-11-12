@@ -266,6 +266,14 @@ func _check_extras() -> int:
 	if b2.ghost_total(ghosts) != 6 or b2.ghost_total(mine) != 3 or b2.ghost_total([g]) != -1 or b2.ghost_total(b2.typed_nodes(1)) != -1:
 		print("FAIL: Bag.ghost_total gave %s" % [[b2.ghost_total(ghosts), b2.ghost_total(mine), b2.ghost_total([g]), b2.ghost_total(b2.typed_nodes(1))]])
 		failures += 1
+	var described := Node.new()
+	if b2.describe(described, 0) != 0 or described.editor_description != "fixed" or b2.describe(described, 0) != 0:
+		print("FAIL: Bag.describe(0) set %s" % described.editor_description)
+		failures += 1
+	if b2.describe(described, 7) != 21 or described.editor_description != "item 7" or Bag.temp_live() != 0:
+		print("FAIL: Bag.describe(7) set %s, %d texts live after" % [described.editor_description, Bag.temp_live()])
+		failures += 1
+	described.free()
 	if b2.kinds("x") != "x:" or b2.kinds("x", 1, 2.0, "s", [3], &"n") != "x:2,3,4,28,21" or b2.callv("kinds", ["y", null]) != "y:0":
 		print("FAIL: Bag.kinds gave %s" % b2.kinds("x", 1, 2.0, "s", [3], &"n"))
 		failures += 1
