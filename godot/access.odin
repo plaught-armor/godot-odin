@@ -139,27 +139,81 @@ runes_equal :: #force_inline proc "contextless" (a, b: [^]rune, n: int) -> bool 
 string_equal_text :: proc "contextless" (s: ^String, text: string) -> bool {
 	chars := string_read(s)
 	if len(chars) > len(text) || len(chars) * 4 < len(text) { return false }
-	if len(chars) == len(text) {
-		// One byte per character: only ASCII text can match, compared without decoding. A
-		// character past ASCII fails, so a lone invalid byte cannot match the character it encodes.
-		for c, k in chars {
-			if c != rune(text[k]) || c >= 0x80 { return false }
-		}
-		return true
+	// One byte per character: only ASCII text can match.
+	if len(chars) == len(text) { return ascii_matches(chars, text) }
+	n, ok := text_prefix_of(chars, text)
+	return ok && n == len(chars)
+}
+
+// Whether `s` starts with the characters of Odin text `text`, compared in place: no String is made.
+// Invalid UTF-8 in `text` reads as U+FFFD.
+string_begins_with_text :: proc "contextless" (s: ^String, text: string) -> bool {
+	chars := string_read(s)
+	if text_is_ascii(text) { return len(text) <= len(chars) && ascii_matches(chars[:len(text)], text) }
+	_, ok := text_prefix_of(chars, text)
+	return ok
+}
+
+// Whether `s` ends with the characters of Odin text `text`, compared in place: no String is made.
+// Invalid UTF-8 in `text` reads as U+FFFD.
+string_ends_with_text :: proc "contextless" (s: ^String, text: string) -> bool {
+	chars := string_read(s)
+	if text_is_ascii(text) {
+		return len(text) <= len(chars) && ascii_matches(chars[len(chars) - len(text):], text)
 	}
+	k := text_rune_count(text)
+	if k > len(chars) { return false }
+	_, ok := text_prefix_of(chars[len(chars) - k:], text)
+	return ok
+}
+
+// Whether every byte of `text` is ASCII: one pass with no branch per byte.
+@(private)
+text_is_ascii :: #force_inline proc "contextless" (text: string) -> bool {
+	acc: u8
+	for b in transmute([]u8)text { acc |= b }
+	return acc < 0x80
+}
+
+// Whether `chars` are the bytes of `text`, one character per byte, all ASCII. A character past
+// ASCII fails, so a lone invalid byte cannot match the character it encodes. No branch per
+// character: `chars` is as long as `text`.
+@(private)
+ascii_matches :: #force_inline proc "contextless" (chars: []rune, text: string) -> bool {
+	diff: rune
+	for c, k in chars { diff |= (c ~ rune(text[k])) | (c & ~rune(0x7F)) }
+	return diff == 0
+}
+
+// Whether `chars` starts with the characters of `text`, and how many of `chars` they cover. ASCII
+// bytes compare as they are; the rest decode, an invalid byte as U+FFFD.
+@(private)
+text_prefix_of :: proc "contextless" (chars: []rune, text: string) -> (count: int, ok: bool) {
 	i := 0
-	for c in chars {
-		if i >= len(text) { return false }
-		if text[i] < 0x80 {
-			if rune(text[i]) != c { return false }
-			i += 1
-			continue
-		}
-		r, w := utf8.decode_rune_in_string(text[i:])
-		if r != c { return false }
+	for _ in 0 ..< len(text) {
+		if i >= len(text) { break }
+		if count >= len(chars) { return count, false }
+		r, w := rune(text[i]), 1
+		if text[i] >= 0x80 { r, w = utf8.decode_rune_in_string(text[i:]) }
+		if chars[count] != r { return count, false }
 		i += w
+		count += 1
 	}
-	return i == len(text)
+	return count, true
+}
+
+// The characters in `text`, counted as `text_prefix_of` decodes them.
+@(private)
+text_rune_count :: proc "contextless" (text: string) -> (n: int) {
+	i := 0
+	for _ in 0 ..< len(text) {
+		if i >= len(text) { break }
+		w := 1
+		if text[i] >= 0x80 { _, w = utf8.decode_rune_in_string(text[i:]) }
+		i += w
+		n += 1
+	}
+	return
 }
 
 // Element `i` of `a`, borrowed: valid until `a` changes or is destroyed, and not to be destroyed.

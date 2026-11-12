@@ -117,6 +117,7 @@ register_extras :: proc() {
 	godot.method(b, "text_size", bag_text_size, {"s"})
 	godot.method(b, "same_text", bag_same_text, {"a", "b"})
 	godot.method(b, "lone_byte_matches", bag_lone_byte_matches)
+	godot.method(b, "text_ends", bag_text_ends, {"s", "part"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -542,6 +543,15 @@ bag_lone_byte_matches :: proc(self: ^Bag) -> bool {
 	s := godot.string_of("é")
 	defer godot.destroy[.STRING](&s)
 	return godot.string_equal_text(&s, "\xE9")
+}
+
+// Whether `s` begins with `part`'s text, as bit 0, and ends with it, as bit 1: by
+// `string_begins_with_text` and `string_ends_with_text`.
+bag_text_ends :: proc(self: ^Bag, s: godot.String, part: godot.String) -> i64 {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	return i64(godot.string_begins_with_text(&s, text)) | i64(godot.string_ends_with_text(&s, text)) << 1
 }
 
 // One channel of the tint, 0 to 2; 0 for any other index.

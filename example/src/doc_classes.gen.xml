@@ -207,6 +207,9 @@
 		<method name="lone_byte_matches">
 			<description>Whether "é" matches the lone byte 0xE9, its code but invalid UTF-8; it must not. GDScript cannot pass invalid UTF-8, so the text is fixed here.</description>
 		</method>
+		<method name="text_ends">
+			<description>Whether [code]s[/code] begins with [code]part[/code]'s text, as bit 0, and ends with it, as bit 1: by [code]string_begins_with_text[/code] and [code]string_ends_with_text[/code].</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

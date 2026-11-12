@@ -71,6 +71,9 @@ func _initialize() -> void:
 	_report("Odin string_equal, String and its copy", func() -> float: return b.ident_ns(13, N))
 	_report("engine string_of + String == + destroy, short text", func() -> float: return b.ident_ns(14, N))
 	_report("Odin string_equal_text, short equal text", func() -> float: return b.ident_ns(11, N))
+	_report("Odin string_begins_with, cached String prefix", func() -> float: return b.ident_ns(15, N))
+	_report("Odin string_begins_with_text, Odin text prefix", func() -> float: return b.ident_ns(16, N))
+	_report("Odin string_ends_with_text, Odin text suffix", func() -> float: return b.ident_ns(17, N))
 	_report("GDScript -> Odin, typed, String param", func() -> float: return _string_param(b, false))
 	_report("GDScript -> Odin, typed, string param", func() -> float: return _string_param(b, true))
 	var table: Dictionary = {}

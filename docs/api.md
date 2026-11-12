@@ -207,6 +207,7 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `string_read(&s) -> []rune` | A String's characters as a slice over its storage, read in place: about 0.07 ns per character, against 4.4 ns for `unicode_at`. Valid until `s` changes. Do not write through it. |
 | `string_equal(&a, &b) -> bool` | String equality. A String and its copy share storage and answer in about 1 ns; others reject on length from their headers, then compare four characters at a time: about 3.1 ns for a short identifier, against 3.7 for the engine's `==`. |
 | `string_equal_text(&s, text) -> bool` | Whether `s` holds the characters of Odin text `text`, compared in place with no String made: about 1.9 ns for a short ASCII identifier, against 20 ns to build a String and use the engine's `==`. Invalid UTF-8 in `text` reads as U+FFFD. |
+| `string_begins_with_text(&s, text) -> bool` / `string_ends_with_text(&s, text) -> bool` | Whether `s` starts or ends with Odin text `text`, compared in place: about 1.6 ns for a short ASCII part, against 10.7 for the generated `string_begins_with` even with its String cached. ASCII text compares with no branch per character; other text decodes. |
 | `string_write(&s) -> []rune` | The same, writable. A shared String gets storage of its own first. Only on a String you own. |
 | `string_append(&s, x)` | Appends Odin text, a String or a rune to `s` in place. Text goes through the engine's UTF-8 parser, as `string_of` does, so the result matches a String built from the same bytes. Only on a String you own. |
 

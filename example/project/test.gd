@@ -328,6 +328,16 @@ func _check_extras() -> int:
 	# character, "abc" against "ab" on length, and a copy of `long_text` shares its storage.
 	var same_cases: Array = [["", "", 3], ["ab", "ab", 3], ["日本語", "日本語", 3], ["é", "e", 0],
 		["a2", "ab", 0], ["abc", "ab", 0], ["", "a", 0], [long_text, long_text, 3], ["日本", "日本語", 0]]
+	# The engine's begins_with and ends_with are the reference.
+	var end_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abc", "a"], ["abc", "c"], ["abc", "abc"],
+		["abc", "abcd"], ["日本語", "日"], ["日本語", "語"], ["日本語", "本"], ["aé", "é"], ["éa", "é"],
+		["x日本語x", "x日"], [long_text, "xx"], ["ab", "b"]]
+	for c: Array in end_cases:
+		var s: String = c[0]
+		var want: int = int(s.begins_with(c[1])) | int(s.ends_with(c[1])) << 1
+		if b2.text_ends(s, c[1]) != want:
+			print("FAIL: Bag.text_ends(%s, %s) gave %d, not %d" % [s, c[1], b2.text_ends(s, c[1]), want])
+			failures += 1
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1

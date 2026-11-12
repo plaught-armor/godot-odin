@@ -451,6 +451,9 @@ Ident :: enum i64 {
 	EQUAL_ENGINE_COPY, // the engine's String == on a String and its copy, which share storage
 	EQUAL_COPY,        // string_equal on the same pair
 	EQUAL_ENGINE_TEXT, // string_of the Odin text, the engine's String ==, destroy
+	BEGINS_ENGINE,     // the generated string_begins_with, its prefix a cached String
+	BEGINS_TEXT,       // string_begins_with_text, its prefix Odin text
+	ENDS_TEXT,         // string_ends_with_text, its suffix Odin text
 }
 
 // Nanoseconds per `kind` round on a short identifier, over `n` rounds.
@@ -557,6 +560,19 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			eq(intrinsics.volatile_load(&ref), &other, &r)
 			sum += i64(r)
 			godot.destroy[.STRING](&other)
+		}
+	case .BEGINS_ENGINE:
+		prefix := godot.intern_text("player_")
+		for _ in 0 ..< n {
+			sum += i64(godot.string_begins_with(intrinsics.volatile_load(&ref), prefix))
+		}
+	case .BEGINS_TEXT:
+		for _ in 0 ..< n {
+			sum += i64(godot.string_begins_with_text(intrinsics.volatile_load(&ref), "player_"))
+		}
+	case .ENDS_TEXT:
+		for _ in 0 ..< n {
+			sum += i64(godot.string_ends_with_text(intrinsics.volatile_load(&ref), "_jump"))
 		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
