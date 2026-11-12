@@ -26,10 +26,6 @@ library: gde.ClassLibraryPtr
 // The context every call from the engine runs in: methods, notifications and callables may allocate.
 ctx: runtime.Context
 
-// Calls that entered a registered method through the Variant path since load. A typed GDScript call
-// site arrives by ptrcall and leaves it unchanged, so a rise shows an untyped call.
-variant_calls: i64
-
 // Most parameters a registered method takes, not counting `self`.
 MAX_ARGS :: 13
 
@@ -108,7 +104,6 @@ Virtual :: struct {
 // arguments. Lives for the process.
 @(private)
 Method :: struct {
-	f:        rawptr,
 	types:    [MAX_ARGS]gde.VariantType,
 	count:    i32,
 	required: i32,
@@ -583,7 +578,7 @@ self_of :: #force_inline proc "contextless" ($T: typeid, instance: gde.ClassInst
 // `variant_type` maps them; counted ones (strings, arrays) are borrowed for the call. `args` names
 // the parameters after `self`; `defaults` fills the last ones (bool, integer, float, string or a
 // Variant) when a Variant call leaves them out.
-method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defaults: []any = nil) where intrinsics.type_is_proc(P) {
+method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defaults: []any = nil) where intrinsics.type_is_proc(P) {
 	N :: intrinsics.type_proc_parameter_count(P)
 	PT :: ^T
 	when N > 0 { SELF :: intrinsics.type_proc_parameter_type(P, 0) == PT } else { SELF :: false }
@@ -598,19 +593,17 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 	ptrcall :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstTypePtr, ret: gde.TypePtr) {
 		context = ctx
 		enter()
-		m := (^Method)(userdata)
 		c := Call{self = self_of(T, instance) if SELF else nil, slots = args}
 		when RET == 1 {
 			R :: intrinsics.type_proc_return_type(P, 0)
-			to_slot(ret, invoke_ret(P(m.f), R, SELF, true, &c))
+			to_slot(ret, invoke_ret(f, R, SELF, true, &c))
 		} else {
-			invoke_void(P(m.f), SELF, true, &c)
+			invoke_void(f, SELF, true, &c)
 		}
 	}
 	call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 		context = ctx
 		enter()
-		variant_calls += 1
 		m := (^Method)(userdata)
 		// fill_args writes `filled` for every parameter and `made[i]` only where it sets `built[i]`,
 		// so only `built` needs zeroing.
@@ -629,7 +622,6 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 	call_plain :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 		context = ctx
 		enter()
-		variant_calls += 1
 		m := (^Method)(userdata)
 		filled: [MAX_ARGS + 1]gde.ConstVariantPtr = ---
 		if !fill_args(m, args, count, &filled[0], nil, nil, err, true) { return }
@@ -640,14 +632,13 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 		c := Call{self = self_of(T, instance) if SELF else nil, variants = filled}
 		when RET == 1 {
 			R :: intrinsics.type_proc_return_type(P, 0)
-			put_return(ret, invoke_ret(P(m.f), R, SELF, false, &c))
+			put_return(ret, invoke_ret(f, R, SELF, false, &c))
 		} else {
-			invoke_void(P(m.f), SELF, false, &c)
+			invoke_void(f, SELF, false, &c)
 		}
 	}
 
 	m := new(Method)
-	m.f = rawptr(f)
 	m.count = ARGS
 	m.required = i32(ARGS - len(defaults))
 	d: Params
@@ -959,7 +950,8 @@ fill_args :: #force_inline proc "contextless" (m: ^Method, args: [^]gde.ConstVar
 		err.expected = m.count if n > m.count else m.required
 		return false
 	}
-	for i in 0 ..< m.count {
+	// `m.count` is at most MAX_ARGS, which `method` asserts at compile time.
+	#no_bounds_check for i in 0 ..< m.count {
 		if i >= n {
 			filled[i] = &m.defaults[i]
 			continue

@@ -706,7 +706,6 @@ field_get_ptr :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, arg
 
 @(private)
 field_get_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
-	variant_calls += 1
 	if count != 0 {
 		err.error = .ERROR_TOO_MANY_ARGUMENTS
 		err.expected = 0
@@ -791,7 +790,6 @@ MOST_VALUE :: 64
 
 @(private)
 field_set_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
-	variant_calls += 1
 	f := (^Field)(userdata)
 	// A bool, int or float of the field's own type needs no conversion, context or temp memory.
 	if count == 1 && variant_tag(args[0]) == f.type && field_set_scalar(f, field_at(instance, f), args[0]) {

@@ -25,15 +25,16 @@ calls back into `core.odin` only to look up its engine pointers.
 
 ## Method calls
 
-`method` reads the proc's signature at compile time and registers two entry points:
+`method` takes the proc as a compile-time constant and reads its signature, so each method gets
+its own two entry points that call the proc directly:
 
 - **ptrcall.** A typed GDScript call, or a call from another extension, passes raw pointers to the
   arguments. The core reads each one as its Odin type and calls the proc. No Variant is built.
-  It costs about the same as a call to an engine method of the same shape.
+  It costs about the same as a call to an engine method of the same shape, or slightly less.
 - **Variant call.** An untyped call passes Variants. The core checks each argument's type,
   converts where the engine's own binds would (int, float and bool into one another, an Array to
   a packed array and back, null to an object), and fills in defaults for
-  missing trailing arguments. It costs about 2 ns more than the engine's own Variant call. A
+  missing trailing arguments. It costs about the same as the engine's own Variant call. A
   method with no Array or packed array parameter gets a leaner entry point, since none of its
   arguments can need a new value built.
 
@@ -98,7 +99,8 @@ Variant layout, which the core checks at load and stops on if it differs.
 
 Every call from the engine into Odin runs between `enter` and `leave`. `enter` marks the temp
 arena, and `leave` rolls it back when the call returns. Most calls take no temp memory, and then
-the rollback is a counter change with no call. `enter` reaches the arena through a global rather
+the rollback is a counter change with no call. The rare real rollback sits in a call of its own,
+so a proc that never reads the context does not keep a copy of it. `enter` reaches the arena through a global rather
 than the runtime's thread-local lookup, which would cost a `__tls_get_addr` call per engine call
 in a shared library.
 

@@ -166,7 +166,8 @@ What each call does:
   [Field tags](api.md#field-tags).
 - **`godot.method(c, name, proc, args, defaults)`** registers a method. If the proc's first
   parameter is `^Walker`, it is an instance method; otherwise it is static. The parameter and
-  return types come from the signature.
+  return types come from the signature. The proc must be a compile-time constant, a named proc
+  or a proc literal, so each method gets its own entry points that call it directly.
 - **`godot.signal` / `godot.emit`** register a signal and emit it.
 - **`godot.override_<class>_<virtual>`** procs, one per engine virtual (`override_node_process`,
   `override_node_ready`, `override_node_input`...), make your proc the override. The compiler

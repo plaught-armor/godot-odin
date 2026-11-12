@@ -147,6 +147,14 @@ leave :: #force_inline proc(temp: runtime.Arena_Temp) {
 		a.temp_count -= 1
 		return
 	}
+	roll_back(temp)
+}
+
+// The runtime's rollback, in a call of its own that sets `ctx`: inline in `leave`, it would make
+// every engine call keep its copy of the context alive for it, even one whose proc never reads it.
+@(private)
+roll_back :: #force_no_inline proc "contextless" (temp: runtime.Arena_Temp) {
+	context = ctx
 	runtime.default_temp_allocator_temp_end(temp)
 }
 

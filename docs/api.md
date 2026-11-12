@@ -64,7 +64,7 @@ in the source is the full contract. This page tells you which one to reach for. 
 
 | Proc | Use |
 |---|---|
-| `method(c, name, f, args = nil, defaults = nil)` | Registers `f`. If its first parameter is `^T`, it is an instance method; otherwise it is static. `args` names the parameters after `self`. `defaults` fills the last ones (bool, integer, float, string or a Variant) when a Variant call leaves them out. |
+| `method(c, name, f, args = nil, defaults = nil)` | Registers `f`, a compile-time constant proc (a named proc or a proc literal). If its first parameter is `^T`, it is an instance method; otherwise it is static. `args` names the parameters after `self`. `defaults` fills the last ones (bool, integer, float, string or a Variant) when a Variant call leaves them out. |
 | `property(c, name, get, set, hint = .PROPERTY_HINT_NONE, hint_string = "", usage = DEFAULT)` | A property from a getter and a setter, registered as the methods `get_<name>` and `set_<name>`. Its type is the getter's return type. |
 
 Counted parameters (String, Array...) are borrowed for the call. A return is handed to the caller.
