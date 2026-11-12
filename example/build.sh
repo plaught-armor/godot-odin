@@ -5,6 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 python3 ../tools/odin_docgen.py src
+mkdir -p project/bin
 odin build src -build-mode:shared -debug -out:project/bin/libexample.linux.x86_64.so
 if [ $# -gt 0 ]; then
 	"$1" --headless --path project --import >/dev/null 2>&1 || true

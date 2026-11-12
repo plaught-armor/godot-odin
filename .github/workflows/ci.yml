@@ -38,7 +38,7 @@ jobs:
           odin check demos/src -no-entry-point -vet
       - name: Build the example
         shell: bash
-        run: odin build example/src -build-mode:shared -out:example/project/bin/${{ matrix.lib }}
+        run: mkdir -p example/project/bin && odin build example/src -build-mode:shared -out:example/project/bin/${{ matrix.lib }}
 
   test:
     needs: build
