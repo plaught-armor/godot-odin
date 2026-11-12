@@ -380,6 +380,20 @@ func _check_extras() -> int:
 			if got != want:
 				print("FAIL: Bag.count_text(%s, %s, %d, %d) gave %x, not %x" % [s, c[1], range_[0], range_[1], got, want])
 				failures += 1
+	var replace_cases: Array = [["", "", "x"], ["abc", "", "x"], ["", "a", "x"], ["aaaa", "aa", "b"],
+		["aaa", "a", ""], ["aAaA", "aa", "\u65E5"], ["abcABCabc", "abc", "xyzw"], ["\u0130x\u0130", "ix", "-"],
+		["\u65E5\u672C\u65E5\u672C", "\u672C", "ab"], ["ab", "abc", "q"], ["--ab--ab-ab", "ab", "\u212A"],
+		["abab", "abab", ""], [long_text + "y", "xy", "Z"], ["ab", "b", "bb"]]
+	for pad: int in 10:
+		replace_cases.append(["-".repeat(pad) + "ab--ab", "ab", "\u00E9!"])
+	for c: Array in replace_cases:
+		var s: String = c[0]
+		if b2.replace_text(s, c[1], c[2], false) != s.replace(c[1], c[2]):
+			print("FAIL: Bag.replace_text(%s, %s, %s) gave %s, not %s" % [s, c[1], c[2], b2.replace_text(s, c[1], c[2], false), s.replace(c[1], c[2])])
+			failures += 1
+		if b2.replace_text(s, c[1], c[2], true) != s.replacen(c[1], c[2]):
+			print("FAIL: Bag.replace_text(%s, %s, %s, nocase) gave %s, not %s" % [s, c[1], c[2], b2.replace_text(s, c[1], c[2], true), s.replacen(c[1], c[2])])
+			failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
 		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]

@@ -268,6 +268,65 @@ string_countn_text :: proc "contextless" (s: ^String, text: string, from: i64 = 
 	return count_in(string_read(s), needle_of(text, true), from, to, true)
 }
 
+// A copy of `s` with every `what` replaced by `forwhat`, both Odin text, left to right and not
+// overlapping: the engine's `replace`. Matches are found in place and the result is written once
+// into a String made at its final length. Empty `what`, or none found, gives a copy sharing `s`'s
+// storage. The caller destroys the result.
+string_replace_text :: proc "contextless" (s: ^String, what, forwhat: string) -> String {
+	return replace_in(s, needle_of(what, false), forwhat, false)
+}
+
+// `string_replace_text` ignoring case: the engine's `replacen`.
+string_replacen_text :: proc "contextless" (s: ^String, what, forwhat: string) -> String {
+	return replace_in(s, needle_of(what, true), forwhat, true)
+}
+
+// Counts the matches first, so the result is sized once, then finds them again to fill it: the
+// same search from the same places, so it meets the same `hits` matches.
+@(private)
+replace_in :: proc "contextless" (s: ^String, n: Needle, with: string, $NOCASE: bool) -> (out: String) {
+	chars := string_read(s)
+	hits := int(count_in(chars, n, 0, 0, NOCASE))
+	if hits == 0 { return string_new_from_string(s^) }
+	with_ascii := text_is_ascii(with)
+	with_count := len(with) if with_ascii else text_rune_count(with)
+	total := len(chars) + hits * (with_count - n.count)
+	// A zeroed String is the engine's empty one: its storage pointer is null.
+	if total == 0 { return }
+	// The engine's resize counts the terminator, which it leaves for the caller to write.
+	gde.string_resize(&out, gde.Int(total + 1))
+	w := gde.string_operator_index(&out, 0)[:total + 1]
+	j, start, last := 0, 0, len(chars) - n.count
+	for _ in 0 ..< hits {
+		at := int(find_forward(chars, start, last, n, NOCASE))
+		j += copy(w[j:], chars[start:at])
+		j += text_put(w[j:], with, with_ascii)
+		start = at + n.count
+	}
+	j += copy(w[j:], chars[start:])
+	w[total] = 0
+	return
+}
+
+// Writes the characters of `text` to the front of `dst`, decoded as `text_rune_count` counts them,
+// and returns how many. `dst` must hold them.
+@(private)
+text_put :: #force_inline proc "contextless" (dst: []rune, text: string, ascii: bool) -> int {
+	if ascii {
+		for b, k in transmute([]u8)text { dst[k] = rune(b) }
+		return len(text)
+	}
+	i, k := 0, 0
+	for _ in 0 ..< len(text) {
+		if i >= len(text) { break }
+		r, w := utf8.decode_rune_in_string(text[i:])
+		dst[k] = r
+		i += w
+		k += 1
+	}
+	return k
+}
+
 @(private)
 count_in :: #force_inline proc "contextless" (chars: []rune, n: Needle, from, to: i64, $NOCASE: bool) -> (count: i64) {
 	if n.count == 0 || from < 0 || to < 0 { return 0 }

@@ -90,6 +90,8 @@ func _initialize() -> void:
 	_report("Odin string_count, cached String in a sentence", func() -> float: return b.ident_ns(31, N))
 	_report("Odin string_count_text, Odin text in a sentence", func() -> float: return b.ident_ns(32, N))
 	_report("Odin string_begins_with_text_nocase, Odin text", func() -> float: return b.ident_ns(33, N))
+	_report("Generated string_replace, cached Strings in a sentence", func() -> float: return b.ident_ns(34, N))
+	_report("Odin string_replace_text, Odin text in a sentence", func() -> float: return b.ident_ns(35, N))
 	_report("GDScript -> Odin, typed, String param", func() -> float: return _string_param(b, false))
 	_report("GDScript -> Odin, typed, string param", func() -> float: return _string_param(b, true))
 	var table: Dictionary = {}

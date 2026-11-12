@@ -470,6 +470,8 @@ Ident :: enum i64 {
 	COUNT_ENGINE,      // the generated string_count of a cached String in the sentence
 	COUNT_TEXT,        // string_count_text of the same Odin text
 	BEGINS_NOCASE,     // string_begins_with_text_nocase of "PLAYER_" on the identifier
+	REPLACE_ENGINE,    // the generated string_replace of cached Strings in the sentence
+	REPLACE_TEXT,      // string_replace_text of the same Odin text
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -694,6 +696,27 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 	case .BEGINS_NOCASE:
 		for _ in 0 ..< n {
 			sum += i64(godot.string_begins_with_text_nocase(intrinsics.volatile_load(&ref), "PLAYER_"))
+		}
+	case .REPLACE_ENGINE:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		what, with := godot.string_of("the"), godot.string_of("a")
+		defer godot.destroy[.STRING](&what)
+		defer godot.destroy[.STRING](&with)
+		for _ in 0 ..< n {
+			r := godot.string_replace(intrinsics.volatile_load(&h), what, with)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .REPLACE_TEXT:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		for _ in 0 ..< n {
+			r := godot.string_replace_text(intrinsics.volatile_load(&h), "the", "a")
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
 		}
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)
