@@ -82,6 +82,11 @@ register_extras :: proc() {
 	godot.method(b, "bump_all", bag_bump_all, {"xs"})
 	godot.method(b, "range_of", bag_range_of, {"n"})
 	godot.method(b, "weighted", bag_weighted, {"d"})
+	godot.method(b, "typed_range", bag_typed_range, {"n"})
+	godot.method(b, "typed_words", bag_typed_words)
+	godot.method(b, "typed_nodes", bag_typed_nodes, {"n"})
+	godot.method(b, "typed_bump", bag_typed_bump, {"xs"})
+	godot.method(b, "typed_shout", bag_typed_shout, {"xs"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -323,6 +328,55 @@ bag_range_of :: proc(self: ^Bag, n: i64) -> godot.Array {
 	xs := make([]i64, max(n, 0), context.temp_allocator)
 	for &x, i in xs { x = i64(i) }
 	return godot.array_of(xs)
+}
+
+// The ints 0 to `n - 1` in a new Array[int].
+bag_typed_range :: proc(self: ^Bag, n: i64) -> godot.Array {
+	xs := make([]i32, max(n, 0), context.temp_allocator)
+	for &x, i in xs { x = i32(i) }
+	return godot.array_typed_of(xs)
+}
+
+// ["a", "bc"] as a new Array[String].
+bag_typed_words :: proc(self: ^Bag) -> godot.Array {
+	words := [2]godot.String{godot.string_of("a"), godot.string_of("bc")}
+	defer for &w in words { godot.destroy[.STRING](&w) }
+	return godot.array_typed_of(words[:])
+}
+
+// `n` nulls in a new Array[Node].
+bag_typed_nodes :: proc(self: ^Bag, n: i64) -> godot.Array {
+	xs := make([]godot.Node, max(n, 0), context.temp_allocator)
+	return godot.array_typed_of(xs)
+}
+
+// Adds 1 to every element of the Array[int] `xs` in place. False, with `xs` untouched, for any
+// other Array.
+bag_typed_bump :: proc(self: ^Bag, xs: godot.Array) -> bool {
+	xs := xs
+	if godot.array_size(&xs) == 0 { return true }
+	slots := godot.array_write_typed(&xs, i64)
+	if slots == nil { return false }
+	for &v in slots { godot.variant_into(&v, godot.variant_int(&v) + 1) }
+	return true
+}
+
+// Appends "!" to every element of the Array[String] `xs` in place. False, with `xs` untouched,
+// for any other Array.
+bag_typed_shout :: proc(self: ^Bag, xs: godot.Array) -> bool {
+	xs := xs
+	if godot.array_size(&xs) == 0 { return true }
+	slots := godot.array_write_typed(&xs, godot.String)
+	if slots == nil { return false }
+	for &v in slots {
+		s: godot.String
+		godot.to_type[.STRING](&s, &v)
+		defer godot.destroy[.STRING](&s)
+		godot.string_append(&s, "!")
+		gde.variant_destroy(&v)
+		godot.variant_into(&v, s)
+	}
+	return true
 }
 
 // The sum of key times value over the int entries of `d`.

@@ -2,6 +2,8 @@
 // through the pointers the interface hands out, instead of one builtin or method call per element.
 package godot
 
+import "base:intrinsics"
+import "base:runtime"
 import gde "../gdextension"
 
 // The elements of packed array `a` as a slice over its storage, for reading in place. It stays valid
@@ -105,7 +107,7 @@ array_read :: proc "contextless" (a: ^Array) -> []Variant {
 }
 
 // The elements of `a` as a writable slice, or nil when `a` is typed or read-only, whose checks a
-// direct write would skip: use `array_set` for those. An Array is shared, not copied on write, so
+// direct write would skip: use `array_write_typed` or `array_set` for those. An Array is shared, not copied on write, so
 // every holder of `a` sees the writes, as with `array_set`. Each element is a Variant `a` owns:
 // destroy the old one before storing a new one. Valid until `a` is resized, duplicated or destroyed.
 array_write :: proc "contextless" (a: ^Array) -> []Variant {
@@ -124,6 +126,80 @@ array_of :: proc "contextless" (xs: []$T) -> (out: Array) {
 	slots := ([^]Variant)(gde.array_operator_index(&out, 0))
 	for x, i in xs { variant_into(&slots[i], x) }
 	return
+}
+
+// A new Array typed to `T`, as GDScript's `Array[T]`, holding `xs`, in one resize as `array_of`
+// builds. `T` is a builtin type or an engine class; an integer type makes `Array[int]` and a float type
+// `Array[float]`. You destroy it, or return it.
+array_typed_of :: proc "contextless" (xs: []$T) -> (out: Array) {
+	out = array_new()
+	array_type_as(&out, variant_type(T), typed_class(T))
+	if len(xs) == 0 { return }
+	array_resize(&out, i64(len(xs)))
+	// The resize fills a typed Array with its type's default value: nothing to destroy for a
+	// scalar or an object, which starts null, but a counted value for the rest.
+	slots := ([^]Variant)(gde.array_operator_index(&out, 0))
+	for x, i in xs {
+		when !(T == bool || intrinsics.type_is_integer(T) || intrinsics.type_is_enum(T) || intrinsics.type_is_bit_set(T) || intrinsics.type_is_float(T) || intrinsics.type_base_type(T) == rawptr) {
+			gde.variant_destroy(&slots[i])
+		}
+		variant_into(&slots[i], x)
+	}
+	return
+}
+
+// The elements of `a` as a writable slice, as `array_write` gives, when `a` is typed exactly to
+// `T` and writable; else nil. Store only `T` values in it, since the direct write skips the
+// engine's type check: an `Array[Node]` takes `T` Node, not a subclass, and an `Array` typed to a
+// script class gives nil. Destroy an element before storing a new one in its place.
+array_write_typed :: proc "contextless" (a: ^Array, $T: typeid) -> []Variant {
+	n := array_size(a)
+	if n <= 0 || array_is_read_only(a) || !array_typed_as(a, variant_type(T), typed_class(T)) { return nil }
+	return ([^]Variant)(gde.array_operator_index(a, 0))[:n]
+}
+
+// The class name an `Array[T]` carries: `T`'s own for an engine class, else empty. Looked up once
+// per `T`, and kept for the life of the process.
+@(private)
+typed_class :: proc "contextless" ($T: typeid) -> ^StringName {
+	#assert(T != Variant, "godot_odin: a typed Array needs a type; use array_of for an untyped one")
+	#assert(!(intrinsics.type_is_pointer(T) && intrinsics.type_base_type(T) != rawptr), "godot_odin: a typed Array of a registered class is not supported")
+	@(static) name: StringName
+	@(static) known: bool
+	when intrinsics.type_base_type(T) == rawptr {
+		if !known {
+			name_of_type(&name, type_info_of(T))
+			known = true
+		}
+	}
+	return &name
+}
+
+// `out` set to the name of the named type `info`, an engine class's.
+@(private)
+name_of_type :: proc "contextless" (out: ^StringName, info: ^runtime.Type_Info) {
+	named := info.variant.(runtime.Type_Info_Named)
+	gde.string_name_new_with_utf8_chars_and_len(out, cstring(raw_data(named.name)), gde.Int(len(named.name)))
+}
+
+// Types the empty Array `a` to Variant type `type` and class `class` (empty unless `type` is
+// OBJECT), with no script.
+@(private)
+array_type_as :: proc "contextless" (a: ^Array, type: gde.VariantType, class: ^StringName) {
+	script: Variant
+	gde.array_set_typed(a, type, class, &script)
+}
+
+// Whether `a` is typed exactly to Variant type `type` and class `class`, with no script.
+@(private)
+array_typed_as :: proc "contextless" (a: ^Array, type: gde.VariantType, class: ^StringName) -> bool {
+	if !array_is_typed(a) || array_get_typed_builtin(a) != i64(type) { return false }
+	if type != .OBJECT { return true }
+	got := array_get_typed_class_name(a)
+	defer destroy[.STRING_NAME](&got)
+	script := array_get_typed_script(a)
+	defer gde.variant_destroy(&script)
+	return same_name(got, class^) && variant_tag(&script) == .NIL
 }
 
 // The keys and the values of `d`, as two new Arrays in matching order: `keys[i]` maps to

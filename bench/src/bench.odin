@@ -43,8 +43,8 @@ register :: proc() {
 	godot.method(c, "packed_build_ns", packed_build_ns, {"fast", "n"})
 	godot.method(c, "string_scan_ns", string_scan_ns, {"s", "fast", "n"})
 	godot.method(c, "array_read_ns", array_read_ns, {"xs", "fast", "n"})
-	godot.method(c, "array_build_ns", array_build_ns, {"fast", "n"})
-	godot.method(c, "array_write_ns", array_write_ns, {"fast", "n"})
+	godot.method(c, "array_build_ns", array_build_ns, {"typed", "fast", "n"})
+	godot.method(c, "array_write_ns", array_write_ns, {"typed", "fast", "n"})
 	godot.method(c, "dict_iter_ns", dict_iter_ns, {"d", "fast", "n"})
 	godot.method(c, "image_fill_ns", image_fill_ns, {"fast", "n"})
 	godot.method(c, "file_read_ns", file_read_ns, {"path", "fast", "n"})
@@ -176,18 +176,21 @@ array_read_ns :: proc(self: ^Bench, xs: godot.Array, fast: bool, n: i64) -> f64 
 	return ns
 }
 
-// Nanoseconds per element to build a 1000-int Array: from a slice with `array_of` when `fast`, else
-// by one `push_back` each. Over `n` rounds.
-array_build_ns :: proc(self: ^Bench, fast: bool, n: i64) -> f64 {
+// Nanoseconds per element to build a 1000-int Array, an Array[int] when `typed`: from a slice with
+// `array_of` or `array_typed_of` when `fast`, else by one `push_back` each. Over `n` rounds.
+array_build_ns :: proc(self: ^Bench, typed, fast: bool, n: i64) -> f64 {
 	src: [1000]i64
 	for &x, i in src { x = i64(i) }
 	start := time.tick_now()
 	for _ in 0 ..< n {
 		out: godot.Array
-		if fast {
+		if fast && typed {
+			out = godot.array_typed_of(src[:])
+		} else if fast {
 			out = godot.array_of(src[:])
 		} else {
 			out = godot.array_new()
+			if typed { type_ints(&out) }
 			for x in src { godot.array_push_back(&out, godot.variant(x)) }
 		}
 		self.total += godot.array_size(&out)
@@ -196,16 +199,18 @@ array_build_ns :: proc(self: ^Bench, fast: bool, n: i64) -> f64 {
 	return f64(time.tick_since(start)) / f64(n * len(src))
 }
 
-// Nanoseconds per element to overwrite every element of a 1000-int Array with an int: through
-// `array_write` when `fast`, else by one `set` each. Over `n` rounds.
-array_write_ns :: proc(self: ^Bench, fast: bool, n: i64) -> f64 {
+// Nanoseconds per element to overwrite every element of a 1000-int Array, an Array[int] when
+// `typed`, with an int: through `array_write` or `array_write_typed` when `fast`, else by one `set`
+// each. Over `n` rounds.
+array_write_ns :: proc(self: ^Bench, typed, fast: bool, n: i64) -> f64 {
 	src: [1000]i64
-	a := godot.array_of(src[:])
+	a := godot.array_typed_of(src[:]) if typed else godot.array_of(src[:])
 	defer godot.array_destroy(&a)
 	start := time.tick_now()
 	for r in 0 ..< n {
 		if fast {
-			for &v in godot.array_write(&a) {
+			slots := godot.array_write_typed(&a, i64) if typed else godot.array_write(&a)
+			for &v in slots {
 				gde.variant_destroy(&v)
 				godot.variant_into(&v, r)
 			}
@@ -216,6 +221,13 @@ array_write_ns :: proc(self: ^Bench, fast: bool, n: i64) -> f64 {
 	ns := f64(time.tick_since(start)) / f64(n * len(src))
 	self.total += godot.variant_int(godot.array_at(&a, 0))
 	return ns
+}
+
+// Types the empty Array `a` to int, as `Array[int]`.
+type_ints :: proc "contextless" (a: ^godot.Array) {
+	class: godot.StringName
+	script: godot.Variant
+	gde.array_set_typed(a, .INT, &class, &script)
 }
 
 // Nanoseconds per entry to sum the int values of `d`: over `dict_items` read in place when `fast`,

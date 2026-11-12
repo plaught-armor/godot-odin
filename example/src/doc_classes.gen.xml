@@ -120,6 +120,21 @@
 		<method name="weighted">
 			<description>The sum of key times value over the int entries of [code]d[/code].</description>
 		</method>
+		<method name="typed_range">
+			<description>The ints 0 to [code]n - 1[/code] in a new Array[int].</description>
+		</method>
+		<method name="typed_words">
+			<description>["a", "bc"] as a new Array[String].</description>
+		</method>
+		<method name="typed_nodes">
+			<description>[code]n[/code] nulls in a new Array[Node].</description>
+		</method>
+		<method name="typed_bump">
+			<description>Adds 1 to every element of the Array[int] [code]xs[/code] in place. False, with [code]xs[/code] untouched, for any other Array.</description>
+		</method>
+		<method name="typed_shout">
+			<description>Appends "!" to every element of the Array[String] [code]xs[/code] in place. False, with [code]xs[/code] untouched, for any other Array.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

@@ -200,6 +200,28 @@ func _check_extras() -> int:
 	if b2.range_of(4) != [0, 1, 2, 3] or b2.range_of(0) != []:
 		print("FAIL: Bag.range_of(4) gave %s" % b2.range_of(4))
 		failures += 1
+	var ints: Array[int] = b2.typed_range(3)
+	if ints != [0, 1, 2] or not ints.is_typed() or ints.get_typed_builtin() != TYPE_INT or b2.typed_range(0).get_typed_builtin() != TYPE_INT:
+		print("FAIL: Bag.typed_range(3) gave %s" % ints)
+		failures += 1
+	var words: Array[String] = b2.typed_words()
+	if words != ["a", "bc"] or words.get_typed_builtin() != TYPE_STRING:
+		print("FAIL: Bag.typed_words gave %s" % words)
+		failures += 1
+	var nodes: Array[Node] = b2.typed_nodes(2)
+	if nodes != [null, null] or nodes.get_typed_class_name() != &"Node":
+		print("FAIL: Bag.typed_nodes(2) gave %s typed %s" % [nodes, nodes.get_typed_class_name()])
+		failures += 1
+	var floats: Array[float] = [1.5]
+	var plain: Array = [1, 2]
+	var frozen: Array[int] = [4]
+	frozen.make_read_only()
+	if not b2.typed_bump(ints) or ints != [1, 2, 3] or b2.typed_bump(floats) or b2.typed_bump(plain) or plain != [1, 2] or b2.typed_bump(frozen) or frozen != [4]:
+		print("FAIL: Bag.typed_bump gave %s, %s and %s" % [ints, floats, plain])
+		failures += 1
+	if not b2.typed_shout(words) or words != ["a!", "bc!"] or b2.typed_shout(nodes):
+		print("FAIL: Bag.typed_shout gave %s" % words)
+		failures += 1
 	if b2.weighted({2: 3, 5: 7, "s": 9}) != 41 or b2.weighted({}) != 0:
 		print("FAIL: Bag.weighted gave %d, not 41" % b2.weighted({2: 3, 5: 7, "s": 9}))
 		failures += 1
