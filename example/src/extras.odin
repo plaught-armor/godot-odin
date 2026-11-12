@@ -110,6 +110,8 @@ register_extras :: proc() {
 	godot.method(b, "load_kinds", bag_load_kinds, {"path"})
 	godot.method(b, "load_speed", bag_load_speed, {"path"})
 	godot.method(b, "greet", bag_greet, {"name"})
+	godot.method(b, "kinds", bag_kinds, {"label"})
+	godot.method(b, "count", bag_count)
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -461,6 +463,20 @@ bag_ghost_seen :: proc(self: ^Bag, root: godot.Node) -> i64 {
 // `name` and `path` as Odin text, joined by "|".
 bag_texts :: proc(self: ^Bag, name: godot.StringName, path: godot.NodePath) -> string {
 	return fmt.tprintf("%s|%s", godot.utf8(name, context.temp_allocator), godot.utf8(path, context.temp_allocator))
+}
+
+// `label`, then the Variant type of each extra argument: a vararg method.
+bag_kinds :: proc(self: ^Bag, label: string, rest: []godot.Variant) -> string {
+	out := fmt.tprintf("%s:", label)
+	for &v, i in rest {
+		out = fmt.tprintf("%s%s%d", out, "," if i > 0 else "", int(godot.variant_tag(&v)))
+	}
+	return out
+}
+
+// How many arguments it got: a static vararg method with no other parameters.
+bag_count :: proc(rest: []godot.Variant) -> i64 {
+	return i64(len(rest))
 }
 
 // Whether `name` is "jump", compared against an interned name; and the interned name itself, the

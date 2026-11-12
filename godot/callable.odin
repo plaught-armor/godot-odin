@@ -102,6 +102,7 @@ make_hook :: proc(f: $P, $SELF: bool, self: rawptr, id: u64, binds: []Variant) -
 	for b, i in binds { h.binds[i] = b }
 	d: Params
 	describe_params(P, FIRST, &d)
+	for i in 0 ..< N { assert(d.types[i] != .VARIANT_MAX, "godot_odin: a callable cannot take []Variant") }
 	h.types = d.types
 	info := gde.CallableCustomInfo2 {
 		callable_userdata       = h,

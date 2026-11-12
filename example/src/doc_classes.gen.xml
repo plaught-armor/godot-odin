@@ -192,6 +192,12 @@
 		<method name="greet">
 			<description>"hi, [code]name[/code]" with its byte count: Odin strings in and out, copied at the call boundary.</description>
 		</method>
+		<method name="kinds">
+			<description>[code]label[/code], then the Variant type of each extra argument: a vararg method.</description>
+		</method>
+		<method name="count">
+			<description>How many arguments it got: a static vararg method with no other parameters.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

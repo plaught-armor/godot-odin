@@ -258,6 +258,12 @@ func _check_extras() -> int:
 	if b2.texts(&"héllo😀", NodePath("a/b:c")) != "héllo😀|a/b:c" or b2.texts(&"", NodePath()) != "|":
 		print("FAIL: Bag.texts gave %s" % b2.texts(&"héllo😀", NodePath("a/b:c")))
 		failures += 1
+	if b2.kinds("x") != "x:" or b2.kinds("x", 1, 2.0, "s", [3], &"n") != "x:2,3,4,28,21" or b2.callv("kinds", ["y", null]) != "y:0":
+		print("FAIL: Bag.kinds gave %s" % b2.kinds("x", 1, 2.0, "s", [3], &"n"))
+		failures += 1
+	if Bag.count() != 0 or Bag.count(1, "two", [3], {}) != 4:
+		print("FAIL: Bag.count gave %d, not 4" % Bag.count(1, "two", [3], {}))
+		failures += 1
 	if not b2.is_jump(&"jump") or b2.is_jump(&"jumps") or b2.is_jump(&""):
 		print("FAIL: Bag.is_jump did not match only jump")
 		failures += 1

@@ -577,13 +577,16 @@ self_of :: #force_inline proc "contextless" ($T: typeid, instance: gde.ClassInst
 // gets the instance's `self`; any other proc is static. Parameters and the return cross as
 // `variant_type` maps them; counted ones (strings, arrays) are borrowed for the call. `args` names
 // the parameters after `self`; `defaults` fills the last ones (bool, integer, float, string or a
-// Variant) when a Variant call leaves them out.
+// Variant) when a Variant call leaves them out. A last parameter of type `[]Variant` makes the
+// method vararg: it takes the arguments past the others, borrowed for the call (`variant_copy` one
+// to keep it), and `args` and `defaults` cover only the others. A vararg method has no ptrcall.
 method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defaults: []any = nil) where intrinsics.type_is_proc(P) {
 	N :: intrinsics.type_proc_parameter_count(P)
 	PT :: ^T
 	when N > 0 { SELF :: intrinsics.type_proc_parameter_type(P, 0) == PT } else { SELF :: false }
 	when SELF { FIRST :: 1 } else { FIRST :: 0 }
-	ARGS :: N - FIRST
+	when N > FIRST { VARARG :: intrinsics.type_proc_parameter_type(P, N - 1) == []Variant } else { VARARG :: false }
+	when VARARG { ARGS :: N - FIRST - 1 } else { ARGS :: N - FIRST }
 	RET :: intrinsics.type_proc_return_count(P)
 	#assert(ARGS <= MAX_ARGS, "godot_odin: too many parameters")
 	#assert(RET <= 1, "godot_odin: a method returns one value at most")
@@ -614,7 +617,7 @@ method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defa
 			if built[i] { gde.variant_destroy(&made[i]) }
 		}
 		if !fill_args(m, args, count, &filled[0], &made[0], &built[0], err, false) { return }
-		finish(m, instance, &filled[0], ret)
+		finish(m, instance, &filled[0], nil, ret)
 		err.error = .OK
 	}
 	// `call` for a method no argument of which can need a new value built: none is an Array or a
@@ -625,11 +628,33 @@ method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defa
 		m := (^Method)(userdata)
 		filled: [MAX_ARGS + 1]gde.ConstVariantPtr = ---
 		if !fill_args(m, args, count, &filled[0], nil, nil, err, true) { return }
-		finish(m, instance, &filled[0], ret)
+		finish(m, instance, &filled[0], nil, ret)
 		err.error = .OK
 	}
-	finish :: #force_inline proc(m: ^Method, instance: gde.ClassInstancePtr, filled: [^]gde.ConstVariantPtr, ret: gde.VariantPtr) {
-		c := Call{self = self_of(T, instance) if SELF else nil, variants = filled}
+	// `call` for a vararg method: the arguments past `m.count` go to the `[]Variant` parameter as
+	// shallow copies in the temp arena, which the engine's own Variants keep alive for the call.
+	call_vararg :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
+		context = ctx
+		enter()
+		m := (^Method)(userdata)
+		filled: [MAX_ARGS + 1]gde.ConstVariantPtr = ---
+		made: [MAX_ARGS + 1]Variant = ---
+		built: [MAX_ARGS + 1]bool
+		defer for i in 0 ..< m.count {
+			if built[i] { gde.variant_destroy(&made[i]) }
+		}
+		fixed := min(count, gde.Int(m.count))
+		if !fill_args(m, args, fixed, &filled[0], &made[0], &built[0], err, false) { return }
+		rest: []Variant
+		if count > fixed {
+			rest = make([]Variant, int(count - fixed), context.temp_allocator)
+			for &r, i in rest { r = (^Variant)(args[int(fixed) + i])^ }
+		}
+		finish(m, instance, &filled[0], rest, ret)
+		err.error = .OK
+	}
+	finish :: #force_inline proc(m: ^Method, instance: gde.ClassInstancePtr, filled: [^]gde.ConstVariantPtr, rest: []Variant, ret: gde.VariantPtr) {
+		c := Call{self = self_of(T, instance) if SELF else nil, variants = filled, rest = rest}
 		when RET == 1 {
 			R :: intrinsics.type_proc_return_type(P, 0)
 			put_return(ret, invoke_ret(f, R, SELF, false, &c))
@@ -648,6 +673,7 @@ method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defa
 		gde.string_name_new_with_utf8_chars(&d.names[i], arg_name)
 	}
 	describe_params(P, FIRST, &d)
+	for i in 0 ..< int(m.count) { assert(d.types[i] != .VARIANT_MAX, "godot_odin: only the last parameter can be []Variant") }
 	m.types = d.types
 	plain := true
 	for i in 0 ..< int(m.count) {
@@ -668,11 +694,18 @@ method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defa
 	method_name: StringName
 	gde.string_name_new_with_utf8_chars(&method_name, name)
 	flags := gde.FLAG_NORMAL if SELF else gde.FLAG_NORMAL | gde.FLAG_STATIC
+	call_func: gde.ClassMethodCall = call_plain if plain else call
+	ptrcall_func: gde.ClassMethodPtrCall = ptrcall
+	when VARARG {
+		flags |= gde.FLAG_VARARG
+		call_func = call_vararg
+		ptrcall_func = nil
+	}
 	info := gde.ClassMethodInfo {
 		name                   = &method_name,
 		method_userdata        = m,
-		call_func              = call_plain if plain else call,
-		ptrcall_func           = ptrcall,
+		call_func              = call_func,
+		ptrcall_func           = ptrcall_func,
 		method_flags           = u32(flags),
 		has_return_value       = gde.Bool(RET),
 		return_value_info      = &ret_info,
@@ -699,9 +732,14 @@ Params :: struct {
 
 @(private)
 describe_param :: proc($A: typeid, k: int, d: ^Params) {
-	d.types[k] = variant_type(A)
-	d.metas[k] = variant_meta(A)
-	d.infos[k] = info_of(A, &d.names[k])
+	// A vararg rest takes no slot; `method` checks it was the last parameter.
+	when A == []Variant {
+		d.types[k] = .VARIANT_MAX
+	} else {
+		d.types[k] = variant_type(A)
+		d.metas[k] = variant_meta(A)
+		d.infos[k] = info_of(A, &d.names[k])
+	}
 }
 
 // Registers property `name` read by `get` and written by `set`, both registered as the methods
@@ -936,6 +974,7 @@ Call :: struct {
 	self:     rawptr,
 	slots:    [^]gde.ConstTypePtr,
 	variants: [^]gde.ConstVariantPtr,
+	rest:     []Variant,
 }
 
 // Checks a Variant call's `args` against `m` and fills `filled` with them and the defaults past
@@ -1012,6 +1051,8 @@ counted_engine_object :: proc "contextless" (obj: rawptr) -> RefCounted {
 arg :: #force_inline proc($A: typeid, $I: int, $SELF, $PTR: bool, c: ^Call) -> A {
 	when SELF && I == 0 {
 		return A(c.self)
+	} else when A == []Variant {
+		return c.rest
 	} else {
 		when SELF { K :: I - 1 } else { K :: I }
 		when PTR {
