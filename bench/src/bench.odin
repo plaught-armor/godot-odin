@@ -2,6 +2,7 @@
 // and Odin-to-engine calls and construction (driven here, so GDScript's own cost stays out).
 package bench
 
+import "core:mem"
 import "core:time"
 import gde "../../gdextension"
 import "../../godot"
@@ -52,6 +53,9 @@ register :: proc() {
 	godot.method(c, "task_ns", task_ns, {"n"})
 	godot.method(c, "group_item_ns", group_item_ns, {"n"})
 	godot.method(c, "callable_call_ns", callable_call_ns, {"f", "n"})
+	godot.method(c, "ident_ns", ident_ns, {"kind", "n"})
+	godot.method(c, "text_len", text_len, {"s"})
+	godot.method(c, "string_len", string_len, {"s"})
 }
 
 // Adds `x` to the total and answers the new total.
@@ -397,4 +401,75 @@ odin_callable :: proc(self: ^Bench) -> godot.Callable {
 // Adds `x` to the total.
 bump :: proc(self: ^Bench, x: i64) {
 	self.total += x
+}
+
+// The identifier and text paths `ident_ns` times.
+Ident :: enum i64 {
+	NAME_OF,  // name_of + destroy, a StringName from Odin text
+	PATH_OF,  // path_of + destroy, a NodePath from Odin text
+	STRING_OF, // string_of + destroy, a String from Odin text
+	UTF8,      // utf8, a String as Odin text
+	INTERN,    // intern, a cached StringName
+	INTERN_PATH, // intern_path, a cached NodePath
+}
+
+// Nanoseconds per `kind` round on a short identifier, over `n` rounds.
+ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
+	text := "player_jump"
+	str := godot.string_of(text)
+	defer godot.destroy[.STRING](&str)
+	buf: [64]u8
+	arena: mem.Arena
+	mem.arena_init(&arena, buf[:])
+	sum: i64
+	start := time.tick_now()
+	switch kind {
+	case .NAME_OF:
+		for _ in 0 ..< n {
+			sn := godot.name_of(text)
+			sum += i64(sn._opaque[0])
+			godot.destroy[.STRING_NAME](&sn)
+		}
+	case .PATH_OF:
+		for _ in 0 ..< n {
+			np := godot.path_of("Body/Sprite")
+			sum += i64(np._opaque[0])
+			godot.destroy[.NODE_PATH](&np)
+		}
+	case .STRING_OF:
+		for _ in 0 ..< n {
+			s := godot.string_of(text)
+			sum += i64(s._opaque[0])
+			godot.destroy[.STRING](&s)
+		}
+	case .UTF8:
+		for _ in 0 ..< n {
+			free_all(mem.arena_allocator(&arena))
+			sum += i64(len(godot.utf8(str, mem.arena_allocator(&arena))))
+		}
+	case .INTERN:
+		for _ in 0 ..< n {
+			sn := godot.intern("player_jump")
+			sum += i64(sn._opaque[0])
+		}
+	case .INTERN_PATH:
+		for _ in 0 ..< n {
+			np := godot.intern_path("Body/Sprite")
+			sum += i64(np._opaque[0])
+		}
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += sum
+	return ns
+}
+
+// The byte length of `s`, taken as Odin text: the cost of a string parameter.
+text_len :: proc(self: ^Bench, s: string) -> i64 {
+	return i64(len(s))
+}
+
+// The length of `s`, taken as an engine String.
+string_len :: proc(self: ^Bench, s: godot.String) -> i64 {
+	s := s
+	return godot.string_length(&s)
 }

@@ -150,6 +150,12 @@
 		<method name="find_ghost">
 			<description>The [code]seen[/code] of the Ghost at [code]path[/code] from [code]root[/code], or -1 when there is none.</description>
 		</method>
+		<method name="ghost_seen">
+			<description>The [code]seen[/code] of the Ghost at the fixed path "Sprite/Ghost", or -1, through an interned NodePath; and whether "Sprite" is a Node2D the same way.</description>
+		</method>
+		<method name="is_jump">
+			<description>Whether [code]name[/code] is "jump", compared against an interned name; and the interned name itself, the same one on every call.</description>
+		</method>
 		<method name="say">
 			<description>Prints "Bag says [code]n[/code]" to the engine's output.</description>
 		</method>

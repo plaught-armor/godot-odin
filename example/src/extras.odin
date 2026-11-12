@@ -96,6 +96,8 @@ register_extras :: proc() {
 	godot.method(b, "pathed", bag_pathed, {"s"})
 	godot.method(b, "find_2d", bag_find_2d, {"root", "path"})
 	godot.method(b, "find_ghost", bag_find_ghost, {"root", "path"})
+	godot.method(b, "ghost_seen", bag_ghost_seen, {"root"})
+	godot.method(b, "is_jump", bag_is_jump, {"name"})
 	godot.method(b, "say", bag_say, {"n"})
 	godot.method(b, "adder", bag_adder, {"n"})
 	godot.method(b, "slot_adder", bag_slot_adder, {"slot"})
@@ -427,24 +429,38 @@ bag_typed_shout :: proc(self: ^Bag, xs: godot.Array) -> bool {
 }
 
 // `s` made into a StringName from Odin text.
-bag_named :: proc(self: ^Bag, s: godot.String) -> godot.StringName {
-	return godot.name_of(godot.utf8(s, context.temp_allocator))
+bag_named :: proc(self: ^Bag, s: string) -> godot.StringName {
+	return godot.name_of(s)
 }
 
 // `s` made into a NodePath from Odin text.
-bag_pathed :: proc(self: ^Bag, s: godot.String) -> godot.NodePath {
-	return godot.path_of(godot.utf8(s, context.temp_allocator))
+bag_pathed :: proc(self: ^Bag, s: string) -> godot.NodePath {
+	return godot.path_of(s)
 }
 
 // Whether `root` has a Node2D at `path`.
-bag_find_2d :: proc(self: ^Bag, root: godot.Node, path: godot.String) -> bool {
-	return godot.get_node(root, godot.utf8(path, context.temp_allocator), godot.Node2D) != nil
+bag_find_2d :: proc(self: ^Bag, root: godot.Node, path: string) -> bool {
+	return godot.get_node(root, path, godot.Node2D) != nil
 }
 
 // The `seen` of the Ghost at `path` from `root`, or -1 when there is none.
-bag_find_ghost :: proc(self: ^Bag, root: godot.Node, path: godot.String) -> i64 {
-	g := godot.get_node(root, godot.utf8(path, context.temp_allocator), ghost_class)
+bag_find_ghost :: proc(self: ^Bag, root: godot.Node, path: string) -> i64 {
+	g := godot.get_node(root, path, ghost_class)
 	return g.seen if g != nil else -1
+}
+
+// The `seen` of the Ghost at the fixed path "Sprite/Ghost", or -1, through an interned NodePath;
+// and whether "Sprite" is a Node2D the same way.
+bag_ghost_seen :: proc(self: ^Bag, root: godot.Node) -> i64 {
+	if godot.get_node(root, godot.intern_path("Sprite"), godot.Node2D) == nil { return -2 }
+	g := godot.get_node(root, godot.intern_path("Sprite/Ghost"), ghost_class)
+	return g.seen if g != nil else -1
+}
+
+// Whether `name` is "jump", compared against an interned name; and the interned name itself, the
+// same one on every call.
+bag_is_jump :: proc(self: ^Bag, name: godot.StringName) -> bool {
+	return godot.same_name(name, godot.intern("jump")) && godot.same_name(godot.intern("jump"), godot.intern("jump"))
 }
 
 // Prints "Bag says `n`" to the engine's output.

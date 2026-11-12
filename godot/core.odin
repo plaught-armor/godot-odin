@@ -53,15 +53,80 @@ singleton :: proc "contextless" (name: cstring) -> gde.ObjectPtr {
 
 // A String for `s`, which the caller destroys.
 string_of :: proc "contextless" (s: string) -> (out: String) {
-	gde.string_new_with_utf8_chars_and_len(&out, cstring(raw_data(s)), gde.Int(len(s)))
+	// ASCII is the same in Latin-1, and the engine copies Latin-1 without decoding it.
+	if is_ascii(s) {
+		gde.string_new_with_latin1_chars_and_len(&out, cstring(raw_data(s)), gde.Int(len(s)))
+	} else {
+		gde.string_new_with_utf8_chars_and_len(&out, cstring(raw_data(s)), gde.Int(len(s)))
+	}
 	return
 }
 
-// A StringName for `s`, any text, which the caller destroys. `static_name` is the cheaper form
-// for a literal the engine keeps.
+// A StringName for `s`, any text, which the caller destroys. For a name used again and again,
+// `intern` costs about 1 ns a call after the first.
 name_of :: proc "contextless" (s: string) -> (out: StringName) {
-	gde.string_name_new_with_utf8_chars_and_len(&out, cstring(raw_data(s)), gde.Int(len(s)))
+	// The engine hashes short ASCII text straight from a C string, where UTF-8 text first becomes
+	// a String: about half the time. The C string needs a terminator, so it is copied.
+	SHORT :: 128
+	if len(s) < SHORT && is_ascii(s) {
+		buf: [SHORT]u8 = ---
+		copy(buf[:], s)
+		buf[len(s)] = 0
+		gde.string_name_new_with_latin1_chars(&out, cstring(&buf[0]), 0)
+	} else {
+		gde.string_name_new_with_utf8_chars_and_len(&out, cstring(raw_data(s)), gde.Int(len(s)))
+	}
 	return
+}
+
+// True when `s` is all ASCII, with no NUL byte to cut a C string short.
+@(private)
+is_ascii :: proc "contextless" (s: string) -> bool {
+	for c in transmute([]u8)s {
+		if c == 0 || c >= 0x80 { return false }
+	}
+	return true
+}
+
+// The StringName for the constant `text`, made on the first call and kept for the life of the
+// process; each later call is one load, about 1 ns against 40 ns for `name_of`. Do not destroy it.
+// Safe from any thread: racing first calls keep one name and drop the others.
+intern :: #force_inline proc "contextless" ($text: string) -> StringName {
+	@(static) cache: u64
+	bits := intrinsics.atomic_load_explicit(&cache, .Acquire)
+	if bits == 0 {
+		made := name_of(text)
+		stored: bool
+		bits, stored = intern_store(&cache, transmute(u64)made)
+		if !stored { destroy[.STRING_NAME](&made) }
+	}
+	return transmute(StringName)bits
+}
+
+// The NodePath for the constant `text`, such as "Body/Sprite", made on the first call and kept
+// like `intern`'s names: about 1 ns a call after that, against 130 ns for `path_of`. Do not
+// destroy it. Safe from any thread.
+intern_path :: #force_inline proc "contextless" ($text: string) -> NodePath {
+	@(static) cache: u64
+	bits := intrinsics.atomic_load_explicit(&cache, .Acquire)
+	if bits == 0 {
+		made := path_of(text)
+		stored: bool
+		bits, stored = intern_store(&cache, transmute(u64)made)
+		if !stored { destroy[.NODE_PATH](&made) }
+	}
+	return transmute(NodePath)bits
+}
+
+// Stores `made`, a new StringName or NodePath as its one pointer word, in the empty `cache`.
+// False when another thread stored one first: the caller drops `made` and uses the stored word.
+// An empty name or path is the null word, made again on each call, and holds nothing to drop.
+@(private)
+intern_store :: proc "contextless" (cache: ^u64, made: u64) -> (bits: u64, stored: bool) {
+	#assert(size_of(StringName) == size_of(u64) && size_of(NodePath) == size_of(u64))
+	old, ok := intrinsics.atomic_compare_exchange_strong_explicit(cache, 0, made, .Acq_Rel, .Acquire)
+	if ok { return made, true }
+	return old, false
 }
 
 // A NodePath for `s`, such as "Body/Sprite" or "Body:position", which the caller destroys.
@@ -73,6 +138,53 @@ path_of :: proc "contextless" (s: string) -> NodePath {
 
 // `s` as UTF-8 in a new Odin string from `allocator`, which the caller deletes.
 utf8 :: proc(s: String, allocator := context.allocator) -> string {
+	// Encoded here from the characters read in place: the engine's own encoder takes two calls,
+	// one to measure and one to write, about 47 ns for a short name.
+	t := s
+	chars := string_read(&t)
+	n := 0
+	for r in chars {
+		switch {
+		case r < 0x80: n += 1
+		case r < 0x800: n += 2
+		case r >= 0xd800 && r < 0xe000, r > 0x10ffff: return utf8_engine(s, allocator)
+		case r < 0x10000: n += 3
+		case: n += 4
+		}
+	}
+	buf := make([]u8, n, allocator)
+	if len(buf) < n { return "" }
+	i := 0
+	for r in chars {
+		c := u32(r)
+		switch {
+		case c < 0x80:
+			buf[i] = u8(c)
+			i += 1
+		case c < 0x800:
+			buf[i] = u8(0xc0 | c >> 6)
+			buf[i + 1] = u8(0x80 | c & 0x3f)
+			i += 2
+		case c < 0x10000:
+			buf[i] = u8(0xe0 | c >> 12)
+			buf[i + 1] = u8(0x80 | (c >> 6) & 0x3f)
+			buf[i + 2] = u8(0x80 | c & 0x3f)
+			i += 3
+		case:
+			buf[i] = u8(0xf0 | c >> 18)
+			buf[i + 1] = u8(0x80 | (c >> 12) & 0x3f)
+			buf[i + 2] = u8(0x80 | (c >> 6) & 0x3f)
+			buf[i + 3] = u8(0x80 | c & 0x3f)
+			i += 4
+		}
+	}
+	return string(buf)
+}
+
+// `utf8` by the engine's encoder, for a String holding a surrogate or a value past U+10FFFF,
+// which the engine encodes its own way.
+@(private)
+utf8_engine :: proc(s: String, allocator := context.allocator) -> string {
 	t := s
 	n := int(gde.string_to_utf8_chars(&t, nil, 0))
 	buf := make([]u8, n, allocator)
@@ -103,8 +215,9 @@ cast_to :: proc(obj: $O, $T: typeid) -> T where intrinsics.type_base_type(O) == 
 
 // The node at `path` from `node`, as `get_node_or_null` finds it. Pass an engine class `T` to get
 // it as that class, or a registered class `c` to get its struct; either is nil when there is no
-// node there or it is not of that class. `node` is any engine Node, or `object_of(self)`.
-get_node :: proc{get_node_as, get_node_instance}
+// node there or it is not of that class. `node` is any engine Node, or `object_of(self)`. The path
+// is Odin text, parsed on each call (about 130 ns), or a NodePath such as `intern_path("Body")`.
+get_node :: proc{get_node_as, get_node_instance, get_node_path_as, get_node_path_instance}
 
 @(private)
 get_node_as :: proc(node: $N, path: string, $T: typeid) -> T where intrinsics.type_base_type(N) == rawptr && intrinsics.type_base_type(T) == rawptr {
@@ -117,11 +230,27 @@ get_node_instance :: proc "contextless" (node: $N, path: string, c: ^Class($T)) 
 }
 
 @(private)
+get_node_path_as :: proc(node: $N, path: NodePath, $T: typeid) -> T where intrinsics.type_base_type(N) == rawptr && intrinsics.type_base_type(T) == rawptr {
+	return cast_to(node_at_path(rawptr(node), path), T)
+}
+
+@(private)
+get_node_path_instance :: proc "contextless" (node: $N, path: NodePath, c: ^Class($T)) -> ^T where intrinsics.type_base_type(N) == rawptr {
+	return instance_of(node_at_path(rawptr(node), path), c)
+}
+
+@(private)
 node_at :: proc "contextless" (node: rawptr, path: string) -> Node {
 	if node == nil { return nil }
 	p := path_of(path)
 	defer destroy[.NODE_PATH](&p)
 	return node_get_node_or_null(Node(node), p)
+}
+
+@(private)
+node_at_path :: proc "contextless" (node: rawptr, path: NodePath) -> Node {
+	if node == nil { return nil }
+	return node_get_node_or_null(Node(node), path)
 }
 
 // The resource at `path`, such as "res://icon.png", loaded as GDScript's `load` does: from the

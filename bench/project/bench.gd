@@ -53,6 +53,14 @@ func _initialize() -> void:
 	_report("Odin set Array of ints, array_write, per element", func() -> float: return b.array_write_ns(false, true, N / 1000))
 	_report("Odin set Array[int], set(), per element", func() -> float: return b.array_write_ns(true, false, N / 1000))
 	_report("Odin set Array[int], array_write_typed, per element", func() -> float: return b.array_write_ns(true, true, N / 1000))
+	_report("Odin name_of + destroy, short identifier", func() -> float: return b.ident_ns(0, N))
+	_report("Odin path_of + destroy, short path", func() -> float: return b.ident_ns(1, N))
+	_report("Odin string_of + destroy, short identifier", func() -> float: return b.ident_ns(2, N))
+	_report("Odin utf8, short identifier", func() -> float: return b.ident_ns(3, N))
+	_report("Odin intern, short identifier", func() -> float: return b.ident_ns(4, N))
+	_report("Odin intern_path, short path", func() -> float: return b.ident_ns(5, N))
+	_report("GDScript -> Odin, typed, String param", func() -> float: return _string_param(b, false))
+	_report("GDScript -> Odin, typed, string param", func() -> float: return _string_param(b, true))
 	var table: Dictionary = {}
 	for i in 1000:
 		table["key %d" % i] = i
@@ -237,4 +245,17 @@ func _new_refcounted() -> float:
 	var t: int = Time.get_ticks_usec()
 	for i in N:
 		var x: RefCounted = RefCounted.new()
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _string_param(b: Bench, odin_text: bool) -> float:
+	var s: String = "player_jump"
+	var sum: int = 0
+	var t: int = Time.get_ticks_usec()
+	if odin_text:
+		for i in N:
+			sum += b.text_len(s)
+	else:
+		for i in N:
+			sum += b.string_len(s)
 	return float(Time.get_ticks_usec() - t) * 1000.0 / N

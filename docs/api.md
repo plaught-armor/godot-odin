@@ -71,7 +71,8 @@ in the source is the full contract. This page tells you which one to reach for. 
 Counted parameters (String, Array...) are borrowed for the call. A return is handed to the caller.
 An Odin `string` parameter is a UTF-8 copy in temp memory, valid until the call returns; keep it
 past that with `strings.clone`. An Odin `string` return is copied into a new String, so temp memory
-(`fmt.tprintf`) is fine to return. Each crossing costs a copy: take `String` on a hot path.
+(`fmt.tprintf`) is fine to return. Each crossing costs a copy, about 20 ns more than a `String`
+for a short name: take `String` on a hot path.
 
 ## Fields
 
@@ -151,6 +152,7 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `construct(T) -> T` | A new engine object of class `T`. RefCounted: `release`. Otherwise `gde.object_destroy`. |
 | `get_node(node, "Path", T) -> T` | The node at the path, as engine class `T`. Nil if there is no node there or it is not a `T`. Pass `object_of(self)` from your own Node class. |
 | `get_node(node, "Path", c) -> ^T` | The same for a registered class `c`: the struct behind the node, or nil. |
+| `get_node(node, path: NodePath, T or c)` | Either form with a NodePath, such as `intern_path("Body/Sprite")`, which skips parsing the path on each call. |
 | `load(path, T) -> T` | The resource at `path` (`"res://..."` or `"user://..."`), as engine class `T`, through the resource cache. Nil, and the engine logs an error, if nothing loads there; nil if what loads is not a `T`. RefCounted: `release`. |
 | `load(path, c) -> ^T` | The same for a resource of registered class `c`. Release it with `release(object_of(r))`. |
 | `cast_to(obj, T) -> T` | `obj` as engine class `T` if it is one, else nil. Engine classes only. Use `instance_of` for yours. |
@@ -185,10 +187,12 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | Proc | Use |
 |---|---|
 | `string_of(s: string) -> String` | A new engine String. You destroy it, or return it. |
-| `utf8(s: String, allocator) -> string` | An engine String as Odin UTF-8. You delete it. |
-| `static_name("literal") -> StringName` | A StringName kept for the life of the process. Cache it in a global at register time. |
-| `name_of(s: string) -> StringName` | A new StringName from any Odin text, in one engine call. You destroy it, or return it. |
-| `path_of(s: string) -> NodePath` | A new NodePath, such as `"Body/Sprite"` or `"Body:position"`. You destroy it, or return it. |
+| `utf8(s: String, allocator) -> string` | An engine String as Odin UTF-8, encoded in Odin from the characters read in place: about 16 ns for a short name. You delete it. |
+| `intern("literal") -> StringName` | The StringName for a constant, made on the first call and kept for the life of the process. Each later call is one load, about 0.4 ns against 31 ns for `name_of`, so use it inline: `input_is_action_pressed(input, intern("jump"), false)`. Do not destroy it. Safe from any thread. |
+| `intern_path("Body/Sprite") -> NodePath` | The same for a constant NodePath: about 0.2 ns against 110 ns for `path_of`. Pass it to `get_node`. Do not destroy it. |
+| `static_name("literal") -> StringName` | A new StringName the engine keeps for the life of the process, made on each call. `intern` is the cached form. |
+| `name_of(s: string) -> StringName` | A new StringName from any Odin text, about 31 ns for a short ASCII name (a hash lookup in the engine). You destroy it, or return it. For a constant, use `intern`. |
+| `path_of(s: string) -> NodePath` | A new NodePath, such as `"Body/Sprite"` or `"Body:position"`, parsed each call (about 110 ns). You destroy it, or return it. For a constant, use `intern_path`. |
 | `same_name(a, b) -> bool` | StringName equality. Names are interned, so this is one compare. |
 | `array_name_at(&array, i) -> StringName` | Element `i` as a StringName, which you destroy. |
 | `string_read(&s) -> []rune` | A String's characters as a slice over its storage, read in place: about 0.07 ns per character, against 4.4 ns for `unicode_at`. Valid until `s` changes. Do not write through it. |

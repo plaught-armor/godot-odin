@@ -252,6 +252,15 @@ func _check_extras() -> int:
 	if not b2.find_2d(root, "Sprite") or b2.find_2d(root, "Sprite/Ghost") or b2.find_2d(root, "Missing") or b2.find_2d(null, "Sprite"):
 		print("FAIL: Bag.find_2d found the wrong nodes")
 		failures += 1
+	if b2.ghost_seen(root) != 3 or b2.ghost_seen(Node.new()) != -2 or b2.ghost_seen(null) != -2:
+		print("FAIL: Bag.ghost_seen gave %d, not 3" % b2.ghost_seen(root))
+		failures += 1
+	if not b2.is_jump(&"jump") or b2.is_jump(&"jumps") or b2.is_jump(&""):
+		print("FAIL: Bag.is_jump did not match only jump")
+		failures += 1
+	if b2.named("hello") != &"hello" or b2.named("") != &"" or b2.named("x".repeat(200)) != StringName("x".repeat(200)):
+		print("FAIL: Bag.named gave the wrong ASCII names")
+		failures += 1
 	if b2.find_ghost(root, "Sprite/Ghost") != 3 or b2.find_ghost(root, "Sprite") != -1 or b2.find_ghost(root, "Nope") != -1:
 		print("FAIL: Bag.find_ghost gave %d, not 3" % b2.find_ghost(root, "Sprite/Ghost"))
 		failures += 1
@@ -287,6 +296,9 @@ func _check_extras() -> int:
 		failures += 1
 	if not is_equal_approx(b2.load_speed("user://saved_walker.tres"), 6.5) or b2.load_speed("user://missing.tres") != -1.0:
 		print("FAIL: Bag.load_speed gave %s, not 6.5" % b2.load_speed("user://saved_walker.tres"))
+		failures += 1
+	if b2.greet("wörld€😀") != "hi, wörld€😀 (13 bytes)" or b2.greet("ascii") != "hi, ascii (5 bytes)":
+		print("FAIL: Bag.greet gave %s" % b2.greet("wörld€😀"))
 		failures += 1
 	if b2.greet("wörld") != "hi, wörld (6 bytes)" or b2.call(&"greet", "") != "hi,  (0 bytes)":
 		print("FAIL: Bag.greet gave %s" % b2.greet("wörld"))
