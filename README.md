@@ -35,6 +35,7 @@ They were built for, and run in, a shipping-bound Godot game. Its simulation lay
 | `gdextension/` | The raw interface: function pointers and C types. Generated. |
 | `godot/gen_*.odin` | Builtin types, engine classes, utility functions, per-arity call dispatch. Generated. |
 | `godot/class.odin`, `fields.odin`, `variant.odin`, `callable.odin`, `core.odin` | The hand-written core: entry point, class registration, methods, properties, signals, Variant conversion. |
+| `docs/` | Getting started, the API outline, how the core works. |
 | `api/` | The API dumps the generated files come from. |
 | `tools/odin_bindgen.py` | Regenerates `gdextension/` and `godot/gen_*` from `api/`. |
 | `tools/dump_api.sh` | Dumps `api/` from a Godot binary, then runs the bindgen. |
@@ -44,9 +45,7 @@ They were built for, and run in, a shipping-bound Godot game. Its simulation lay
 | `bench/` | Timing loops for the call paths the core owns. `bench/build.sh /path/to/godot` runs them. |
 | `demos/` | Four in-game demos, each one algorithm written twice, in Odin and in GDScript, switchable at runtime. |
 
-## Use
-
-Copy or submodule this repo next to your extension and import both packages:
+## Quick start
 
 ```odin
 package my_ext
@@ -68,38 +67,41 @@ register :: proc() {
 	c := godot.class(Walker, "Walker", "Resource")
 	godot.fields(c, &Walker{speed = 1.5})              // struct fields become properties
 	godot.method(c, "walk", walk, {"time"}, {1.0})    // arg names, then defaults
-
-	m := godot.class(godot.Static, "WalkMath", "Object") // a class of static methods
-	godot.method(m, "distance", distance, {"speed", "time"})
 }
 
 walk :: proc(self: ^Walker, time: f64) -> f64 {
 	self.steps += 1
-	return distance(self.speed, time)
-}
-
-distance :: proc "contextless" (speed, time: f64) -> f64 {
-	return speed * time
+	return self.speed * time
 }
 ```
-
-Build it as a shared library and point a `.gdextension` file at it:
 
 ```sh
 odin build my_ext -build-mode:shared -out:bin/libmy_ext.linux.x86_64.so
 ```
 
-```ini
-[configuration]
-entry_symbol = "my_ext_init"
-compatibility_minimum = "4.7"
+Point a `.gdextension` file at the library, and `Walker` is an engine class GDScript can use.
+[Getting started](docs/getting-started.md) walks through the whole setup.
 
-[libraries]
-linux.debug.x86_64 = "res://bin/libmy_ext.linux.x86_64.so"
-linux.release.x86_64 = "res://bin/libmy_ext.linux.x86_64.so"
-```
+## Docs
 
-`example/` is the same thing complete. `example/build.sh /path/to/godot` builds it and runs its test.
+| Doc | For |
+|---|---|
+| [Getting started](docs/getting-started.md) | Setting up a project, the entry point, building, your first class, ownership rules, editor classes, hot reload, build on save, help pages, troubleshooting. |
+| [API outline](docs/api.md) | Every public proc grouped by job, field tags, and how Odin types map to engine types. |
+| [How the core works](docs/internals.md) | The call paths and what they cost, the generated files, temp memory, unload order. |
+
+## Features
+
+- Classes from plain structs, methods from typed procs, properties from struct fields with tags
+  for hints, groups, typed arrays and typed dictionaries.
+- Typed GDScript calls reach the proc by ptrcall with no Variant boxing.
+- Engine virtual overrides, checked against the virtual's signature at compile time.
+- Enums, bitfields (`bit_set`), constants, signals, Callables from Odin procs.
+- Class hooks: dynamic properties, revert values, property validation, `_to_string`,
+  runtime-only classes.
+- Virtuals that scripts override, engine singletons, editor plugins.
+- Hot reload, a build-on-save editor plugin, and editor help pages from your comments.
+- Errors and warnings logged with the Odin file and line.
 
 ## Demos
 
@@ -131,60 +133,10 @@ What `demos/build.sh` measured here (`-o:aggressive`, output identical bit for b
 | Pathfinding | 4000 units, 120 steps | 18.8 ms | 1699 ms | 90x |
 | Terrain | 256 by 256 vertices, 6 octaves | 4.14 ms | 340 ms | 82x |
 
-## What the core does
-
-- **Methods from typed procs.** The parameter and return types come from the proc's signature.
-  A typed GDScript call reaches the proc by ptrcall, with no Variant boxing, at the cost of a call
-  to an engine method of the same shape. An untyped call takes the Variant path, which checks and
-  converts each argument and fills in defaults, about 5 ns over the engine's own (`bench/`).
-- **Engine virtual overrides.** `godot.override_node_process(c, process)` makes `process` the
-  class's `_process`. There is one generated `override_<class><virtual>` proc per engine virtual,
-  so the override's signature is checked at compile time. The engine finds an override once per
-  object, then calls it by ptrcall, about 3 ns over a node with no override. A GDScript `_process`
-  costs about 41 ns over that node (`bench/`).
-- **Vararg methods** (`godot.callable_call`, `godot.signal_emit`, `godot.object_call` and the
-  rest). They take their fixed arguments, then `rest: ..Variant`, which the caller keeps and
-  destroys. A Callable or Signal is handed to the engine in place, with no copy, so
-  `godot.callable_call` is a little faster than GDScript's `Callable.call`. This relies on the
-  engine's Variant layout, which the core checks when it loads.
-- **Hot reload.** Set `reloadable = true` in the `.gdextension` file, and the editor reloads the
-  library when it changes. Live instances get a fresh struct, and the engine sets their saved
-  properties back.
-- **Build on save** (`addons/odin_build/`). Copy it into your project's `addons/` and enable it.
-  It watches the `.odin` files under `odin_build/watch_dir`. When one changes, it runs
-  `odin_build/command` on a worker thread, prints the output in the Output panel, and reloads
-  `odin_build/extension` after a good build. Set these under Project Settings.
-- **Struct fields as properties** (`godot.fields`). They take these tags:
-  - `range:"min,max,step"`, `hint:"..."`, `group:"..."` and `subgroup:"..."`;
-  - `array:"Class"` for a typed array;
-  - `class:"Name"` for an extension-class field;
-  - `godot:"new"` to construct a fresh object per instance;
-  - `godot:"-"` to keep a field off the engine.
-  
-  Defaults come from a template struct.
-- **Properties from a getter and setter** (`godot.property`).
-- **Enums and constants** (`godot.enumerate`, `godot.constant`). An Odin enum crosses as an
-  engine enum.
-- **Signals** (`godot.signal` and `godot.emit`).
-- **Callables from Odin procs** (`godot.callable`), with bound arguments.
-- **Instances of your own classes as arguments.** A method can take `^OtherClass`, as long as
-  `OtherClass` registers before that method does. The core finds the struct behind an object by
-  reading where the engine's Object keeps its extension instance. It proves that layout at the
-  first instance and falls back to an instance binding when it does not match. A binding would
-  cost each object an allocation and a mutex on every reference change: `Bench.new()` from
-  GDScript takes about 190 ns without one and 260 ns with one (`bench/`).
-- **Editor help from comments.** Run `tools/odin_docgen.py path/to/my_ext` to write
-  `doc_classes.gen.xml` from the comments on your classes, fields and methods. Embed it, then
-  pass it to `godot.entry`'s `docs` parameter.
-
 ## Another engine version or a custom build
 
-```sh
-tools/dump_api.sh /path/to/godot
-```
-
-This rewrites `api/` and every `gen_*` file. The generated code is plain and diffable, so a review
-of the diff shows what changed in the engine's API.
+`tools/dump_api.sh /path/to/godot` regenerates the bindings from that binary. See
+[Getting started](docs/getting-started.md#another-engine-version).
 
 ## Prior art
 
