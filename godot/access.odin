@@ -308,6 +308,66 @@ replace_in :: proc "contextless" (s: ^String, n: Needle, with: string, $NOCASE: 
 	return
 }
 
+// The parts of `s` between each Odin text `delimiter`: the engine's `split`. Empty `delimiter` gives
+// one part per character; `allow_empty` false drops empty parts; a positive `maxsplit` stops after
+// that many parts and adds the rest of `s` as one more. The parts are counted first so the array is
+// sized once, then each is made straight from its characters, with no String made for `delimiter`.
+// The caller destroys the result.
+string_split_text :: proc "contextless" (s: ^String, delimiter: string, allow_empty := true, maxsplit: i64 = 0) -> (out: PackedStringArray) {
+	chars := string_read(s)
+	n := needle_of(delimiter, false)
+	out = packed_string_array_new()
+	k := split_in(chars, n, allow_empty, maxsplit, nil)
+	if k == 0 { return }
+	packed_string_array_resize(&out, i64(k))
+	split_in(chars, n, allow_empty, maxsplit, packed_write_string(&out))
+	return
+}
+
+// Walks the parts of `chars` as the engine's `split` does and returns how many there are. With
+// `out`, it also makes part `k` in `out[k]`, which must hold an empty String: the array's slots
+// after a resize. Each round moves `from` on by at least one, so `len(chars) + 1` rounds cover it.
+@(private)
+split_in :: proc "contextless" (chars: []rune, n: Needle, allow_empty: bool, maxsplit: i64, out: []String) -> (k: int) {
+	if len(chars) == 0 { return 1 if allow_empty else 0 }
+	from, last := 0, len(chars) - n.count
+	for _ in 0 ..= len(chars) {
+		end := from + 1 if n.count == 0 else int(find_forward(chars, from, last, n, false))
+		if end < 0 { end = len(chars) }
+		if allow_empty || end > from {
+			if maxsplit > 0 && i64(k) == maxsplit {
+				part_put(out, k, chars[from:])
+				k += 1
+				break
+			}
+			part_put(out, k, chars[from:end])
+			k += 1
+		}
+		if end == len(chars) { break }
+		from = end + n.count
+	}
+	return
+}
+
+// Makes `out[k]` hold `part`, when there is an `out`. An empty part leaves the slot's empty String.
+// The characters come from a String, so they are copied as they are, without the check a String
+// made from outside characters gets: one resize and a copy.
+@(private)
+part_put :: #force_inline proc "contextless" (out: []String, k: int, part: []rune) {
+	if out == nil || len(part) == 0 { return }
+	string_fill(&out[k], part)
+}
+
+// Sizes the empty String `s` to `chars` and copies them in, with the terminator the engine's resize
+// leaves for the caller. `s` must be a String you own with no other references.
+@(private)
+string_fill :: #force_inline proc "contextless" (s: ^String, chars: []rune) {
+	gde.string_resize(s, gde.Int(len(chars) + 1))
+	w := (^[^]rune)(s)^ if string_layout_known else gde.string_operator_index(s, 0)
+	copy(w[:len(chars)], chars)
+	w[len(chars)] = 0
+}
+
 // Writes the characters of `text` to the front of `dst`, decoded as `text_rune_count` counts them,
 // and returns how many. `dst` must hold them.
 @(private)

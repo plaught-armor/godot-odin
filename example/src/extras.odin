@@ -126,6 +126,7 @@ register_extras :: proc() {
 	godot.method(b, "nocase", bag_nocase, {"s", "part", "from"})
 	godot.method(b, "count_text", bag_count_text, {"s", "part", "from", "to"})
 	godot.method(b, "replace_text", bag_replace_text, {"s", "part", "with", "nocase"})
+	godot.method(b, "split_text", bag_split_text, {"s", "part", "allow_empty", "maxsplit"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -613,6 +614,14 @@ bag_count_text :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i6
 	text := godot.utf8(part)
 	defer delete(text)
 	return godot.string_count_text(&s, text, from, to) | godot.string_countn_text(&s, text, from, to) << 32
+}
+
+// `s` split on `part`'s text by `string_split_text`.
+bag_split_text :: proc(self: ^Bag, s: godot.String, part: godot.String, allow_empty: bool, maxsplit: i64) -> godot.PackedStringArray {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	return godot.string_split_text(&s, text, allow_empty, maxsplit)
 }
 
 // `s` with `part`'s text replaced by `with`'s, by `string_replacen_text` when `nocase`, else

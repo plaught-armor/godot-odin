@@ -394,6 +394,19 @@ func _check_extras() -> int:
 		if b2.replace_text(s, c[1], c[2], true) != s.replacen(c[1], c[2]):
 			print("FAIL: Bag.replace_text(%s, %s, %s, nocase) gave %s, not %s" % [s, c[1], c[2], b2.replace_text(s, c[1], c[2], true), s.replacen(c[1], c[2])])
 			failures += 1
+	var split_cases: Array = [["", ","], ["", ""], ["abc", ""], ["a,b,,c", ","], [",a,", ","], [",", ","],
+		["a, b, c", ", "], ["\u65E5\u672C,\u65E5", ","], ["x\u672Cy\u672C", "\u672C"], ["abc", "abcd"], ["abc", "abc"],
+		["a--b----c", "--"], ["aaa", "aa"]]
+	for pad: int in 6:
+		split_cases.append(["-".repeat(pad) + "ab--ab", "ab"])
+	for c: Array in split_cases:
+		var s: String = c[0]
+		for allow: bool in [true, false]:
+			for maxsplit: int in [-1, 0, 1, 2, 5]:
+				var got: PackedStringArray = b2.split_text(s, c[1], allow, maxsplit)
+				if got != s.split(c[1], allow, maxsplit):
+					print("FAIL: Bag.split_text(%s, %s, %s, %d) gave %s, not %s" % [s, c[1], allow, maxsplit, got, s.split(c[1], allow, maxsplit)])
+					failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
 		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]

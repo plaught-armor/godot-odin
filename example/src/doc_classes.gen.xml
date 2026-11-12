@@ -234,6 +234,9 @@
 		<method name="replace_text">
 			<description>[code]s[/code] with [code]part[/code]'s text replaced by [code]with[/code]'s, by [code]string_replacen_text[/code] when [code]nocase[/code], else [code]string_replace_text[/code].</description>
 		</method>
+		<method name="split_text">
+			<description>[code]s[/code] split on [code]part[/code]'s text by [code]string_split_text[/code].</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

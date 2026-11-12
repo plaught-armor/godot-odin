@@ -472,6 +472,8 @@ Ident :: enum i64 {
 	BEGINS_NOCASE,     // string_begins_with_text_nocase of "PLAYER_" on the identifier
 	REPLACE_ENGINE,    // the generated string_replace of cached Strings in the sentence
 	REPLACE_TEXT,      // string_replace_text of the same Odin text
+	SPLIT_ENGINE,      // the generated string_split of the sentence on a cached " "
+	SPLIT_TEXT,        // string_split_text of the sentence on Odin " "
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -717,6 +719,26 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			r := godot.string_replace_text(intrinsics.volatile_load(&h), "the", "a")
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
+		}
+	case .SPLIT_ENGINE:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		space := godot.string_of(" ")
+		defer godot.destroy[.STRING](&space)
+		for _ in 0 ..< n {
+			r := godot.string_split(intrinsics.volatile_load(&h), space, true, 0)
+			sum += godot.packed_string_array_size(&r)
+			godot.destroy[.PACKED_STRING_ARRAY](&r)
+		}
+	case .SPLIT_TEXT:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		for _ in 0 ..< n {
+			r := godot.string_split_text(intrinsics.volatile_load(&h), " ")
+			sum += godot.packed_string_array_size(&r)
+			godot.destroy[.PACKED_STRING_ARRAY](&r)
 		}
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)
