@@ -318,7 +318,7 @@ Each folder has a `build.sh` that takes the path to a Godot binary:
 
 | Command | What it does |
 |---|---|
-| `example/build.sh /path/to/godot` | Builds `example/`, runs `test.gd` (which checks every feature of the core), then a hot-reload test in the editor. Prints `example: PASS` and `reload: PASS`. |
+| `example/build.sh /path/to/godot` | Regenerates the example's help XML, builds `example/`, runs `test.gd` (which checks every feature of the core), then checks in the editor that the plugin loads with no errors and that hot reload keeps state. Prints `example: PASS`, `editor: PASS` and `reload: PASS`. |
 | `bench/build.sh /path/to/godot` | Times the call paths the core owns against the engine's own: ptrcall, Variant calls, virtual overrides, object creation. |
 | `demos/build.sh /path/to/godot` | Builds the demos, checks the Odin and GDScript versions give identical output, and times both. |
 | `godot --path demos/project` | Runs the demo menu. |

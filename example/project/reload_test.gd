@@ -6,12 +6,13 @@ extends SceneTree
 
 
 func _initialize() -> void:
+	var registered: bool = ClassDB.class_exists(&"ExamplePlugin")
 	var w: Object = ClassDB.instantiate("Walker")
 	w.speed = 3.0
 	w.walk(Vector3(1, 0, 0), 2.0)
 	var status: int = GDExtensionManager.reload_extension("res://example.gdextension")
 	var moved: float = w.walk(Vector3(1, 0, 0), 1.0)
-	if not ClassDB.class_exists(&"ExamplePlugin"):
+	if not registered:
 		print("reload: FAIL ExamplePlugin not registered in the editor")
 	elif status != GDExtensionManager.LOAD_STATUS_OK:
 		print("reload: FAIL status %d" % status)

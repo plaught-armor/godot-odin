@@ -83,7 +83,17 @@ unload_extras :: proc() {
 register_editor :: proc() {
 	p := godot.class(ExamplePlugin, "ExamplePlugin", "EditorPlugin")
 	godot.override_editor_plugin_get_plugin_name(p, plugin_name)
+	godot.override_node_enter_tree(p, plugin_entered)
 	godot.editor_plugin(p)
+}
+
+// Logs that the editor took the plugin, which example/build.sh checks for.
+plugin_entered :: proc(self: ^ExamplePlugin) {
+	text := godot.string_of("ExamplePlugin: in the editor")
+	defer godot.destroy[.STRING](&text)
+	v := godot.variant(text)
+	defer gde.variant_destroy(&v)
+	godot.utility_print(v)
 }
 
 plugin_name :: proc(self: ^ExamplePlugin) -> godot.String {

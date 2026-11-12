@@ -195,7 +195,7 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | Singletons are `<class>_singleton()` | `godot.engine_singleton()` |
 | Builtin methods are `<type>_<method>(&self, ...)` | `godot.callable_call(&f, arg)` |
 | Vararg methods end in `rest: ..Variant`, which the caller keeps | `godot.object_call(obj, name, a, b)` |
-| Utility functions | the `@GlobalScope` functions, in `gen_utility.odin` |
+| Utility functions are `utility_<name>` | `godot.utility_print(v)`, the `@GlobalScope` functions |
 | Enums are `<Class>_<Enum>` | `godot.Node_InternalMode` |
 | Raw interface | `gde.*` in `gdextension/`: function pointers and C types |
 

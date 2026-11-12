@@ -332,7 +332,8 @@ class_options :: proc($T: typeid, name, parent: cstring, notification: proc(self
 		info.get_virtual_func = virtual_func
 		// Every notification the object gets would cross into `notify`: only a class with a handler pays.
 		if notification != nil { info.notification_func = notify }
-		hook_options(&info, options)
+		hook_properties(&info, options)
+		hook_inspector(&info, options)
 	}
 	gde.classdb_register_extension_class6(library, &c.name, &c.parent, &info)
 	append(&registered, &c.name)
@@ -340,16 +341,20 @@ class_options :: proc($T: typeid, name, parent: cstring, notification: proc(self
 	return c
 }
 
-// Points `info` at the trampolines of the hooks `options` sets; the engine skips the ones left nil.
+// The `Options` of the class `instance` belongs to.
 @(private)
-hook_options :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
-	opts :: #force_inline proc "contextless" (instance: gde.ClassInstancePtr) -> ^Options(T) {
-		return &(^Class(T))((^Header)(instance).class).options
-	}
+options_of :: #force_inline proc "contextless" ($T: typeid, instance: gde.ClassInstancePtr) -> ^Options(T) {
+	return &(^Class(T))((^Header)(instance).class).options
+}
+
+// Points `info` at the trampolines of the property hooks `options` sets (`get`, `set`,
+// `property_list`); the engine skips the ones left nil.
+@(private)
+hook_properties :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
 	get :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr, ret: gde.VariantPtr) -> gde.Bool {
 		context = ctx
 		enter()
-		v, ok := opts(instance).get(self_of(T, instance), (^StringName)(name)^)
+		v, ok := options_of(T, instance).get(self_of(T, instance), (^StringName)(name)^)
 		if !ok { return 0 }
 		// The engine's `ret` holds null, which needs no destroy.
 		(^Variant)(ret)^ = v
@@ -358,13 +363,13 @@ hook_options :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
 	set :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr, value: gde.ConstVariantPtr) -> gde.Bool {
 		context = ctx
 		enter()
-		return gde.Bool(opts(instance).set(self_of(T, instance), (^StringName)(name)^, (^Variant)(value)))
+		return gde.Bool(options_of(T, instance).set(self_of(T, instance), (^StringName)(name)^, (^Variant)(value)))
 	}
 	list :: proc "c" (instance: gde.ClassInstancePtr, count: [^]u32) -> ^gde.PropertyInfo {
 		context = ctx
 		enter()
 		props := make([dynamic]Property, context.temp_allocator)
-		opts(instance).property_list(self_of(T, instance), &props)
+		options_of(T, instance).property_list(self_of(T, instance), &props)
 		count[0] = u32(len(props))
 		return property_infos(props[:])
 	}
@@ -372,15 +377,27 @@ hook_options :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
 		context = ctx
 		free_property_infos(list, int(count))
 	}
+	if options.get != nil { info.get_func = get }
+	if options.set != nil { info.set_func = set }
+	if options.property_list != nil {
+		info.get_property_list_func = list
+		info.free_property_list_func = free_list
+	}
+}
+
+// Points `info` at the trampolines of the inspector and text hooks `options` sets (`can_revert`,
+// `get_revert`, `validate`, `to_string`); the engine skips the ones left nil.
+@(private)
+hook_inspector :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
 	can_revert :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr) -> gde.Bool {
 		context = ctx
 		enter()
-		return gde.Bool(opts(instance).can_revert(self_of(T, instance), (^StringName)(name)^))
+		return gde.Bool(options_of(T, instance).can_revert(self_of(T, instance), (^StringName)(name)^))
 	}
 	get_revert :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr, ret: gde.VariantPtr) -> gde.Bool {
 		context = ctx
 		enter()
-		v, ok := opts(instance).get_revert(self_of(T, instance), (^StringName)(name)^)
+		v, ok := options_of(T, instance).get_revert(self_of(T, instance), (^StringName)(name)^)
 		if !ok { return 0 }
 		(^Variant)(ret)^ = v
 		return 1
@@ -388,22 +405,16 @@ hook_options :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
 	validate :: proc "c" (instance: gde.ClassInstancePtr, info: ^gde.PropertyInfo) -> gde.Bool {
 		context = ctx
 		enter()
-		opts(instance).validate(self_of(T, instance), info)
+		options_of(T, instance).validate(self_of(T, instance), info)
 		return 1
 	}
 	to_string :: proc "c" (instance: gde.ClassInstancePtr, valid: ^gde.Bool, out: gde.StringPtr) {
 		context = ctx
 		enter()
-		text := opts(instance).to_string(self_of(T, instance))
+		text := options_of(T, instance).to_string(self_of(T, instance))
 		// The engine's `out` is an empty String, which needs no destroy.
 		gde.string_new_with_utf8_chars_and_len(out, cstring(raw_data(text)), gde.Int(len(text)))
 		valid^ = 1
-	}
-	if options.get != nil { info.get_func = get }
-	if options.set != nil { info.set_func = set }
-	if options.property_list != nil {
-		info.get_property_list_func = list
-		info.free_property_list_func = free_list
 	}
 	if options.can_revert != nil { info.property_can_revert_func = can_revert }
 	if options.get_revert != nil { info.property_get_revert_func = get_revert }

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="Walker" inherits="Resource">
+	<brief_description>A walker's tuning, shown in the inspector.</brief_description>
+	<description></description>
+	<methods>
+		<method name="walk">
+			<description>Moves the walker along [code]direction[/code] (normalised by the caller) for [code]time[/code] seconds at its speed, counts one step, and emits [code]arrived[/code] with the step count. Answers the distance moved (m).</description>
+		</method>
+	</methods>
+	<members>
+		<member name="speed" type="">Metres per second.</member>
+		<member name="steps" type="">Steps taken so far.</member>
+		<member name="position" type="">Where the walker stands.</member>
+	</members>
+	<constants>
+	</constants>
+</class>
+<class name="Ticker" inherits="Node">
+	<brief_description>A node that counts the engine's calls into its virtual overrides.</brief_description>
+	<description></description>
+	<methods>
+	</methods>
+	<members>
+		<member name="readied" type="">Whether [code]_ready[/code] ran.</member>
+		<member name="ticks" type="">[code]_process[/code] calls so far.</member>
+		<member name="last_key" type="">The keycode of the last key event [code]_input[/code] received; 0 before one.</member>
+	</members>
+	<constants>
+	</constants>
+</class>
+<class name="WalkMath" inherits="Object">
+	<brief_description></brief_description>
+	<description></description>
+	<methods>
+		<method name="distance">
+			<description>Metres covered at [code]speed[/code] (m/s) over [code]time[/code] (s).</description>
+		</method>
+		<method name="apply">
+			<description>[code]f(x)[/code] as a float, through Callable.call.</description>
+		</method>
+		<method name="call_float">
+			<description>[code]target.method(x)[/code] as a float, through Object.call.</description>
+		</method>
+		<method name="is_walker">
+			<description>Whether [code]obj[/code] is a Walker, or a script that extends one.</description>
+		</method>
+		<method name="speed_of">
+			<description>The walker's speed (m/s); -1 for null.</description>
+		</method>
+		<method name="scratch">
+			<description>Takes [code]bytes[/code] of temp memory and touches it; the call gives it back when it returns.</description>
+		</method>
+		<method name="temp_in_use">
+			<description>Bytes of temp memory held now, between calls.</description>
+		</method>
+	</methods>
+	<constants>
+	</constants>
+</class>
+<class name="ExamplePlugin" inherits="EditorPlugin">
+	<brief_description>The editor plugin the extension adds to the editor.</brief_description>
+	<description></description>
+	<methods>
+	</methods>
+	<constants>
+	</constants>
+</class>
+<class name="Bag" inherits="RefCounted">
+	<brief_description>A bag of four numbered slots, read and written as the properties [code]slot_0[/code] to [code]slot_3[/code].</brief_description>
+	<description></description>
+	<methods>
+		<method name="score">
+			<description>The script's [code]_score(x)[/code], or -1 when the script has none.</description>
+		</method>
+		<method name="has_marks">
+			<description>Whether the bag carries every flag in [code]marks[/code].</description>
+		</method>
+	</methods>
+	<members>
+		<member name="marks" type="">Flags, a checklist in the inspector.</member>
+		<member name="counts" type="">Names to counts.</member>
+		<member name="level" type="">An unsigned byte, which reads back past 127.</member>
+		<member name="note" type="">Shown in the inspector only while [code]show_note[/code] is set.</member>
+		<member name="show_note" type=""></member>
+	</members>
+	<constants>
+		<constant name="RED" value="0" enum="Mark"></constant>
+		<constant name="GREEN" value="0" enum="Mark"></constant>
+		<constant name="BLUE" value="0" enum="Mark"></constant>
+	</constants>
+</class>
+<class name="Tally" inherits="Object">
+	<brief_description>An Object the extension makes once and gives the engine as the singleton [code]ExampleTally[/code].</brief_description>
+	<description></description>
+	<methods>
+		<method name="bump">
+			<description>Calls so far, counting this one.</description>
+		</method>
+	</methods>
+	<constants>
+	</constants>
+</class>
+<class name="Ghost" inherits="Node">
+	<brief_description>A Node that exists only in a running game: in the editor its instances are placeholders.</brief_description>
+	<description></description>
+	<methods>
+	</methods>
+	<members>
+		<member name="seen" type=""></member>
+	</members>
+	<constants>
+	</constants>
+</class>

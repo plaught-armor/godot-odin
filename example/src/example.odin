@@ -7,7 +7,7 @@ import "../../godot"
 
 @(export, link_name = "example_init")
 example_init :: proc "c" (gpa: gde.InterfaceGetProcAddress, lib: gde.ClassLibraryPtr, init: ^gde.Initialization) -> gde.Bool {
-	return godot.entry(gpa, lib, init, register, unload_extras, editor = register_editor)
+	return godot.entry(gpa, lib, init, register, unload_extras, #load("doc_classes.gen.xml", string), register_editor)
 }
 
 // A walker's tuning, shown in the inspector.

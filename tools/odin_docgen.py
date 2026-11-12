@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the editor class reference for one Odin extension package from its source comments.
 
-Reads every .odin file of the package directory <pkg>, finds each register proc's godot.class call, and writes the
+Reads every .odin file of the package directory <pkg>, finds every godot.class call in its register procs, and writes the
 descriptions of the class, its struct fields, its methods and its constants to
 <pkg>/doc_classes.gen.xml. The library embeds that file and hands it to the editor's help
 (godot.entry's `docs`), which merges each description by name onto the docs it generates from
@@ -22,11 +22,11 @@ OUT = "doc_classes.gen.xml"
 DECL = re.compile(r"^(\w+)\s*(?:::|:\s*[^:=]+:)\s*(struct|enum|proc|\S)")
 FIELD = re.compile(r"^\t(\w+)\s*:\s*[^=]")
 ENUM_VALUE = re.compile(r"^\t(\w+)\s*(=[^,]*)?,")
-REGISTER = re.compile(r"^(register_\w+)\s*::\s*proc\(\)\s*\{")
+REGISTER = re.compile(r"^(register\w*)\s*::\s*proc\(\)\s*\{")
 CLASS = re.compile(r'godot\.class\(([\w.]+),\s*"(\w+)",\s*"(\w+)"')
 METHOD = re.compile(r'godot\.method\(\w+,\s*"(\w+)",\s*(proc[^{]*\{\s*return (?:[\w.]+\()?(\w+)\)?\s*\}|\w+)')
 CONSTANT = re.compile(r'godot\.constant\(\w+,\s*"(\w+)",\s*(\w+)\)')
-ENUMERATE = re.compile(r'godot\.enumerate\(\w+,\s*"(\w+)",\s*(\w+)\)')
+ENUMERATE = re.compile(r'godot\.enumerate(?:_flags)?\(\w+,\s*"(\w+)",\s*(\w+)\)')
 
 
 def prose(block):
@@ -93,12 +93,17 @@ def parse(files):
     return decls, fields, values, registers
 
 
-def class_xml(register, body, decls, fields, values):
-    """The <class> element for the one class a register proc creates, or None when it creates none."""
+def class_segments(body):
+    """A register proc's body cut at each godot.class call: one piece per class, holding the calls
+    that follow it up to the next class. Lines before the first class belong to no class."""
     text = "\n".join(body)
+    starts = [m.start() for m in CLASS.finditer(text)]
+    return [text[a:b] for a, b in zip(starts, starts[1:] + [len(text)])]
+
+
+def class_xml(register, text, decls, fields, values):
+    """The <class> element for one class, from its piece of a register proc (see class_segments)."""
     found = CLASS.search(text)
-    if not found:
-        return None
     struct, name, parent = found.groups()
     brief = decls.get(struct, "") if struct != "godot.Static" else decls.get(register, "")
     out = ["<class name=%s inherits=%s>" % (quoteattr(name), quoteattr(parent))]
@@ -134,10 +139,11 @@ def main():
     if not files:
         sys.exit("odin_docgen: no .odin files in %s" % package)
     decls, fields, values, registers = parse(files)
-    classes = [class_xml(r, b, decls, fields, values) for r, b in sorted(registers.items())]
-    xml = '<?xml version="1.0" encoding="UTF-8" ?>\n' + "\n".join(c for c in classes if c) + "\n"
+    classes = [class_xml(r, text, decls, fields, values)
+               for r, b in sorted(registers.items()) for text in class_segments(b)]
+    xml = '<?xml version="1.0" encoding="UTF-8" ?>\n' + "\n".join(classes) + "\n"
     (package / OUT).write_text(xml)
-    print("odin_docgen: %s, %d classes" % (package / OUT, sum(1 for c in classes if c)))
+    print("odin_docgen: %s, %d classes" % (package / OUT, len(classes)))
 
 
 main()
