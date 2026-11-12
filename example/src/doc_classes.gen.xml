@@ -138,6 +138,21 @@
 		<method name="typed_shout">
 			<description>Appends "!" to every element of the Array[String] [code]xs[/code] in place. False, with [code]xs[/code] untouched, for any other Array.</description>
 		</method>
+		<method name="named">
+			<description>[code]s[/code] made into a StringName from Odin text.</description>
+		</method>
+		<method name="pathed">
+			<description>[code]s[/code] made into a NodePath from Odin text.</description>
+		</method>
+		<method name="find_2d">
+			<description>Whether [code]root[/code] has a Node2D at [code]path[/code].</description>
+		</method>
+		<method name="find_ghost">
+			<description>The [code]seen[/code] of the Ghost at [code]path[/code] from [code]root[/code], or -1 when there is none.</description>
+		</method>
+		<method name="say">
+			<description>Prints "Bag says [code]n[/code]" to the engine's output.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

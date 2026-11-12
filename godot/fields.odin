@@ -208,13 +208,6 @@ is_zero :: proc "contextless" (p: rawptr, size: int) -> bool {
 	return true
 }
 
-// A StringName for `s`, which the caller destroys.
-@(private)
-name_of :: proc "contextless" (s: string) -> (sn: StringName) {
-	gde.string_name_new_with_utf8_chars_and_len(&sn, cstring(raw_data(s)), gde.Int(len(s)))
-	return
-}
-
 
 @(private)
 open_group :: proc(class: ^StringName, name: string, sub: bool) {

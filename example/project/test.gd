@@ -237,7 +237,23 @@ func _check_extras() -> int:
 	if g.seen != 3:
 		print("FAIL: Ghost.seen reads %s, not 3" % g.seen)
 		failures += 1
-	g.free()
+	var root: Node = Node.new()
+	var sprite: Node2D = Node2D.new()
+	sprite.name = &"Sprite"
+	root.add_child(sprite)
+	g.name = &"Ghost"
+	sprite.add_child(g)
+	if b2.named("héllo") != &"héllo" or b2.pathed("a/b:c") != NodePath("a/b:c"):
+		print("FAIL: Bag.named or Bag.pathed gave %s and %s" % [b2.named("héllo"), b2.pathed("a/b:c")])
+		failures += 1
+	if not b2.find_2d(root, "Sprite") or b2.find_2d(root, "Sprite/Ghost") or b2.find_2d(root, "Missing") or b2.find_2d(null, "Sprite"):
+		print("FAIL: Bag.find_2d found the wrong nodes")
+		failures += 1
+	if b2.find_ghost(root, "Sprite/Ghost") != 3 or b2.find_ghost(root, "Sprite") != -1 or b2.find_ghost(root, "Nope") != -1:
+		print("FAIL: Bag.find_ghost gave %d, not 3" % b2.find_ghost(root, "Sprite/Ghost"))
+		failures += 1
+	b2.say(42)
+	root.free()
 	return failures
 
 

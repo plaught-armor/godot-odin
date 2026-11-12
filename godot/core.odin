@@ -57,6 +57,20 @@ string_of :: proc "contextless" (s: string) -> (out: String) {
 	return
 }
 
+// A StringName for `s`, any text, which the caller destroys. `static_name` is the cheaper form
+// for a literal the engine keeps.
+name_of :: proc "contextless" (s: string) -> (out: StringName) {
+	gde.string_name_new_with_utf8_chars_and_len(&out, cstring(raw_data(s)), gde.Int(len(s)))
+	return
+}
+
+// A NodePath for `s`, such as "Body/Sprite" or "Body:position", which the caller destroys.
+path_of :: proc "contextless" (s: string) -> NodePath {
+	str := string_of(s)
+	defer destroy[.STRING](&str)
+	return node_path_new_from_string(str)
+}
+
 // `s` as UTF-8 in a new Odin string from `allocator`, which the caller deletes.
 utf8 :: proc(s: String, allocator := context.allocator) -> string {
 	t := s
@@ -85,6 +99,29 @@ cast_to :: proc(obj: $O, $T: typeid) -> T where intrinsics.type_base_type(O) == 
 		destroy[.STRING_NAME](&sn)
 	}
 	return T(gde.object_cast_to(gde.ConstObjectPtr(obj), tag))
+}
+
+// The node at `path` from `node`, as `get_node_or_null` finds it. Pass an engine class `T` to get
+// it as that class, or a registered class `c` to get its struct; either is nil when there is no
+// node there or it is not of that class. `node` is any engine Node, or `object_of(self)`.
+get_node :: proc{get_node_as, get_node_instance}
+
+@(private)
+get_node_as :: proc(node: $N, path: string, $T: typeid) -> T where intrinsics.type_base_type(N) == rawptr && intrinsics.type_base_type(T) == rawptr {
+	return cast_to(node_at(rawptr(node), path), T)
+}
+
+@(private)
+get_node_instance :: proc "contextless" (node: $N, path: string, c: ^Class($T)) -> ^T where intrinsics.type_base_type(N) == rawptr {
+	return instance_of(node_at(rawptr(node), path), c)
+}
+
+@(private)
+node_at :: proc "contextless" (node: rawptr, path: string) -> Node {
+	if node == nil { return nil }
+	p := path_of(path)
+	defer destroy[.NODE_PATH](&p)
+	return node_get_node_or_null(Node(node), p)
 }
 
 // True while the object with instance id `id` exists.
@@ -178,6 +215,16 @@ temp_used :: proc "contextless" () -> i64 {
 		block = block.prev
 	}
 	return i64(n)
+}
+
+// Prints a formatted line to the engine's output, as GDScript's `print` does: stdout and the
+// editor's Output panel. `fmt.println` reaches stdout only.
+print :: proc(format: string, args: ..any) {
+	s := string_of(fmt.tprintf(format, ..args))
+	defer destroy[.STRING](&s)
+	v := variant(s)
+	defer gde.variant_destroy(&v)
+	utility_print(v)
 }
 
 // Logs a formatted warning in the engine's log and editor, as `push_warning` does.

@@ -144,6 +144,8 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `make_instance(T) -> ^T` | A new instance of your class. A RefCounted one starts with one reference. Return it from a method or `release` it. |
 | `share(self) -> ^T` | `self` with one more reference, for returning an instance you keep. |
 | `construct(T) -> T` | A new engine object of class `T`. RefCounted: `release`. Otherwise `gde.object_destroy`. |
+| `get_node(node, "Path", T) -> T` | The node at the path, as engine class `T`. Nil if there is no node there or it is not a `T`. Pass `object_of(self)` from your own Node class. |
+| `get_node(node, "Path", c) -> ^T` | The same for a registered class `c`: the struct behind the node, or nil. |
 | `cast_to(obj, T) -> T` | `obj` as engine class `T` if it is one, else nil. Engine classes only. Use `instance_of` for yours. |
 | `share_object(obj) -> T` | `obj` with one more reference, for returning an engine object you keep. |
 | `release(obj)` | Drops one reference, and frees the object if that was the last. |
@@ -176,6 +178,8 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `string_of(s: string) -> String` | A new engine String. You destroy it, or return it. |
 | `utf8(s: String, allocator) -> string` | An engine String as Odin UTF-8. You delete it. |
 | `static_name("literal") -> StringName` | A StringName kept for the life of the process. Cache it in a global at register time. |
+| `name_of(s: string) -> StringName` | A new StringName from any Odin text, in one engine call. You destroy it, or return it. |
+| `path_of(s: string) -> NodePath` | A new NodePath, such as `"Body/Sprite"` or `"Body:position"`. You destroy it, or return it. |
 | `same_name(a, b) -> bool` | StringName equality. Names are interned, so this is one compare. |
 | `array_name_at(&array, i) -> StringName` | Element `i` as a StringName, which you destroy. |
 | `string_read(&s) -> []rune` | A String's characters as a slice over its storage, read in place: about 0.07 ns per character, against 4.4 ns for `unicode_at`. Valid until `s` changes. Do not write through it. |
@@ -228,6 +232,7 @@ Variant or Callable in between.
 
 | Proc | Use |
 |---|---|
+| `print(format, ..args)` | Prints a formatted line to the engine's output, as GDScript's `print` does. `fmt.println` reaches stdout only, not the editor's Output panel. |
 | `error(format, ..args)` | `push_error` with the Odin file and line. It shows in the log and the debugger. |
 | `warn(format, ..args)` | `push_warning`, the same way. |
 | `fail(message, what) -> !` | Stops the process with a message. For a binding the engine lacks. |

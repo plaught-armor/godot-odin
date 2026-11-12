@@ -49,6 +49,9 @@ Ghost :: struct {
 	seen: i64,
 }
 
+// The registered Ghost class, for `get_node` to find Ghost structs.
+ghost_class: ^godot.Class(Ghost)
+
 // The editor plugin the extension adds to the editor.
 ExamplePlugin :: struct {}
 
@@ -89,6 +92,11 @@ register_extras :: proc() {
 	godot.method(b, "typed_nodes", bag_typed_nodes, {"n"})
 	godot.method(b, "typed_bump", bag_typed_bump, {"xs"})
 	godot.method(b, "typed_shout", bag_typed_shout, {"xs"})
+	godot.method(b, "named", bag_named, {"s"})
+	godot.method(b, "pathed", bag_pathed, {"s"})
+	godot.method(b, "find_2d", bag_find_2d, {"root", "path"})
+	godot.method(b, "find_ghost", bag_find_ghost, {"root", "path"})
+	godot.method(b, "say", bag_say, {"n"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -99,8 +107,8 @@ register_extras :: proc() {
 	godot.object_notification(godot.Object(tally), 0, false)
 	godot.register_singleton("ExampleTally", godot.Object(tally))
 
-	g := godot.class(Ghost, "Ghost", "Node", nil, godot.Options(Ghost){runtime = true})
-	godot.fields(g)
+	ghost_class = godot.class(Ghost, "Ghost", "Node", nil, godot.Options(Ghost){runtime = true})
+	godot.fields(ghost_class)
 }
 
 unload_extras :: proc() {
@@ -116,11 +124,7 @@ register_editor :: proc() {
 
 // Logs that the editor took the plugin, which example/build.sh checks for.
 plugin_entered :: proc(self: ^ExamplePlugin) {
-	text := godot.string_of("ExamplePlugin: in the editor")
-	defer godot.destroy[.STRING](&text)
-	v := godot.variant(text)
-	defer gde.variant_destroy(&v)
-	godot.utility_print(v)
+	godot.print("ExamplePlugin: in the %s", "editor")
 }
 
 plugin_name :: proc(self: ^ExamplePlugin) -> godot.String {
@@ -410,6 +414,32 @@ bag_typed_shout :: proc(self: ^Bag, xs: godot.Array) -> bool {
 		godot.variant_into(&v, s)
 	}
 	return true
+}
+
+// `s` made into a StringName from Odin text.
+bag_named :: proc(self: ^Bag, s: godot.String) -> godot.StringName {
+	return godot.name_of(godot.utf8(s, context.temp_allocator))
+}
+
+// `s` made into a NodePath from Odin text.
+bag_pathed :: proc(self: ^Bag, s: godot.String) -> godot.NodePath {
+	return godot.path_of(godot.utf8(s, context.temp_allocator))
+}
+
+// Whether `root` has a Node2D at `path`.
+bag_find_2d :: proc(self: ^Bag, root: godot.Node, path: godot.String) -> bool {
+	return godot.get_node(root, godot.utf8(path, context.temp_allocator), godot.Node2D) != nil
+}
+
+// The `seen` of the Ghost at `path` from `root`, or -1 when there is none.
+bag_find_ghost :: proc(self: ^Bag, root: godot.Node, path: godot.String) -> i64 {
+	g := godot.get_node(root, godot.utf8(path, context.temp_allocator), ghost_class)
+	return g.seen if g != nil else -1
+}
+
+// Prints "Bag says `n`" to the engine's output.
+bag_say :: proc(self: ^Bag, n: i64) {
+	godot.print("Bag says %d", n)
 }
 
 // The sum of key times value over the int entries of `d`.
