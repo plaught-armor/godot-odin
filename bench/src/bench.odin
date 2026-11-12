@@ -474,6 +474,7 @@ Ident :: enum i64 {
 	REPLACE_TEXT,      // string_replace_text of the same Odin text
 	SPLIT_ENGINE,      // the generated string_split of the sentence on a cached " "
 	SPLIT_TEXT,        // string_split_text of the sentence on Odin " "
+	SPLIT_PARTS,       // string_split_parts of the same, each part read and none made
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -739,6 +740,14 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			r := godot.string_split_text(intrinsics.volatile_load(&h), " ")
 			sum += godot.packed_string_array_size(&r)
 			godot.destroy[.PACKED_STRING_ARRAY](&r)
+		}
+	case .SPLIT_PARTS:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		for _ in 0 ..< n {
+			parts := godot.string_split_parts(intrinsics.volatile_load(&h), " ")
+			for p in godot.split_next(&parts) { sum += i64(len(p)) }
 		}
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)

@@ -407,6 +407,14 @@ func _check_extras() -> int:
 				if got != s.split(c[1], allow, maxsplit):
 					print("FAIL: Bag.split_text(%s, %s, %s, %d) gave %s, not %s" % [s, c[1], allow, maxsplit, got, s.split(c[1], allow, maxsplit)])
 					failures += 1
+	for c: Array in split_cases:
+		var s: String = c[0]
+		var lengths: PackedInt64Array = []
+		for part: String in s.split(c[1]):
+			lengths.append(part.length())
+		if b2.split_lengths(s, c[1]) != lengths:
+			print("FAIL: Bag.split_lengths(%s, %s) gave %s, not %s" % [s, c[1], b2.split_lengths(s, c[1]), lengths])
+			failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
 		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]

@@ -94,6 +94,7 @@ func _initialize() -> void:
 	_report("Odin string_replace_text, Odin text in a sentence", func() -> float: return b.ident_ns(35, N))
 	_report("Generated string_split, cached String on a sentence", func() -> float: return b.ident_ns(36, N))
 	_report("Odin string_split_text, Odin text on a sentence", func() -> float: return b.ident_ns(37, N))
+	_report("Odin string_split_parts, each part read in place", func() -> float: return b.ident_ns(38, N))
 	_report("GDScript -> Odin, typed, String param", func() -> float: return _string_param(b, false))
 	_report("GDScript -> Odin, typed, string param", func() -> float: return _string_param(b, true))
 	var table: Dictionary = {}

@@ -308,6 +308,39 @@ replace_in :: proc "contextless" (s: ^String, n: Needle, with: string, $NOCASE: 
 	return
 }
 
+// The parts of a String between each place a delimiter appears, as slices over its characters, read
+// one at a time with `split_next`: `split` with `allow_empty` true, but with no String or array
+// made. Valid until the String is written or destroyed.
+Split_Parts :: struct {
+	chars:  []rune,
+	needle: Needle,
+	from:   int,
+	done:   bool,
+}
+
+// The parts of `s` between each Odin text `delimiter`, for `split_next`. `delimiter` must stay
+// unchanged while they are read.
+string_split_parts :: proc "contextless" (s: ^String, delimiter: string) -> Split_Parts {
+	return {chars = string_read(s), needle = needle_of(delimiter, false)}
+}
+
+// The next part, or false after the last: `for part in godot.split_next(&parts)`. An empty
+// String has one empty part, an empty delimiter gives one part per character, and a delimiter at
+// either end gives an empty part there. The rest of the String after the part just read is
+// `parts.chars[parts.from:]`.
+split_next :: #force_inline proc "contextless" (parts: ^Split_Parts) -> (part: []rune, ok: bool) {
+	if parts.done { return }
+	chars, n := parts.chars, parts.needle
+	end := min(parts.from + 1, len(chars))
+	if n.count > 0 {
+		end = int(find_forward(chars, parts.from, len(chars) - n.count, n, false))
+		if end < 0 { end = len(chars) }
+	}
+	part, ok = chars[parts.from:end], true
+	if end == len(chars) { parts.done = true } else { parts.from = end + n.count }
+	return
+}
+
 // The parts of `s` between each Odin text `delimiter`: the engine's `split`. Empty `delimiter` gives
 // one part per character; `allow_empty` false drops empty parts; a positive `maxsplit` stops after
 // that many parts and adds the rest of `s` as one more. The parts are counted first so the array is
@@ -326,25 +359,20 @@ string_split_text :: proc "contextless" (s: ^String, delimiter: string, allow_em
 
 // Walks the parts of `chars` as the engine's `split` does and returns how many there are. With
 // `out`, it also makes part `k` in `out[k]`, which must hold an empty String: the array's slots
-// after a resize. Each round moves `from` on by at least one, so `len(chars) + 1` rounds cover it.
+// after a resize. There are at most `len(chars) + 1` parts, so as many rounds cover them.
 @(private)
 split_in :: proc "contextless" (chars: []rune, n: Needle, allow_empty: bool, maxsplit: i64, out: []String) -> (k: int) {
-	if len(chars) == 0 { return 1 if allow_empty else 0 }
-	from, last := 0, len(chars) - n.count
+	parts := Split_Parts{chars = chars, needle = n}
 	for _ in 0 ..= len(chars) {
-		end := from + 1 if n.count == 0 else int(find_forward(chars, from, last, n, false))
-		if end < 0 { end = len(chars) }
-		if allow_empty || end > from {
-			if maxsplit > 0 && i64(k) == maxsplit {
-				part_put(out, k, chars[from:])
-				k += 1
-				break
-			}
-			part_put(out, k, chars[from:end])
-			k += 1
+		from := parts.from
+		part := split_next(&parts) or_break
+		if !allow_empty && len(part) == 0 { continue }
+		if maxsplit > 0 && i64(k) == maxsplit {
+			part_put(out, k, chars[from:])
+			return k + 1
 		}
-		if end == len(chars) { break }
-		from = end + n.count
+		part_put(out, k, part)
+		k += 1
 	}
 	return
 }

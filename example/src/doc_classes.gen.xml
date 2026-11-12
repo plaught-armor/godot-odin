@@ -237,6 +237,9 @@
 		<method name="split_text">
 			<description>[code]s[/code] split on [code]part[/code]'s text by [code]string_split_text[/code].</description>
 		</method>
+		<method name="split_lengths">
+			<description>The length of each part of [code]s[/code] split on [code]part[/code]'s text, read through [code]string_split_parts[/code].</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

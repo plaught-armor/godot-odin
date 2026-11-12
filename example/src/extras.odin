@@ -127,6 +127,7 @@ register_extras :: proc() {
 	godot.method(b, "count_text", bag_count_text, {"s", "part", "from", "to"})
 	godot.method(b, "replace_text", bag_replace_text, {"s", "part", "with", "nocase"})
 	godot.method(b, "split_text", bag_split_text, {"s", "part", "allow_empty", "maxsplit"})
+	godot.method(b, "split_lengths", bag_split_lengths, {"s", "part"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -614,6 +615,19 @@ bag_count_text :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i6
 	text := godot.utf8(part)
 	defer delete(text)
 	return godot.string_count_text(&s, text, from, to) | godot.string_countn_text(&s, text, from, to) << 32
+}
+
+// The length of each part of `s` split on `part`'s text, read through `string_split_parts`.
+bag_split_lengths :: proc(self: ^Bag, s: godot.String, part: godot.String) -> godot.PackedInt64Array {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	out := godot.packed_int64_array_new()
+	parts := godot.string_split_parts(&s, text)
+	for p in godot.split_next(&parts) {
+		godot.packed_int64_array_append(&out, i64(len(p)))
+	}
+	return out
 }
 
 // `s` split on `part`'s text by `string_split_text`.
