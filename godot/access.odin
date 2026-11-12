@@ -473,18 +473,37 @@ text_rune_count :: proc "contextless" (text: string) -> (n: int) {
 	return
 }
 
-// `chars` against the ASCII text `text` of the same length, ignoring ASCII case, with no branch per
-// character. `plain` is false when `chars` holds a non-ASCII character, which may fold to ASCII
-// through the engine's table (U+0130 lowers to 'i'), so `equal` is no answer then.
+// `chars` against the ASCII text `text` of the same length, ignoring ASCII case, four characters a
+// step with no branch per character. `plain` is false when `chars` holds a non-ASCII character,
+// which may fold to ASCII through the engine's table (U+0130 lowers to 'i'), so `equal` is no
+// answer then.
 @(private)
 ascii_nocase_matches :: #force_inline proc "contextless" (chars: []rune, text: string) -> (equal, plain: bool) {
-	diff, wide: u32
-	for c, k in chars {
+	bytes := ([^]u8)(raw_data(text))
+	diff4, wide4: #simd[4]u32
+	k := 0
+	for _ in 0 ..< len(chars) / 4 {
+		v := intrinsics.unaligned_load((^#simd[4]u32)(&chars[k]))
+		t := #simd[4]u32{u32(bytes[k]), u32(bytes[k + 1]), u32(bytes[k + 2]), u32(bytes[k + 3])}
+		wide4 |= v
+		diff4 |= ascii_lower4(v) ~ ascii_lower4(t)
+		k += 4
+	}
+	diff := intrinsics.simd_reduce_or(diff4)
+	wide := intrinsics.simd_reduce_or(wide4)
+	for c, j in chars[k:] {
 		u := u32(c)
 		wide |= u
-		diff |= ascii_lower(u) ~ ascii_lower(u32(text[k]))
+		diff |= ascii_lower(u) ~ ascii_lower(u32(bytes[k + j]))
 	}
 	return diff == 0, wide < 0x80
+}
+
+// `ascii_lower` on four characters.
+@(private)
+ascii_lower4 :: #force_inline proc "contextless" (v: #simd[4]u32) -> #simd[4]u32 {
+	caps := intrinsics.simd_lanes_lt(v - #simd[4]u32{'A', 'A', 'A', 'A'}, #simd[4]u32{26, 26, 26, 26})
+	return v | (caps & #simd[4]u32{0x20, 0x20, 0x20, 0x20})
 }
 
 // `c` with an ASCII capital lowered, and anything else as it is.
