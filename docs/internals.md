@@ -33,7 +33,15 @@ calls back into `core.odin` only to look up its engine pointers.
 - **Variant call.** An untyped call passes Variants. The core checks each argument's type,
   converts where the engine's own binds would (int, float and bool into one another, an Array to
   a packed array and back, null to an object), and fills in defaults for
-  missing trailing arguments. It costs about 5 ns more than the engine's own Variant call.
+  missing trailing arguments. It costs about 3 ns more than the engine's own Variant call.
+
+A property read or write from GDScript, such as `b.rate` or `b.rate = x`, takes a slower path
+than either. In Godot 4.7 the GDScript compiler has no fast path for properties of engine or
+extension objects: every access looks the property up by name and then makes a Variant call to
+its getter or setter. A property of an engine class costs the same, about 30 ns on the machine
+that measured these numbers. In a hot loop, call the accessor instead: `b.get_rate()` and
+`b.set_rate(x)` are typed calls and take the ptrcall path, about 23 ns and 20 ns against 31 ns
+and 27 ns for the property.
 
 ## Virtual overrides
 

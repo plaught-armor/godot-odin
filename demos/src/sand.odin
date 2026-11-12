@@ -1,5 +1,6 @@
 package demos
 
+import "base:intrinsics"
 import "../../godot"
 
 // A falling-sand grid. Each cell is one byte: its material in the low four bits, a shade the
@@ -28,7 +29,21 @@ WALL :: 3
 PALETTE := [4][3]u8{{0, 0, 0}, {222, 186, 110}, {64, 128, 230}, {120, 120, 128}}
 BACKGROUND :: [3]u8{18, 18, 24}
 
+// The RGBA pixel for every cell byte, filled once at registration, so `sand_write` is one table
+// read per cell. Bytes with a material above WALL never occur and stay zero.
+@(private = "file")
+sand_pixels: [256][4]u8
+
 register_sand :: proc() {
+	for &p, c in sand_pixels {
+		m := c & 15
+		if m == EMPTY {
+			p = {BACKGROUND[0], BACKGROUND[1], BACKGROUND[2], 255}
+		} else if m <= WALL {
+			s := u8(c >> 4) * 3
+			p = {PALETTE[m][0] - s, PALETTE[m][1] - s, PALETTE[m][2] - s, 255}
+		}
+	}
 	c := godot.class(Sand, "SandOdin", "RefCounted", sand_notification)
 	godot.fields(c)
 	godot.constant(c, "EMPTY", EMPTY)
@@ -91,7 +106,9 @@ sand_count :: proc(self: ^Sand, material: i64) -> i64 {
 
 // Moves every grain and drop once, bottom row first, then writes `image_data`.
 sand_step :: proc(self: ^Sand) #no_bounds_check {
-	for &m in self.moved { m = 0 }
+	// One memset: a byte loop through `self` reloads the slice every byte, since a byte store may
+	// alias `self`.
+	intrinsics.mem_zero(raw_data(self.moved), len(self.moved))
 	w := self.width
 	forward := self.frame % 2 == 0
 	for y := self.height - 1; y >= 0; y -= 1 {
@@ -141,18 +158,7 @@ sand_take :: #force_inline proc "contextless" (self: ^Sand, from, to: int, grain
 // One RGBA pixel per cell: the material's colour, darkened by its shade.
 @(private = "file")
 sand_write :: proc(self: ^Sand) #no_bounds_check {
-	px := bytes_of(&self.image_data, len(self.cells) * 4)
-	for c, i in self.cells {
-		o := i * 4
-		m := c & 15
-		if m == EMPTY {
-			px[o + 0], px[o + 1], px[o + 2] = BACKGROUND[0], BACKGROUND[1], BACKGROUND[2]
-		} else {
-			s := (c >> 4) * 3
-			px[o + 0] = PALETTE[m][0] - s
-			px[o + 1] = PALETTE[m][1] - s
-			px[o + 2] = PALETTE[m][2] - s
-		}
-		px[o + 3] = 255
-	}
+	cells := self.cells
+	px := ([^][4]u8)(raw_data(bytes_of(&self.image_data, len(cells) * 4)))
+	for c, i in cells { px[i] = sand_pixels[c] }
 }

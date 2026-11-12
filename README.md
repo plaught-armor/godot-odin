@@ -130,7 +130,7 @@ What `demos/build.sh` measured here (`-o:aggressive`, output identical bit for b
 | Demo | Work | Odin | GDScript | Ratio |
 |---|---|---|---|---|
 | Boids | 2000 boids, 60 steps | 14.8 ms | 381 ms | 26x |
-| Falling sand | 120 steps | 20.6 ms | 2984 ms | 145x |
+| Falling sand | 120 steps | 14.0 ms | 3054 ms | 218x |
 | Pathfinding | 4000 units, 120 steps | 18.8 ms | 1699 ms | 90x |
 | Terrain | 256 by 256 vertices, 6 octaves | 4.14 ms | 340 ms | 82x |
 

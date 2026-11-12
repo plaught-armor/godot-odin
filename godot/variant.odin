@@ -225,6 +225,19 @@ borrowed :: #force_inline proc "contextless" (type: gde.VariantType, value: ^$A)
 	return
 }
 
+// Writes a scalar Variant of type `type` holding `value` (an int, float or bool) to `out`, in the
+// engine's layout: the type tag in the first 4 bytes, the value inline at byte 8, the rest zero.
+// `check_borrow_layout` proves that layout at load. It writes whole words in place: copying a
+// Variant built as a local splits into byte stores, and the engine's 16-byte load of the result
+// then stalls until they land.
+@(private)
+scalar_into :: #force_inline proc "contextless" (out: ^Variant, type: gde.VariantType, value: $A) where size_of(A) <= 8 {
+	w := (^[3]u64)(out)
+	w[0] = u64(u32(type))
+	w[1] = transmute(u64)value when size_of(A) == 8 else u64(value)
+	w[2] = 0
+}
+
 // The type of the Variant at `v`, read from its tag as `gde.variant_get_type` answers it, with no
 // call. `check_borrow_layout` proves the layout at load.
 variant_tag :: #force_inline proc "contextless" (v: gde.ConstVariantPtr) -> gde.VariantType {
@@ -238,9 +251,9 @@ variant_value :: #force_inline proc "contextless" ($A: typeid, v: gde.ConstVaria
 	return (^A)(uintptr(v) + 8)^
 }
 
-// Stops the load when the engine's Variant layout is not the one `borrowed`, `variant_tag` and
-// `variant_value` read: the type tag first, an int's, a float's and a bool's value at byte 8, and a
-// Callable's and a Signal's value at byte 8.
+// Stops the load when the engine's Variant layout is not the one `borrowed`, `scalar_into`,
+// `variant_tag` and `variant_value` read: the type tag first, an int's, a float's and a bool's
+// value at byte 8, and a Callable's and a Signal's value at byte 8.
 @(private)
 check_borrow_layout :: proc "contextless" () {
 	n := i64(0x0123_4567_89ab_cdef)
@@ -283,17 +296,13 @@ variant_into :: proc "contextless" (out: ^Variant, value: $A) {
 	// A scalar is written in place, in the layout `check_borrow_layout` proves: it holds nothing to
 	// construct.
 	when A == bool {
-		b := u8(1 if value else 0)
-		out^ = borrowed(.BOOL, &b)
+		scalar_into(out, .BOOL, u8(1 if value else 0))
 	} else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) {
-		i := i64(value)
-		out^ = borrowed(.INT, &i)
+		scalar_into(out, .INT, i64(value))
 	} else when intrinsics.type_is_bit_set(A) {
-		i := bits_of(value)
-		out^ = borrowed(.INT, &i)
+		scalar_into(out, .INT, bits_of(value))
 	} else when intrinsics.type_is_float(A) {
-		f := f64(value)
-		out^ = borrowed(.FLOAT, &f)
+		scalar_into(out, .FLOAT, f64(value))
 	} else when intrinsics.type_is_pointer(A) && intrinsics.type_base_type(A) != rawptr {
 		if value == nil {
 			gde.variant_new_nil(out)
