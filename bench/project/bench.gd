@@ -47,6 +47,8 @@ func _initialize() -> void:
 	_report("Odin build Array of ints, array_of, per element", func() -> float: return b.array_build_ns(false, true, N / 1000))
 	_report("Odin build Array[int], push_back(), per element", func() -> float: return b.array_build_ns(true, false, N / 1000))
 	_report("Odin build Array[int], array_typed_of, per element", func() -> float: return b.array_build_ns(true, true, N / 1000))
+	_report("Odin build Dictionary of ints, set(), per entry", func() -> float: return b.dict_build_ns(false, N / 1000))
+	_report("Odin build Dictionary of ints, dict_of, per entry", func() -> float: return b.dict_build_ns(true, N / 1000))
 	_report("Odin set Array of ints, set(), per element", func() -> float: return b.array_write_ns(false, false, N / 1000))
 	_report("Odin set Array of ints, array_write, per element", func() -> float: return b.array_write_ns(false, true, N / 1000))
 	_report("Odin set Array[int], set(), per element", func() -> float: return b.array_write_ns(true, false, N / 1000))

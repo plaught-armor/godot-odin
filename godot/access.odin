@@ -208,6 +208,42 @@ dict_items :: proc "contextless" (d: ^Dictionary) -> (keys, values: Array) {
 	return dictionary_keys(d), dictionary_values(d)
 }
 
+// A new untyped Dictionary mapping `keys[i]` to `values[i]`, each converted as `variant` does. A
+// repeated key keeps its last value. `keys` and `values` have the same length. You destroy it, or
+// return it.
+dict_of :: proc "contextless" (keys: []$K, values: []$V) -> (out: Dictionary) {
+	out = dictionary_new()
+	dict_fill(&out, keys, values)
+	return
+}
+
+// A new Dictionary typed to `K` and `V`, as GDScript's `Dictionary[K, V]`, built as `dict_of`
+// builds. Each side is a builtin type, an engine class, or `Variant` for an untyped side.
+dict_typed_of :: proc "contextless" (keys: []$K, values: []$V) -> (out: Dictionary) {
+	out = dictionary_new()
+	// An untyped side, `Variant`, has no class: the empty name.
+	script: Variant
+	when K == Variant { key_none: StringName; key_class := &key_none } else { key_class := typed_class(K) }
+	when V == Variant { value_none: StringName; value_class := &value_none } else { value_class := typed_class(V) }
+	gde.dictionary_set_typed(&out, variant_type(K), key_class, &script, variant_type(V), value_class, &script)
+	dict_fill(&out, keys, values)
+	return
+}
+
+// Adds `keys[i]` mapped to `values[i]` to `d`, writing each value in place: the engine's index
+// inserts a null for a new key and returns the existing value for a repeated one.
+@(private)
+dict_fill :: proc "contextless" (d: ^Dictionary, keys: []$K, values: []$V) {
+	if len(keys) != len(values) { fail("godot_odin: dict_of needs as many values as keys", "dict_of") }
+	for key, i in keys {
+		k := variant(key)
+		slot := (^Variant)(gde.dictionary_operator_index(d, &k))
+		gde.variant_destroy(&k)
+		gde.variant_destroy(slot)
+		variant_into(slot, values[i])
+	}
+}
+
 
 // The characters of `s` as a writable slice. A shared String gets storage of its own first, as any
 // write does; the slice stays valid until `s` is copied, resized or destroyed. `s` must be a String

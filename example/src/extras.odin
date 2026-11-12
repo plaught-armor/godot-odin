@@ -101,6 +101,9 @@ register_extras :: proc() {
 	godot.method(b, "slot_adder", bag_slot_adder, {"slot"})
 	godot.method(b, "defer", bag_defer, {"n"})
 	godot.method(b, "proc_total", bag_proc_total)
+	godot.method(b, "dict_squares", bag_dict_squares, {"n"})
+	godot.method(b, "dict_words", bag_dict_words)
+	godot.method(b, "dict_loose", bag_dict_loose)
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -479,6 +482,35 @@ bag_defer :: proc(self: ^Bag, n: i64) {
 // `proc_total`, a static method.
 bag_proc_total :: proc() -> i64 {
 	return proc_total
+}
+
+// {0: 0, 1: 1, 2: 4...} up to `n - 1`, untyped.
+bag_dict_squares :: proc(self: ^Bag, n: i64) -> godot.Dictionary {
+	keys := make([]i64, max(n, 0), context.temp_allocator)
+	values := make([]f64, max(n, 0), context.temp_allocator)
+	for i in 0 ..< len(keys) {
+		keys[i] = i64(i)
+		values[i] = f64(i * i)
+	}
+	return godot.dict_of(keys, values)
+}
+
+// {"a": 3, "bc": 2} as a Dictionary[String, int], from a key list that repeats "a".
+bag_dict_words :: proc(self: ^Bag) -> godot.Dictionary {
+	keys := [3]godot.String{godot.string_of("a"), godot.string_of("bc"), godot.string_of("a")}
+	defer for &k in keys { godot.destroy[.STRING](&k) }
+	values := [3]i32{1, 2, 3}
+	return godot.dict_typed_of(keys[:], values[:])
+}
+
+// {1: "x", 2: null} as a Dictionary[int, Variant].
+bag_dict_loose :: proc(self: ^Bag) -> godot.Dictionary {
+	x := godot.string_of("x")
+	defer godot.destroy[.STRING](&x)
+	keys := [2]i64{1, 2}
+	values := [2]godot.Variant{godot.variant(x), {}}
+	defer for &v in values { gde.variant_destroy(&v) }
+	return godot.dict_typed_of(keys[:], values[:])
 }
 
 // The sum of key times value over the int entries of `d`.

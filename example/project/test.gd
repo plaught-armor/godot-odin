@@ -265,6 +265,18 @@ func _check_extras() -> int:
 	if Bag.proc_total() - before != 20 or b2.get(&"slot_1") != 11 or add.get_argument_count() != 1:
 		print("FAIL: Bag Callables gave %d and %s, not 20 and 11" % [Bag.proc_total() - before, b2.get(&"slot_1")])
 		failures += 1
+	var squares: Dictionary = b2.dict_squares(4)
+	if squares != {0: 0.0, 1: 1.0, 2: 4.0, 3: 9.0} or squares.is_typed() or typeof(squares[3]) != TYPE_FLOAT or not b2.dict_squares(0).is_empty():
+		print("FAIL: Bag.dict_squares gave %s" % squares)
+		failures += 1
+	var words_count: Dictionary = b2.dict_words()
+	if words_count != {"a": 3, "bc": 2} or words_count.get_typed_key_builtin() != TYPE_STRING or words_count.get_typed_value_builtin() != TYPE_INT:
+		print("FAIL: Bag.dict_words gave %s" % words_count)
+		failures += 1
+	var loose_dict: Dictionary = b2.dict_loose()
+	if loose_dict != {1: "x", 2: null} or not loose_dict.is_typed_key() or loose_dict.is_typed_value():
+		print("FAIL: Bag.dict_loose gave %s" % loose_dict)
+		failures += 1
 	_deferred = Bag.new()
 	_deferred_from = Bag.proc_total()
 	_deferred.defer(7)

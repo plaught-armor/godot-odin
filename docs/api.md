@@ -172,6 +172,8 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `array_typed_of(xs) -> Array` | A new Array typed to the slice's element type, as GDScript's `Array[T]`: an integer slice makes `Array[int]`, a float slice `Array[float]`, a slice of an engine class `Array[Node]` and so on. Built in one resize, as `array_of` is: about 1.4 ns per int, against 13 ns for one `push_back` each. Registered Odin classes are not supported. You destroy it, or return it. |
 | `array_write_typed(&a, T) -> []Variant` | `array_write` for a typed Array: the slice when `a` is typed exactly to `T` and writable, else nil: about 1.7 ns per int element, against 10 ns for `set`. Store only `T` values in it, since the direct write skips the engine's type check. An `Array[Node]` takes `T` Node, not a subclass, and an Array typed to a script class gives nil. |
 | `dict_items(&d) -> (keys, values)` | A Dictionary's keys and values as two new Arrays in matching order, for reading with `array_read`: about 11 ns per entry to sum the values, against 36 ns for `keys()` and one `get` per key. You destroy both. |
+| `dict_of(keys, values) -> Dictionary` | A new untyped Dictionary mapping `keys[i]` to `values[i]`, from two Odin slices of the same length. A repeated key keeps its last value. About as fast as one `set` per entry (58 against 62 ns per int entry), since the engine's hashing dominates. You destroy it, or return it. |
+| `dict_typed_of(keys, values) -> Dictionary` | The same, typed as GDScript's `Dictionary[K, V]`. Each side is a builtin, an engine class, or `Variant` for an untyped side. |
 
 ## Strings and names
 

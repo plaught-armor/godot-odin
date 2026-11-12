@@ -165,6 +165,15 @@
 		<method name="proc_total">
 			<description>[code]proc_total[/code], a static method.</description>
 		</method>
+		<method name="dict_squares">
+			<description>{0: 0, 1: 1, 2: 4...} up to [code]n - 1[/code], untyped.</description>
+		</method>
+		<method name="dict_words">
+			<description>{"a": 3, "bc": 2} as a Dictionary[String, int], from a key list that repeats "a".</description>
+		</method>
+		<method name="dict_loose">
+			<description>{1: "x", 2: null} as a Dictionary[int, Variant].</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>
