@@ -1,4 +1,5 @@
-// A minimal extension: one Resource class with typed fields, a method, a static class and a signal.
+// A minimal extension: one Resource class with typed fields, a method, a static class and a signal,
+// and a Node that overrides engine virtuals.
 package example
 
 import gde "../../gdextension"
@@ -21,14 +22,32 @@ Walker :: struct {
 
 arrived: ^godot.StringName
 
+// A node that counts the engine's calls into its virtual overrides.
+Ticker :: struct {
+	// Whether `_ready` ran.
+	readied:  bool,
+	// `_process` calls so far.
+	ticks:    i64,
+	// The keycode of the last key event `_input` received; 0 before one.
+	last_key: i64,
+}
+
 register :: proc() {
 	c := godot.class(Walker, "Walker", "Resource")
 	godot.fields(c, &Walker{speed = 1.5})
 	godot.method(c, "walk", walk, {"direction", "time"}, {1.0})
 	arrived = godot.signal(c, "arrived", godot.Arg{name = "steps", type = .INT})
 
+	t := godot.class(Ticker, "Ticker", "Node")
+	godot.fields(t)
+	godot.override_node_ready(t, ticker_ready)
+	godot.override_node_process(t, ticker_process)
+	godot.override_node_input(t, ticker_input)
+
 	m := godot.class(godot.Static, "WalkMath", "Object")
 	godot.method(m, "distance", distance, {"speed", "time"})
+	godot.method(m, "apply", apply, {"f", "x"})
+	godot.method(m, "call_float", call_float, {"target", "method", "x"})
 }
 
 // Moves the walker along `direction` (normalised by the caller) for `time` seconds at its speed,
@@ -44,4 +63,37 @@ walk :: proc(self: ^Walker, direction: godot.Vector3, time: f64) -> f64 {
 // Metres covered at `speed` (m/s) over `time` (s).
 distance :: proc "contextless" (speed, time: f64) -> f64 {
 	return speed * time
+}
+
+ticker_ready :: proc(self: ^Ticker) {
+	self.readied = true
+}
+
+ticker_process :: proc(self: ^Ticker, delta: f64) {
+	self.ticks += 1
+}
+
+ticker_input :: proc(self: ^Ticker, event: godot.InputEvent) {
+	if key := godot.cast_to(event, godot.InputEventKey); key != nil {
+		self.last_key = i64(godot.input_event_key_get_keycode(key))
+	}
+}
+
+// `f(x)` as a float, through Callable.call.
+apply :: proc(f: godot.Callable, x: f64) -> f64 {
+	f := f
+	arg := godot.variant(x)
+	r := godot.callable_call(&f, arg)
+	defer gde.variant_destroy(&r)
+	defer gde.variant_destroy(&arg)
+	return godot.variant_float(&r)
+}
+
+// `target.method(x)` as a float, through Object.call.
+call_float :: proc(target: godot.Object, method: godot.StringName, x: f64) -> f64 {
+	arg := godot.variant(x)
+	r := godot.object_call(target, method, arg)
+	defer gde.variant_destroy(&r)
+	defer gde.variant_destroy(&arg)
+	return godot.variant_float(&r)
 }

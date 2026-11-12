@@ -269,9 +269,71 @@ class Api:
             types.append(m["return_type"])
         return all(self.odin_type(t) for t in types)
 
+    def emit_override(self, cls, m):
+        """override_<class><virtual>: registers an Odin proc as a class's override of an engine
+        virtual, its signature checked at compile time and the API hash carried along. `f` must be
+        a constant (a named proc or a literal): each one gets its own trampoline."""
+        if m.get("is_static") or not self.bindable(m):
+            self.skipped.append(f"{cls}.{m['name']}")
+            return ""
+        params = ["self: ^T"] + [f"{ident(a['name'])}: {self.odin_type(a['type'])}" for a in m.get("arguments", [])]
+        ret = f" -> {self.odin_type(m['return_value']['type'])}" if "return_value" in m else ""
+        return (f"override_{snake(cls)}{m['name']} :: proc(c: ^Class($T), $f: proc({', '.join(params)}){ret}) {{\n"
+                f"\toverride(c, \"{m['name']}\", {m['hash']}, f)\n}}\n")
+
+    def emit_virtual_procs(self):
+        out = [HEADER, "package godot\n\n"]
+        for name, c in self.classes.items():
+            for m in c.get("methods", []):
+                if m.get("is_virtual"):
+                    out.append(self.emit_override(name, m))
+        return "".join(out)
+
+    def vararg_body(self, arguments, label, call):
+        """The body of a vararg wrapper: every argument, fixed ones first, crosses as a Variant
+        pointer. The fixed ones are converted here; `rest` is borrowed from the caller."""
+        fixed = len(arguments)
+        body = [f"\t__v_{ident(a['name'])} := variant({ident(a['name'])})\n" for a in arguments]
+        body.append(f"\t__args: [{MOST_VARARGS}]rawptr = ---\n")
+        body += [f"\t__args[{i}] = &__v_{ident(a['name'])}\n" for i, a in enumerate(arguments)]
+        body.append(f"\tif len(rest) > {MOST_VARARGS - fixed} {{ fail(\"odin: too many arguments\", \"{label}\") }}\n"
+                    f"\tfor i in 0 ..< len(rest) {{ __args[{fixed} + i] = &rest[i] }}\n")
+        body.append(f"\t{call.format(args='auto_cast &__args[0]', count=f'{fixed} + len(rest)')}\n")
+        body += [f"\tgde.variant_destroy(&__v_{ident(a['name'])})\n" for a in arguments]
+        return "".join(body)
+
+    def vararg_params(self, arguments):
+        return [f"{ident(a['name'])}: {self.odin_type(a['type'])}" for a in arguments] + ["rest: ..Variant"]
+
+    def emit_vararg_class_method(self, cls, m, name):
+        """A vararg engine method, called with Variants through object_method_bind_call. The
+        Variant it answers is converted to the method's return type."""
+        ret = self.odin_type(m["return_value"]["type"]) if "return_value" in m else ""
+        params = self.vararg_params(m.get("arguments", []))
+        if not m.get("is_static"):
+            params.insert(0, f"self: {cls}")
+        obj = "nil" if m.get("is_static") else "rawptr(self)"
+        call = f"gde.object_method_bind_call(__mb, {obj}, {{args}}, gde.Int({{count}}), &__ret, &__err)"
+        body = "\t__ret: Variant\n\t__err: gde.CallError\n" + self.vararg_body(m.get("arguments", []), f"{cls}.{m['name']}", call)
+        if not ret:
+            body += "\tgde.variant_destroy(&__ret)\n"
+        elif ret == "Variant":
+            body += "\treturn __ret\n"
+        else:
+            body += f"\tdefer gde.variant_destroy(&__ret)\n\treturn from_variant({ret}, &__ret)\n"
+        sig = f'{name} :: proc "contextless" ({", ".join(params)})' + (f" -> {ret}" if ret else "")
+        head = (f"\t@(static) __mb: gde.MethodBindPtr\n"
+                f"\tif __mb == nil {{ __mb = method_bind(\"{cls}\", \"{m['name']}\", {m['hash']}) }}\n")
+        owns = "// Owns the Variant it answers: destroy it.\n" if ret == "Variant" else ""
+        return f"{owns}{sig} {{\n{head}{body}}}\n"
+
     def emit_class_method(self, cls, m):
         name = f"{snake(cls)}_{m['name']}"
-        if m.get("is_vararg") or m.get("is_virtual") or not self.bindable(m):
+        if m.get("is_virtual"):
+            return ""
+        if m.get("is_vararg") and self.bindable(m):
+            return self.emit_vararg_class_method(cls, m, name)
+        if m.get("is_vararg") or not self.bindable(m):
             self.skipped.append(f"{cls}.{m['name']}")
             return ""
         ret = self.odin_type(m["return_value"]["type"]) if "return_value" in m else ""
@@ -286,8 +348,37 @@ class Api:
         owns = "// Owns a reference: release it.\n" if self.classes.get(ret, {}).get("is_refcounted") else ""
         return f"{owns}{sig} {{\n{head}{body}}}\n"
 
+    def emit_vararg_builtin_method(self, bname, m, name):
+        """A vararg builtin method, called through variant_call on a Variant that borrows `self`.
+        The engine's vararg ptrcall copies every argument into heap vectors; this path does not.
+        Borrowing skips the copy of `self` and its reference counts. Only Callable and Signal have
+        vararg methods, and all of them only read `self`. Callable.call measured 38 ns this way,
+        against 47 with a copied `self` and 52-56 by ptrcall (bench/)."""
+        # check_borrow_layout in godot/variant.odin proves the inline layout for these two only.
+        assert bname in ("Callable", "Signal"), f"vararg method on {bname}: borrow layout unchecked"
+        ret = self.odin_type(m["return_type"]) if "return_type" in m else ""
+        params = self.vararg_params(m.get("arguments", []))
+        params.insert(0, f"self: ^{bname}")
+        call = "gde.variant_call(&__self, &__name, {args}, gde.Int({count}), &__ret, &__err)"
+        body = (f"\t@(static) __name: StringName\n"
+                f"\tif __name == {{}} {{ __name = static_name(\"{m['name']}\") }}\n"
+                f"\t__self := borrowed(.{snake(bname).upper()}, self)\n\t__ret: Variant\n\t__err: gde.CallError\n")
+        body += self.vararg_body(m.get("arguments", []), f"{bname}.{m['name']}", call)
+        if not ret:
+            body += "\tgde.variant_destroy(&__ret)\n"
+        elif ret == "Variant":
+            body += "\treturn __ret\n"
+        else:
+            body += (f"\tdefer gde.variant_destroy(&__ret)\n\t__out: {ret}\n"
+                     f"\tto_type[variant_type({ret})](&__out, &__ret)\n\treturn __out\n")
+        sig = f'{name} :: proc "contextless" ({", ".join(params)})' + (f" -> {ret}" if ret else "")
+        owns = "// Owns what it answers: destroy it.\n" if ret else ""
+        return f"{owns}{sig} {{\n{body}}}\n"
+
     def emit_builtin_method(self, bname, m):
         name = f"{snake(bname)}_{m['name']}"
+        if m.get("is_vararg") and not m.get("is_static") and self.bindable(m):
+            return self.emit_vararg_builtin_method(bname, m, name)
         if m.get("is_vararg") or not self.bindable(m):
             self.skipped.append(f"{bname}.{m['name']}")
             return ""
@@ -462,6 +553,7 @@ def main():
     write(NATIVE / "godot" / "gen_builtins.odin", api.emit_builtin_procs())
     write(NATIVE / "godot" / "gen_classes.odin", api.emit_class_procs())
     write(NATIVE / "godot" / "gen_utility.odin", api.emit_utility_procs())
+    write(NATIVE / "godot" / "gen_virtuals.odin", api.emit_virtual_procs())
     write(NATIVE / "godot" / "gen_calls.odin", emit_calls())
     write(NATIVE / "godot" / "gen_skipped.txt", "\n".join(api.skipped) + "\n")
     return 0

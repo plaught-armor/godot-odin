@@ -20,11 +20,8 @@ They were built for, and run in, a shipping-bound Godot game. Its simulation lay
   `tools/odin_bindgen.py`.
 - **Platforms:** developed and tested on Linux x86_64. Nothing in the core is Linux-specific,
   but Windows and macOS have not been built.
-- **Not supported:**
-  - Overriding engine virtual methods, such as `_process` or `_ready`, from Odin. Use a
-    `notification` proc on the class instead.
-  - The Variant-argument builtin methods (`Callable.call`, `Signal.emit` and the others listed in
-    `godot/gen_skipped.txt`). `godot.emit` and `godot.callable` cover the common cases.
+- **Coverage:** every class, builtin and utility method in the API is bound. The bindgen lists
+  anything it cannot bind in `godot/gen_skipped.txt`, which is empty for 4.7.
 
 ## Layout
 
@@ -38,6 +35,8 @@ They were built for, and run in, a shipping-bound Godot game. Its simulation lay
 | `tools/dump_api.sh` | Dumps `api/` from a Godot binary, then runs the bindgen. |
 | `tools/odin_docgen.py` | Turns a package's comments into class reference XML for the editor's help. |
 | `example/` | A minimal extension, a project that loads it, and a test. |
+| `addons/odin_build/` | An editor plugin that rebuilds and reloads the extension when its Odin sources change. |
+| `bench/` | Timing loops for the call paths the core owns. `bench/build.sh /path/to/godot` runs them. |
 
 ## Use
 
@@ -99,8 +98,26 @@ linux.release.x86_64 = "res://bin/libmy_ext.linux.x86_64.so"
 ## What the core does
 
 - **Methods from typed procs.** The parameter and return types come from the proc's signature.
-  A typed GDScript call reaches the proc by ptrcall, with no Variant boxing. An untyped call
-  takes the Variant path, which checks and converts each argument and fills in defaults.
+  A typed GDScript call reaches the proc by ptrcall, with no Variant boxing, at the cost of a call
+  to an engine method of the same shape. An untyped call takes the Variant path, which checks and
+  converts each argument and fills in defaults, about 5 ns over the engine's own (`bench/`).
+- **Engine virtual overrides.** `godot.override_node_process(c, process)` makes `process` the
+  class's `_process`. There is one generated `override_<class><virtual>` proc per engine virtual,
+  so the override's signature is checked at compile time. The engine finds an override once per
+  object, then calls it by ptrcall, about 5 ns over a node with no override. A GDScript `_process`
+  costs about 41 ns over that node (`bench/`).
+- **Vararg methods** (`godot.callable_call`, `godot.signal_emit`, `godot.object_call` and the
+  rest). They take their fixed arguments, then `rest: ..Variant`, which the caller keeps and
+  destroys. A Callable or Signal is handed to the engine in place, with no copy, so
+  `godot.callable_call` is a little faster than GDScript's `Callable.call`. This relies on the
+  engine's Variant layout, which the core checks when it loads.
+- **Hot reload.** Set `reloadable = true` in the `.gdextension` file, and the editor reloads the
+  library when it changes. Live instances get a fresh struct, and the engine sets their saved
+  properties back.
+- **Build on save** (`addons/odin_build/`). Copy it into your project's `addons/` and enable it.
+  It watches the `.odin` files under `odin_build/watch_dir`. When one changes, it runs
+  `odin_build/command` on a worker thread, prints the output in the Output panel, and reloads
+  `odin_build/extension` after a good build. Set these under Project Settings.
 - **Struct fields as properties** (`godot.fields`). They take these tags:
   - `range:"min,max,step"`, `hint:"..."`, `group:"..."` and `subgroup:"..."`;
   - `array:"Class"` for a typed array;

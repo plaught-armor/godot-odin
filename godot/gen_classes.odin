@@ -17834,6 +17834,24 @@ class_db_class_get_method_list :: proc "contextless" (self: ClassDB, class: Stri
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], &__ret)
 	return __ret
 }
+// Owns the Variant it answers: destroy it.
+class_db_class_call_static :: proc "contextless" (self: ClassDB, class: StringName, method: StringName, rest: ..Variant) -> Variant {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("ClassDB", "class_call_static", 3344196419) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_class := variant(class)
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_class
+	__args[1] = &__v_method
+	if len(rest) > 30 { fail("odin: too many arguments", "ClassDB.class_call_static") }
+	for i in 0 ..< len(rest) { __args[2 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(2 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_class)
+	gde.variant_destroy(&__v_method)
+	return __ret
+}
 class_db_class_get_integer_constant_list :: proc "contextless" (self: ClassDB, class: StringName, no_inheritance: bool) -> PackedStringArray {
 	@(static) __mb: gde.MethodBindPtr
 	if __mb == nil { __mb = method_bind("ClassDB", "class_get_integer_constant_list", 3031669221) }
@@ -30282,6 +30300,40 @@ editor_undo_redo_manager_force_fixed_history :: proc "contextless" (self: Editor
 	if __mb == nil { __mb = method_bind("EditorUndoRedoManager", "force_fixed_history", 3218959716) }
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), nil, nil)
 }
+editor_undo_redo_manager_add_do_method :: proc "contextless" (self: EditorUndoRedoManager, object: Object, method: StringName, rest: ..Variant) {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("EditorUndoRedoManager", "add_do_method", 1517810467) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_object := variant(object)
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_object
+	__args[1] = &__v_method
+	if len(rest) > 30 { fail("odin: too many arguments", "EditorUndoRedoManager.add_do_method") }
+	for i in 0 ..< len(rest) { __args[2 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(2 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_object)
+	gde.variant_destroy(&__v_method)
+	gde.variant_destroy(&__ret)
+}
+editor_undo_redo_manager_add_undo_method :: proc "contextless" (self: EditorUndoRedoManager, object: Object, method: StringName, rest: ..Variant) {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("EditorUndoRedoManager", "add_undo_method", 1517810467) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_object := variant(object)
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_object
+	__args[1] = &__v_method
+	if len(rest) > 30 { fail("odin: too many arguments", "EditorUndoRedoManager.add_undo_method") }
+	for i in 0 ..< len(rest) { __args[2 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(2 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_object)
+	gde.variant_destroy(&__v_method)
+	gde.variant_destroy(&__ret)
+}
 editor_undo_redo_manager_add_do_property :: proc "contextless" (self: EditorUndoRedoManager, object: Object, property: StringName, value: Variant) {
 	@(static) __mb: gde.MethodBindPtr
 	if __mb == nil { __mb = method_bind("EditorUndoRedoManager", "add_do_property", 1017172818) }
@@ -35397,6 +35449,18 @@ gd_extension_manager_get_extension :: proc "contextless" (self: GDExtensionManag
 	__args := [1]gde.ConstTypePtr{&__a_path}
 	__ret: GDExtension
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], &__ret)
+	return __ret
+}
+// Owns the Variant it answers: destroy it.
+gd_script_new :: proc "contextless" (self: GDScript, rest: ..Variant) -> Variant {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("GDScript", "new", 1545262638) }
+	__ret: Variant
+	__err: gde.CallError
+	__args: [32]rawptr = ---
+	if len(rest) > 32 { fail("odin: too many arguments", "GDScript.new") }
+	for i in 0 ..< len(rest) { __args[0 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(0 + len(rest)), &__ret, &__err)
 	return __ret
 }
 // Owns a reference: release it.
@@ -46722,6 +46786,21 @@ java_script_bridge_js_buffer_to_packed_byte_array :: proc "contextless" (self: J
 	__args := [1]gde.ConstTypePtr{&__a_javascript_buffer}
 	__ret: PackedByteArray
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], &__ret)
+	return __ret
+}
+// Owns the Variant it answers: destroy it.
+java_script_bridge_create_object :: proc "contextless" (self: JavaScriptBridge, object: String, rest: ..Variant) -> Variant {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("JavaScriptBridge", "create_object", 3093893586) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_object := variant(object)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_object
+	if len(rest) > 31 { fail("odin: too many arguments", "JavaScriptBridge.create_object") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_object)
 	return __ret
 }
 java_script_bridge_download_buffer :: proc "contextless" (self: JavaScriptBridge, buffer: PackedByteArray, name: String, mime: String) {
@@ -60843,10 +60922,58 @@ node_atr_n :: proc "contextless" (self: Node, message: String, plural_message: S
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], &__ret)
 	return __ret
 }
+node_rpc :: proc "contextless" (self: Node, method: StringName, rest: ..Variant) -> Error {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("Node", "rpc", 4047867050) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_method
+	if len(rest) > 31 { fail("odin: too many arguments", "Node.rpc") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_method)
+	defer gde.variant_destroy(&__ret)
+	return from_variant(Error, &__ret)
+}
+node_rpc_id :: proc "contextless" (self: Node, peer_id: i64, method: StringName, rest: ..Variant) -> Error {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("Node", "rpc_id", 361499283) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_peer_id := variant(peer_id)
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_peer_id
+	__args[1] = &__v_method
+	if len(rest) > 30 { fail("odin: too many arguments", "Node.rpc_id") }
+	for i in 0 ..< len(rest) { __args[2 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(2 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_peer_id)
+	gde.variant_destroy(&__v_method)
+	defer gde.variant_destroy(&__ret)
+	return from_variant(Error, &__ret)
+}
 node_update_configuration_warnings :: proc "contextless" (self: Node) {
 	@(static) __mb: gde.MethodBindPtr
 	if __mb == nil { __mb = method_bind("Node", "update_configuration_warnings", 3218959716) }
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), nil, nil)
+}
+// Owns the Variant it answers: destroy it.
+node_call_deferred_thread_group :: proc "contextless" (self: Node, method: StringName, rest: ..Variant) -> Variant {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("Node", "call_deferred_thread_group", 3400424181) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_method
+	if len(rest) > 31 { fail("odin: too many arguments", "Node.call_deferred_thread_group") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_method)
+	return __ret
 }
 node_set_deferred_thread_group :: proc "contextless" (self: Node, property: StringName, value: Variant) {
 	@(static) __mb: gde.MethodBindPtr
@@ -60862,6 +60989,21 @@ node_notify_deferred_thread_group :: proc "contextless" (self: Node, what: i64) 
 	__a_what := what
 	__args := [1]gde.ConstTypePtr{&__a_what}
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], nil)
+}
+// Owns the Variant it answers: destroy it.
+node_call_thread_safe :: proc "contextless" (self: Node, method: StringName, rest: ..Variant) -> Variant {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("Node", "call_thread_safe", 3400424181) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_method
+	if len(rest) > 31 { fail("odin: too many arguments", "Node.call_thread_safe") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_method)
+	return __ret
 }
 node_set_thread_safe :: proc "contextless" (self: Node, property: StringName, value: Variant) {
 	@(static) __mb: gde.MethodBindPtr
@@ -62812,6 +62954,51 @@ object_remove_user_signal :: proc "contextless" (self: Object, signal: StringNam
 	__a_signal := signal
 	__args := [1]gde.ConstTypePtr{&__a_signal}
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], nil)
+}
+object_emit_signal :: proc "contextless" (self: Object, signal: StringName, rest: ..Variant) -> Error {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("Object", "emit_signal", 4047867050) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_signal := variant(signal)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_signal
+	if len(rest) > 31 { fail("odin: too many arguments", "Object.emit_signal") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_signal)
+	defer gde.variant_destroy(&__ret)
+	return from_variant(Error, &__ret)
+}
+// Owns the Variant it answers: destroy it.
+object_call :: proc "contextless" (self: Object, method: StringName, rest: ..Variant) -> Variant {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("Object", "call", 3400424181) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_method
+	if len(rest) > 31 { fail("odin: too many arguments", "Object.call") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_method)
+	return __ret
+}
+// Owns the Variant it answers: destroy it.
+object_call_deferred :: proc "contextless" (self: Object, method: StringName, rest: ..Variant) -> Variant {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("Object", "call_deferred", 3400424181) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_method
+	if len(rest) > 31 { fail("odin: too many arguments", "Object.call_deferred") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_method)
+	return __ret
 }
 object_set_deferred :: proc "contextless" (self: Object, property: StringName, value: Variant) {
 	@(static) __mb: gde.MethodBindPtr
@@ -88753,6 +88940,26 @@ scene_tree_queue_delete :: proc "contextless" (self: SceneTree, obj: Object) {
 	__args := [1]gde.ConstTypePtr{&__a_obj}
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], nil)
 }
+scene_tree_call_group_flags :: proc "contextless" (self: SceneTree, flags: i64, group: StringName, method: StringName, rest: ..Variant) {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("SceneTree", "call_group_flags", 1527739229) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_flags := variant(flags)
+	__v_group := variant(group)
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_flags
+	__args[1] = &__v_group
+	__args[2] = &__v_method
+	if len(rest) > 29 { fail("odin: too many arguments", "SceneTree.call_group_flags") }
+	for i in 0 ..< len(rest) { __args[3 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(3 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_flags)
+	gde.variant_destroy(&__v_group)
+	gde.variant_destroy(&__v_method)
+	gde.variant_destroy(&__ret)
+}
 scene_tree_notify_group_flags :: proc "contextless" (self: SceneTree, call_flags: i64, group: StringName, notification: i64) {
 	@(static) __mb: gde.MethodBindPtr
 	if __mb == nil { __mb = method_bind("SceneTree", "notify_group_flags", 1245489420) }
@@ -88771,6 +88978,23 @@ scene_tree_set_group_flags :: proc "contextless" (self: SceneTree, call_flags: i
 	__a_value := value
 	__args := [4]gde.ConstTypePtr{&__a_call_flags, &__a_group, &__a_property, &__a_value}
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], nil)
+}
+scene_tree_call_group :: proc "contextless" (self: SceneTree, group: StringName, method: StringName, rest: ..Variant) {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("SceneTree", "call_group", 1257962832) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_group := variant(group)
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_group
+	__args[1] = &__v_method
+	if len(rest) > 30 { fail("odin: too many arguments", "SceneTree.call_group") }
+	for i in 0 ..< len(rest) { __args[2 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(2 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_group)
+	gde.variant_destroy(&__v_method)
+	gde.variant_destroy(&__ret)
 }
 scene_tree_notify_group :: proc "contextless" (self: SceneTree, group: StringName, notification: i64) {
 	@(static) __mb: gde.MethodBindPtr
@@ -109873,6 +110097,20 @@ tree_item_move_after :: proc "contextless" (self: TreeItem, item: TreeItem) {
 	__a_item := rawptr(item)
 	__args := [1]gde.ConstTypePtr{&__a_item}
 	gde.object_method_bind_ptrcall(__mb, rawptr(self), &__args[0], nil)
+}
+tree_item_call_recursive :: proc "contextless" (self: TreeItem, method: StringName, rest: ..Variant) {
+	@(static) __mb: gde.MethodBindPtr
+	if __mb == nil { __mb = method_bind("TreeItem", "call_recursive", 2866548813) }
+	__ret: Variant
+	__err: gde.CallError
+	__v_method := variant(method)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_method
+	if len(rest) > 31 { fail("odin: too many arguments", "TreeItem.call_recursive") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.object_method_bind_call(__mb, rawptr(self), auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_method)
+	gde.variant_destroy(&__ret)
 }
 triangle_mesh_create_from_faces :: proc "contextless" (self: TriangleMesh, faces: PackedVector3Array) -> bool {
 	@(static) __mb: gde.MethodBindPtr

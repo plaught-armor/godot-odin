@@ -24,6 +24,7 @@ load_variants :: proc "contextless" () {
 		copy_from[type] = gde.variant_get_ptr_constructor(type, 1)
 		internal[type] = gde.variant_get_ptr_internal_getter(type)
 	}
+	check_borrow_layout()
 }
 
 // The Variant type an Odin type crosses as: bool, any integer or enum, any float, a builtin struct,
@@ -199,40 +200,76 @@ from_variant :: proc "contextless" ($A: typeid, v: gde.ConstVariantPtr) -> A {
 	else { return (^A)(internal[variant_type(A)](auto_cast v))^ }
 }
 
+// A Variant of type `type` that aliases `value^` with no copy and no new reference, for handing a
+// Callable or Signal to an engine call that only reads it, such as `variant_call`. The caller must
+// not destroy it or let the engine keep it. Built from the engine's Variant layout: the type tag in
+// the first 4 bytes, the value inline at byte 8. `check_borrow_layout` proves that layout at load.
+// It saves a copy and two atomic reference counts per call, about 9 ns per Callable.call (bench/).
+borrowed :: #force_inline proc "contextless" (type: gde.VariantType, value: ^$A) -> (v: Variant) where size_of(A) <= 16 {
+	(^u32)(&v._opaque[0])^ = u32(type)
+	(^A)(&v._opaque[8])^ = value^
+	return
+}
+
+// Stops the load when the engine's Variant layout is not the one `borrowed` builds: an int's type
+// tag first and its value at byte 8, and a Callable's and a Signal's value at byte 8.
+@(private)
+check_borrow_layout :: proc "contextless" () {
+	n := i64(0x0123_4567_89ab_cdef)
+	v: Variant
+	from_type[.INT](&v, &n)
+	if (^u32)(&v._opaque[0])^ != u32(gde.VariantType.INT) || (^i64)(&v._opaque[8])^ != n {
+		fail("odin: unexpected Variant layout", "INT")
+	}
+	for type in ([2]gde.VariantType{.CALLABLE, .SIGNAL}) {
+		e: Variant
+		if rawptr(internal[type](&e)) != rawptr(&e._opaque[8]) {
+			fail("odin: unexpected Variant layout", "CALLABLE or SIGNAL")
+		}
+	}
+}
+
 // A new Variant holding `value`; a counted value is copied, so the caller keeps its own reference.
 // An instance goes in as its object, which the Variant references when it is RefCounted.
 variant :: proc "contextless" (value: $A) -> (out: Variant) {
+	variant_into(&out, value)
+	return
+}
+
+// Constructs `out`, which holds nothing that needs destroying, as `variant(value)` would. Writing
+// straight into the destination saves a 24-byte copy that would read the engine's narrower stores
+// back as one wide load.
+variant_into :: proc "contextless" (out: ^Variant, value: $A) {
 	when A == bool {
 		b := gde.Bool(1 if value else 0)
-		from_type[.BOOL](&out, &b)
+		from_type[.BOOL](out, &b)
 	} else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) {
 		i := i64(value)
-		from_type[.INT](&out, &i)
+		from_type[.INT](out, &i)
 	} else when intrinsics.type_is_float(A) {
 		f := f64(value)
-		from_type[.FLOAT](&out, &f)
+		from_type[.FLOAT](out, &f)
 	} else when intrinsics.type_is_pointer(A) && intrinsics.type_base_type(A) != rawptr {
 		if value == nil {
-			gde.variant_new_nil(&out)
+			gde.variant_new_nil(out)
 		} else {
 			o := rawptr(object_of(value))
-			from_type[.OBJECT](&out, &o)
+			from_type[.OBJECT](out, &o)
 		}
 	} else when intrinsics.type_base_type(A) == rawptr {
 		if value == nil {
-			gde.variant_new_nil(&out)
+			gde.variant_new_nil(out)
 		} else {
 			o := rawptr(value)
-			from_type[.OBJECT](&out, &o)
+			from_type[.OBJECT](out, &o)
 		}
 	} else when A == Variant {
 		v := value
-		gde.variant_new_copy(&out, &v)
+		gde.variant_new_copy(out, &v)
 	} else {
 		v := value
-		from_type[variant_type(A)](&out, &v)
+		from_type[variant_type(A)](out, &v)
 	}
-	return
 }
 
 // The Variant `v` read as int64, float64 or bool, converting between the three.

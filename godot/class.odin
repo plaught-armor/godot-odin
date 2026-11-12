@@ -43,6 +43,17 @@ Class :: struct($T: typeid) {
 	parent:       StringName,
 	notification: proc(self: ^T, what: i64),
 	layout:       Layout,
+	// Engine virtuals this class overrides, which `override` adds.
+	virtuals:     [dynamic]^Virtual,
+}
+
+// One override of an engine virtual: the name and API hash the engine asks for it by, and the
+// trampoline that calls the Odin proc from ptrcall slots. Lives for the process.
+@(private)
+Virtual :: struct {
+	name: StringName,
+	hash: u32,
+	call: gde.ClassCallVirtual,
 }
 
 // One registered method: the Odin proc and what the Variant path needs to check and fill its
@@ -100,6 +111,7 @@ entry :: proc "contextless" (
 ) -> gde.Bool {
 	context = runtime.default_context()
 	ctx = context
+	temp_arena = &(^runtime.Default_Temp_Allocator)(ctx.temp_allocator.data).arena
 	on_main_thread = true
 	gde.load_interface(get_proc_address)
 	library = lib
@@ -153,6 +165,17 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 		c := (^Class(T))(userdata)
 		// A RefCounted object returns holding the one reference its caller takes over.
 		object := gde.classdb_construct_object3(&c.parent)
+		attach(c, object)
+		if notify_postinitialize != 0 { object_notification(Object(object), 0, false) }
+		return object
+	}
+	// A hot reload freed the instance of `object` and re-registered the class: give the live object
+	// a fresh `T`. The engine sets the saved properties back afterwards.
+	recreate :: proc "c" (userdata: rawptr, object: gde.ObjectPtr) -> gde.ClassInstancePtr {
+		return attach((^Class(T))(userdata), object)
+	}
+	// Makes the instance behind `object`: the header and a `T` as `fields` sets it.
+	attach :: proc "contextless" (c: ^Class(T), object: gde.ObjectPtr) -> gde.ClassInstancePtr {
 		h := (^Header)(gde.mem_alloc2(uint(HEADER + size_of(T)), 0))
 		intrinsics.mem_zero(h, HEADER + size_of(T))
 		context = ctx
@@ -162,8 +185,7 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 		h.class = c
 		gde.object_set_instance(object, &c.name, h)
 		gde.object_set_instance_binding(object, library, h, &no_binding)
-		if notify_postinitialize != 0 { object_notification(Object(object), 0, false) }
-		return object
+		return h
 	}
 	free :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr) {
 		context = ctx
@@ -179,6 +201,16 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 		if c.notification != nil { c.notification(self_of(T, instance), i64(what)) }
 	}
 
+	// The engine asks once per object and virtual, then calls the trampoline it got directly: the
+	// search is off the per-call path.
+	virtual_func :: proc "c" (userdata: rawptr, name: gde.ConstStringNamePtr, hash: u32) -> gde.ClassCallVirtual {
+		want := (^StringName)(name)^
+		for v in (^Class(T))(userdata).virtuals {
+			if same_name(v.name, want) && v.hash == hash { return v.call }
+		}
+		return nil
+	}
+
 	info := gde.ClassCreationInfo6 {
 		is_exposed     = 1,
 		class_userdata = c,
@@ -188,12 +220,41 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 	} else {
 		info.create_instance_func = create
 		info.free_instance_func = free
-		info.notification_func = notify
+		info.recreate_instance_func = recreate
+		info.get_virtual_func = virtual_func
+		// Every notification the object gets would cross into `notify`: only a class with a handler pays.
+		if notification != nil { info.notification_func = notify }
 	}
 	gde.classdb_register_extension_class6(library, &c.name, &c.parent, &info)
 	append(&registered, &c.name)
 	append(&owned, &c.name, &c.parent)
 	return c
+}
+
+// Makes `f` class `c`'s override of the engine virtual `name` with API hash `hash`. The generated
+// `override_<class><virtual>` procs call this with the hash and a signature checked against the
+// virtual's; arguments and the return cross as they do for a method's ptrcall. `f` is a constant, so
+// each override gets its own trampoline that calls `f` directly, and the engine calls that.
+override :: proc(c: ^Class($T), name: cstring, hash: u32, $f: $P) where intrinsics.type_is_proc(P) {
+	#assert(intrinsics.type_proc_parameter_count(P) >= 1 && intrinsics.type_proc_parameter_type(P, 0) == ^T)
+	RET :: intrinsics.type_proc_return_count(P)
+	call :: proc "c" (instance: gde.ClassInstancePtr, args: [^]gde.ConstTypePtr, ret: gde.TypePtr) {
+		context = ctx
+		enter()
+		c := Call{self = self_of(T, instance), slots = args}
+		when RET == 1 {
+			R :: intrinsics.type_proc_return_type(P, 0)
+			to_slot(ret, invoke_ret(f, R, true, true, &c))
+		} else {
+			invoke_void(f, true, true, &c)
+		}
+	}
+	v := new(Virtual)
+	gde.string_name_new_with_utf8_chars(&v.name, name)
+	v.hash = hash
+	v.call = call
+	append(&c.virtuals, v)
+	append(&owned, &v.name)
 }
 
 // The engine object behind an instance's `self`.
@@ -261,13 +322,15 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 		enter()
 		variant_calls += 1
 		m := (^Method)(userdata)
-		filled: [MAX_ARGS + 1]gde.ConstVariantPtr
-		made: [MAX_ARGS + 1]Variant
+		// fill_args writes `filled` for every parameter and `made[i]` only where it sets `built[i]`,
+		// so only `built` needs zeroing.
+		filled: [MAX_ARGS + 1]gde.ConstVariantPtr = ---
+		made: [MAX_ARGS + 1]Variant = ---
 		built: [MAX_ARGS + 1]bool
-		defer for i in 0 ..< len(built) {
+		defer for i in 0 ..< m.count {
 			if built[i] { gde.variant_destroy(&made[i]) }
 		}
-		if !fill_args(m, args, count, filled[:], made[:], built[:], err) { return }
+		if !fill_args(m, args, count, &filled[0], &made[0], &built[0], err) { return }
 		c := Call{self = self_of(T, instance) if SELF else nil, variants = &filled[0]}
 		when RET == 1 {
 			R :: intrinsics.type_proc_return_type(P, 0)
@@ -399,9 +462,10 @@ signal :: proc(c: ^Class($T), name: cstring, args: ..Arg) -> ^StringName {
 // Emits `signal` from `self`'s object with `args`, which it destroys. A Variant call: per emission,
 // not per tick.
 emit :: proc "contextless" (self: ^$T, signal: ^StringName, args: ..Variant) {
-	MOST :: 8
-	n := min(len(args), MOST)
-	at: [MOST + 1]gde.ConstVariantPtr
+	MOST :: 31
+	if len(args) > MOST { fail("odin: too many arguments", "emit") }
+	n := len(args)
+	at: [MOST + 1]gde.ConstVariantPtr = ---
 	name := variant(signal^)
 	at[0] = &name
 	for i in 0 ..< n { at[i + 1] = &args[i] }
@@ -494,7 +558,7 @@ Call :: struct {
 // the caller destroys those after the call, on either result. False, with `err` naming the first
 // misfit, when they do not fit.
 @(private)
-fill_args :: proc "contextless" (m: ^Method, args: [^]gde.ConstVariantPtr, count: gde.Int, filled: []gde.ConstVariantPtr, made: []Variant, built: []bool, err: ^gde.CallError) -> bool {
+fill_args :: proc "contextless" (m: ^Method, args: [^]gde.ConstVariantPtr, count: gde.Int, filled: [^]gde.ConstVariantPtr, made: [^]Variant, built: [^]bool, err: ^gde.CallError) -> bool {
 	n := i32(count)
 	if n > m.count || n < m.required {
 		err.error = .ERROR_TOO_MANY_ARGUMENTS if n > m.count else .ERROR_TOO_FEW_ARGUMENTS
@@ -530,7 +594,7 @@ put_return :: #force_inline proc "contextless" (ret: gde.VariantPtr, value: $A) 
 	when A == Variant {
 		(^Variant)(ret)^ = value
 	} else {
-		(^Variant)(ret)^ = variant(value)
+		variant_into((^Variant)(ret), value)
 		when intrinsics.type_is_pointer(A) && intrinsics.type_base_type(A) != rawptr {
 			if value != nil {
 				context = ctx

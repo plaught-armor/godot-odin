@@ -6036,6 +6036,74 @@ callable_unbind :: proc "contextless" (self: ^Callable, argcount: i64) -> Callab
 	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
+// Owns what it answers: destroy it.
+callable_call :: proc "contextless" (self: ^Callable, rest: ..Variant) -> Variant {
+	@(static) __name: StringName
+	if __name == {} { __name = static_name("call") }
+	__self := borrowed(.CALLABLE, self)
+	__ret: Variant
+	__err: gde.CallError
+	__args: [32]rawptr = ---
+	if len(rest) > 32 { fail("odin: too many arguments", "Callable.call") }
+	for i in 0 ..< len(rest) { __args[0 + i] = &rest[i] }
+	gde.variant_call(&__self, &__name, auto_cast &__args[0], gde.Int(0 + len(rest)), &__ret, &__err)
+	return __ret
+}
+callable_call_deferred :: proc "contextless" (self: ^Callable, rest: ..Variant) {
+	@(static) __name: StringName
+	if __name == {} { __name = static_name("call_deferred") }
+	__self := borrowed(.CALLABLE, self)
+	__ret: Variant
+	__err: gde.CallError
+	__args: [32]rawptr = ---
+	if len(rest) > 32 { fail("odin: too many arguments", "Callable.call_deferred") }
+	for i in 0 ..< len(rest) { __args[0 + i] = &rest[i] }
+	gde.variant_call(&__self, &__name, auto_cast &__args[0], gde.Int(0 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__ret)
+}
+callable_rpc :: proc "contextless" (self: ^Callable, rest: ..Variant) {
+	@(static) __name: StringName
+	if __name == {} { __name = static_name("rpc") }
+	__self := borrowed(.CALLABLE, self)
+	__ret: Variant
+	__err: gde.CallError
+	__args: [32]rawptr = ---
+	if len(rest) > 32 { fail("odin: too many arguments", "Callable.rpc") }
+	for i in 0 ..< len(rest) { __args[0 + i] = &rest[i] }
+	gde.variant_call(&__self, &__name, auto_cast &__args[0], gde.Int(0 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__ret)
+}
+callable_rpc_id :: proc "contextless" (self: ^Callable, peer_id: i64, rest: ..Variant) {
+	@(static) __name: StringName
+	if __name == {} { __name = static_name("rpc_id") }
+	__self := borrowed(.CALLABLE, self)
+	__ret: Variant
+	__err: gde.CallError
+	__v_peer_id := variant(peer_id)
+	__args: [32]rawptr = ---
+	__args[0] = &__v_peer_id
+	if len(rest) > 31 { fail("odin: too many arguments", "Callable.rpc_id") }
+	for i in 0 ..< len(rest) { __args[1 + i] = &rest[i] }
+	gde.variant_call(&__self, &__name, auto_cast &__args[0], gde.Int(1 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__v_peer_id)
+	gde.variant_destroy(&__ret)
+}
+// Owns what it answers: destroy it.
+callable_bind :: proc "contextless" (self: ^Callable, rest: ..Variant) -> Callable {
+	@(static) __name: StringName
+	if __name == {} { __name = static_name("bind") }
+	__self := borrowed(.CALLABLE, self)
+	__ret: Variant
+	__err: gde.CallError
+	__args: [32]rawptr = ---
+	if len(rest) > 32 { fail("odin: too many arguments", "Callable.bind") }
+	for i in 0 ..< len(rest) { __args[0 + i] = &rest[i] }
+	gde.variant_call(&__self, &__name, auto_cast &__args[0], gde.Int(0 + len(rest)), &__ret, &__err)
+	defer gde.variant_destroy(&__ret)
+	__out: Callable
+	to_type[variant_type(Callable)](&__out, &__ret)
+	return __out
+}
 signal_new :: proc "contextless" () -> (__r: Signal) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.SIGNAL, 0) }
@@ -6131,6 +6199,18 @@ signal_has_connections :: proc "contextless" (self: ^Signal) -> bool {
 	__ret: u8
 	__fn(self, nil, &__ret, 0)
 	return __ret != 0
+}
+signal_emit :: proc "contextless" (self: ^Signal, rest: ..Variant) {
+	@(static) __name: StringName
+	if __name == {} { __name = static_name("emit") }
+	__self := borrowed(.SIGNAL, self)
+	__ret: Variant
+	__err: gde.CallError
+	__args: [32]rawptr = ---
+	if len(rest) > 32 { fail("odin: too many arguments", "Signal.emit") }
+	for i in 0 ..< len(rest) { __args[0 + i] = &rest[i] }
+	gde.variant_call(&__self, &__name, auto_cast &__args[0], gde.Int(0 + len(rest)), &__ret, &__err)
+	gde.variant_destroy(&__ret)
 }
 dictionary_new :: proc "contextless" () -> (__r: Dictionary) {
 	@(static) __fn: gde.PtrConstructor

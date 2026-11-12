@@ -2,3 +2,5 @@ example/project/.godot/
 example/project/bin/
 *.uid
 __pycache__/
+bench/project/.godot/
+bench/project/bin/

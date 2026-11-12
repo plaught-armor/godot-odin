@@ -114,7 +114,7 @@ array_name_at :: proc "contextless" (array: ^Array, index: i64) -> (out: StringN
 @(thread_local)
 on_main_thread: bool
 
-// Opens a call from the engine, after `context = ctx`. Marks this library's temp arena; the deferred
+// Opens a call from the engine, after `context = ctx`. Marks this library's temp arena, `temp_arena`; the deferred
 // `leave` rolls it back at scope exit, so the call frees the temp it took and nothing older. Debug
 // builds assert the call is on the main thread.
 @(deferred_out = leave)
@@ -122,8 +122,13 @@ enter :: #force_inline proc(loc := #caller_location) -> runtime.Arena_Temp {
 	when ODIN_DEBUG {
 		assert(on_main_thread, "godot_odin: an engine call off the main thread", loc)
 	}
-	return runtime.default_temp_allocator_temp_begin(loc)
+	return runtime.arena_temp_begin(temp_arena, loc)
 }
+
+// The arena behind `ctx.temp_allocator`, the main thread's, which `entry` sets. `enter` marks it
+// directly: the runtime's own temp_begin finds it through a thread-local lookup, a `__tls_get_addr`
+// call per engine call in a shared library.
+temp_arena: ^runtime.Arena
 
 // Rolls the temp arena back to `temp`, the mark `enter` took.
 leave :: #force_inline proc(temp: runtime.Arena_Temp) {
@@ -149,11 +154,19 @@ error :: proc(format: string, args: ..any, loc := #caller_location) {
 // A new instance of engine class `T`, which the caller owns: a RefCounted one starts with one
 // reference, dropped with `release`; any other is freed with `gde.object_destroy`.
 construct :: proc($T: typeid) -> T where intrinsics.type_base_type(T) == rawptr {
-	named := type_info_of(T).variant.(runtime.Type_Info_Named)
-	sn: StringName
-	gde.string_name_new_with_utf8_chars_and_len(&sn, cstring(raw_data(named.name)), gde.Int(len(named.name)))
+	// The class name and whether it is RefCounted are fixed per `T`: looked up on the first call.
+	@(static) sn: StringName
+	@(static) counted: bool
+	@(static) known: bool
+	if !known {
+		named := type_info_of(T).variant.(runtime.Type_Info_Named)
+		gde.string_name_new_with_latin1_chars(&sn, fmt.ctprintf("%s", named.name), 1)
+	}
 	obj := gde.classdb_construct_object2(&sn)
-	destroy[.STRING_NAME](&sn)
-	if rc := cast_to(obj, RefCounted); rc != nil { ref_counted_init_ref(rc) }
+	if !known {
+		counted = cast_to(obj, RefCounted) != nil
+		known = true
+	}
+	if counted { ref_counted_init_ref(RefCounted(obj)) }
 	return T(obj)
 }
