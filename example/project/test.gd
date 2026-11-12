@@ -37,6 +37,8 @@ func _initialize() -> void:
 	failures += _check_instances(w)
 	failures += _check_temp()
 	failures += _check_untyped()
+	failures += _check_bag()
+	failures += _check_extras()
 	_failures = failures
 
 
@@ -63,6 +65,86 @@ func _check_instances(w: Walker) -> int:
 	if not is_equal_approx(WalkMath.speed_of(null), -1.0):
 		print("FAIL: WalkMath.speed_of(null) is not -1")
 		failures += 1
+	return failures
+
+
+class ScriptedBag extends Bag:
+	func _score(x: int) -> int:
+		return x * 3
+
+
+# Bag's dynamic slots, revert values, validation and _to_string.
+func _check_bag() -> int:
+	var failures: int = 0
+	var b: Bag = Bag.new()
+	b.set(&"slot_2", 7)
+	if b.get(&"slot_2") != 7 or b.get(&"slot_0") != 0:
+		print("FAIL: Bag slots read %s and %s, not 7 and 0" % [b.get(&"slot_2"), b.get(&"slot_0")])
+		failures += 1
+	if b.get(&"slot_9") != null:
+		print("FAIL: Bag.slot_9 is %s, not null" % b.get(&"slot_9"))
+		failures += 1
+	if str(b) != "Bag(0, 0, 7, 0)":
+		print("FAIL: str(Bag) is %s" % str(b))
+		failures += 1
+	if not b.property_can_revert(&"slot_2") or b.property_can_revert(&"slot_1") or b.property_get_revert(&"slot_2") != 0:
+		print("FAIL: Bag slot revert is wrong")
+		failures += 1
+	var slots: int = 0
+	var note_usage: int = -1
+	var note_hint: String = ""
+	for p: Dictionary in b.get_property_list():
+		if String(p.name).begins_with("slot_"):
+			slots += 1
+		if p.name == "note":
+			note_usage = p.usage
+			note_hint = p.hint_string
+	if slots != 4:
+		print("FAIL: Bag lists %d slots, not 4" % slots)
+		failures += 1
+	if note_usage & PROPERTY_USAGE_EDITOR or note_hint != "a note":
+		print("FAIL: Bag.note usage %d, hint %s; validate did not run" % [note_usage, note_hint])
+		failures += 1
+	b.show_note = true
+	for p: Dictionary in b.get_property_list():
+		if p.name == "note" and not (p.usage & PROPERTY_USAGE_EDITOR):
+			print("FAIL: Bag.note hidden with show_note set")
+			failures += 1
+	if b.score(2) != -1 or ScriptedBag.new().score(2) != 6:
+		print("FAIL: Bag.score answered %d and %d, not -1 and 6" % [b.score(2), ScriptedBag.new().score(2)])
+		failures += 1
+	return failures
+
+
+# Flags, a typed Dictionary, an unsigned byte, the singleton and the runtime class.
+func _check_extras() -> int:
+	var failures: int = 0
+	var b: Bag = Bag.new()
+	if Bag.RED != 1 or Bag.GREEN != 2 or Bag.BLUE != 4:
+		print("FAIL: Bag.Mark is %d %d %d, not 1 2 4" % [Bag.RED, Bag.GREEN, Bag.BLUE])
+		failures += 1
+	b.marks = Bag.RED | Bag.BLUE
+	if b.marks != 5 or not b.has_marks(Bag.BLUE) or b.has_marks(Bag.GREEN):
+		print("FAIL: Bag.marks is %d, has_marks wrong" % b.marks)
+		failures += 1
+	b.counts["a"] = 1
+	if not b.counts.is_typed() or b.counts.get_typed_key_builtin() != TYPE_STRING or b.counts.get_typed_value_builtin() != TYPE_INT:
+		print("FAIL: Bag.counts is not Dictionary[String, int]")
+		failures += 1
+	b.level = 200
+	if b.level != 200:
+		print("FAIL: Bag.level reads %d, not 200" % b.level)
+		failures += 1
+	var tally: Object = Engine.get_singleton(&"ExampleTally")
+	if tally == null or tally.bump() != 1 or tally.bump() != 2:
+		print("FAIL: the ExampleTally singleton is missing or miscounts")
+		failures += 1
+	var g: Node = Ghost.new()
+	g.seen = 3
+	if g.seen != 3:
+		print("FAIL: Ghost.seen reads %s, not 3" % g.seen)
+		failures += 1
+	g.free()
 	return failures
 
 

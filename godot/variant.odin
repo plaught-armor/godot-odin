@@ -27,12 +27,12 @@ load_variants :: proc "contextless" () {
 	check_borrow_layout()
 }
 
-// The Variant type an Odin type crosses as: bool, any integer or enum, any float, a builtin struct,
+// The Variant type an Odin type crosses as: bool, any integer, enum or bit_set, any float, a builtin struct,
 // an engine class (any `distinct rawptr`) or a pointer to a registered class's struct as OBJECT,
 // and Variant itself as NIL.
 variant_type :: proc "contextless" ($A: typeid) -> gde.VariantType {
 	when A == bool { return .BOOL }
-	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) { return .INT }
+	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) || intrinsics.type_is_bit_set(A) { return .INT }
 	else when intrinsics.type_is_float(A) { return .FLOAT }
 	else when A == String { return .STRING }
 	else when A == Vector2 { return .VECTOR2 }
@@ -99,6 +99,17 @@ counted :: proc "contextless" (type: gde.VariantType) -> bool {
 	return type >= .PACKED_BYTE_ARRAY && type < .VARIANT_MAX
 }
 
+// A bit_set as the engine's flags integer: bit `k` set for element value `k`. The set's lowest
+// element must be 0 (`enumerate_flags` and `fields` check), so its bits are the engine's.
+bits_of :: #force_inline proc "contextless" (value: $A) -> i64 where intrinsics.type_is_bit_set(A) {
+	return i64(transmute(intrinsics.type_bit_set_underlying_type(A))value)
+}
+
+// The bit_set `A` for the engine's flags integer `bits`; bits past the set's width are dropped.
+set_of :: #force_inline proc "contextless" ($A: typeid, bits: i64) -> A where intrinsics.type_is_bit_set(A) {
+	return transmute(A)intrinsics.type_bit_set_underlying_type(A)(bits)
+}
+
 // A ptrcall argument as Odin type `A`, borrowed for the call when it owns a reference. The engine
 // passes every integer as int64, every float as double, a bool as one byte, an object by pointer.
 // A pointer to a registered class's struct is the object's instance, nil when the object is null
@@ -106,6 +117,7 @@ counted :: proc "contextless" (type: gde.VariantType) -> bool {
 from_slot :: #force_inline proc "contextless" ($A: typeid, p: gde.ConstTypePtr) -> A {
 	when A == bool { return (^u8)(p)^ != 0 }
 	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) { return A((^i64)(p)^) }
+	else when intrinsics.type_is_bit_set(A) { return set_of(A, (^i64)(p)^) }
 	else when intrinsics.type_is_float(A) { return A((^f64)(p)^) }
 	else when intrinsics.type_base_type(A) == rawptr { return nil if p == nil else A((^rawptr)(p)^) }
 	else when intrinsics.type_is_pointer(A) {
@@ -137,6 +149,7 @@ object_to_slot :: proc "contextless" (p: gde.TypePtr, obj: rawptr) {
 to_slot :: #force_inline proc "contextless" (p: gde.TypePtr, value: $A) {
 	when A == bool { (^u8)(p)^ = 1 if value else 0 }
 	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) { (^i64)(p)^ = i64(value) }
+	else when intrinsics.type_is_bit_set(A) { (^i64)(p)^ = bits_of(value) }
 	else when intrinsics.type_is_float(A) { (^f64)(p)^ = f64(value) }
 	else when intrinsics.type_base_type(A) == rawptr { object_to_slot(p, rawptr(value)) }
 	else when intrinsics.type_is_pointer(A) { object_to_slot(p, rawptr(object_of(value)) if value != nil else nil) }
@@ -186,6 +199,7 @@ reshape :: proc "contextless" (v: gde.ConstVariantPtr, want: gde.VariantType, ou
 from_variant :: proc "contextless" ($A: typeid, v: gde.ConstVariantPtr) -> A {
 	when A == bool { return variant_bool(v) }
 	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) { return A(variant_int(v)) }
+	else when intrinsics.type_is_bit_set(A) { return set_of(A, variant_int(v)) }
 	else when intrinsics.type_is_float(A) { return A(variant_float(v)) }
 	else when intrinsics.type_base_type(A) == rawptr || intrinsics.type_is_pointer(A) {
 		if variant_tag(v) == .NIL { return nil }
@@ -273,6 +287,9 @@ variant_into :: proc "contextless" (out: ^Variant, value: $A) {
 		out^ = borrowed(.BOOL, &b)
 	} else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) {
 		i := i64(value)
+		out^ = borrowed(.INT, &i)
+	} else when intrinsics.type_is_bit_set(A) {
+		i := bits_of(value)
 		out^ = borrowed(.INT, &i)
 	} else when intrinsics.type_is_float(A) {
 		f := f64(value)

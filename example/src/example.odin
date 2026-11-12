@@ -1,5 +1,5 @@
 // A minimal extension: one Resource class with typed fields, a method, a static class and a signal,
-// and a Node that overrides engine virtuals.
+// and a Node that overrides engine virtuals. extras.odin has the rest of the class hooks.
 package example
 
 import gde "../../gdextension"
@@ -7,7 +7,7 @@ import "../../godot"
 
 @(export, link_name = "example_init")
 example_init :: proc "c" (gpa: gde.InterfaceGetProcAddress, lib: gde.ClassLibraryPtr, init: ^gde.Initialization) -> gde.Bool {
-	return godot.entry(gpa, lib, init, register)
+	return godot.entry(gpa, lib, init, register, unload_extras, editor = register_editor)
 }
 
 // A walker's tuning, shown in the inspector.
@@ -54,6 +54,8 @@ register :: proc() {
 	godot.method(m, "speed_of", speed_of, {"walker"})
 	godot.method(m, "scratch", scratch, {"bytes"})
 	godot.method(m, "temp_in_use", temp_in_use)
+
+	register_extras()
 }
 
 // Moves the walker along `direction` (normalised by the caller) for `time` seconds at its speed,

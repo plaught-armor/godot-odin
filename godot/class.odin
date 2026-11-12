@@ -46,9 +46,49 @@ Class :: struct($T: typeid) {
 	title:        string,
 	parent:       StringName,
 	notification: proc(self: ^T, what: i64),
+	options:      Options(T),
 	layout:       Layout,
 	// Engine virtuals this class overrides, which `override` adds.
 	virtuals:     [dynamic]^Virtual,
+}
+
+// What a class does beyond its fields and methods, given to `class`. Every hook is optional, and the
+// engine calls into Odin only for the ones set.
+Options :: struct($T: typeid) {
+	// The class runs only in a running game: in the editor its instances are placeholders, and its
+	// overrides and `notification` stay off, as for a script without `@tool`.
+	runtime:       bool,
+	// Reads property `name`, one `property_list` names, as `Object._get` does. False for a name it
+	// does not own, and the engine goes on to the class's registered properties.
+	get:           proc(self: ^T, name: StringName) -> (Variant, bool),
+	// Writes property `name`, as `Object._set` does; `value` is borrowed. False for a name it does
+	// not own.
+	set:           proc(self: ^T, name: StringName, value: ^Variant) -> bool,
+	// Appends the properties `get` and `set` serve, as `Object._get_property_list` does. Asked
+	// whenever the inspector or a save walks the object's properties.
+	property_list: proc(self: ^T, list: ^[dynamic]Property),
+	// Whether property `name` has a value to revert to, and that value, for the inspector's revert
+	// arrow, as `Object._property_can_revert` and `_property_get_revert` do.
+	can_revert:    proc(self: ^T, name: StringName) -> bool,
+	get_revert:    proc(self: ^T, name: StringName) -> (Variant, bool),
+	// Edits how any property of the object shows, its registered fields included, as
+	// `Object._validate_property` does: change `info.usage` or `info.hint`, or the hint text
+	// through `set_hint_string`.
+	validate:      proc(self: ^T, info: ^gde.PropertyInfo),
+	// The object's text for `print` and `str`, as `Object._to_string` does. Temp memory will do.
+	to_string:     proc(self: ^T) -> string,
+}
+
+// One property `Options.property_list` reports. Text may be temp memory: the core copies it.
+// `usage` 0 stands for PROPERTY_USAGE_DEFAULT, since a property with no usage would not show.
+Property :: struct {
+	name:        string,
+	type:        gde.VariantType,
+	hint:        PropertyHint,
+	hint_string: string,
+	usage:       PropertyUsageFlags,
+	// The class an OBJECT property holds, or the "Class.Enum" an enum property names.
+	class_name:  string,
 }
 
 // One override of an engine virtual: the name and API hash the engine asks for it by, and the
@@ -82,6 +122,19 @@ HEADER :: 16
 
 @(private)
 registered: [dynamic]^StringName
+// How many of `registered` came from `register`; the rest came from `editor`, at the editor level.
+@(private)
+scene_classes: int
+// Classes `editor_plugin` added to the editor, removed at the editor level's deinit.
+@(private)
+plugins: [dynamic]^StringName
+// Names `register_singleton` gave the engine, unregistered at unload before `unload` runs.
+@(private)
+singletons: [dynamic]^StringName
+@(private)
+on_editor: proc()
+@(private)
+registering_editor: bool
 // Names that live until unload: class, parent, signal and argument class names.
 @(private)
 owned: [dynamic]^StringName
@@ -110,9 +163,11 @@ instance_slot: uintptr
 slot_checked: bool
 
 // The extension's entry point: loads the interface and calls `register` at the scene level, where
-// every class registers. At unload `unload` runs first, to release what the library holds, then
-// classes unregister in reverse. `docs` is class reference XML (tools/odin_docgen.py), handed to the
-// editor's help at the editor level; empty loads none, and a build with no editor never reaches it.
+// every game class registers. `editor` runs at the editor level, only in the editor, for classes the
+// editor alone uses: an EditorPlugin (see `editor_plugin`), an inspector plugin. At unload the editor
+// classes unregister first; then `register_singleton`'s names go, `unload` runs, to release what the
+// library holds, and the scene classes unregister in reverse. `docs` is class reference XML
+// (tools/odin_docgen.py), handed to the editor's help at the editor level; empty loads none.
 entry :: proc "contextless" (
 	get_proc_address: gde.InterfaceGetProcAddress,
 	lib: gde.ClassLibraryPtr,
@@ -120,6 +175,7 @@ entry :: proc "contextless" (
 	register: proc(),
 	unload: proc() = nil,
 	docs: string = "",
+	editor: proc() = nil,
 ) -> gde.Bool {
 	context = runtime.default_context()
 	ctx = context
@@ -129,6 +185,7 @@ entry :: proc "contextless" (
 	library = lib
 	on_register = register
 	on_unload = unload
+	on_editor = editor
 	class_docs = docs
 	init.minimum_initialization_level = .INITIALIZATION_SCENE
 	init.initialize = initialize
@@ -138,8 +195,16 @@ entry :: proc "contextless" (
 
 @(private)
 initialize :: proc "c" (userdata: rawptr, level: gde.InitializationLevel) {
-	if level == .INITIALIZATION_EDITOR && class_docs != "" && gde.editor_help_load_xml_from_utf8_chars_and_len != nil {
-		gde.editor_help_load_xml_from_utf8_chars_and_len(cstring(raw_data(class_docs)), gde.Int(len(class_docs)))
+	if level == .INITIALIZATION_EDITOR {
+		if class_docs != "" && gde.editor_help_load_xml_from_utf8_chars_and_len != nil {
+			gde.editor_help_load_xml_from_utf8_chars_and_len(cstring(raw_data(class_docs)), gde.Int(len(class_docs)))
+		}
+		if on_editor == nil { return }
+		context = ctx
+		registering_editor = true
+		on_editor()
+		registering_editor = false
+		return
 	}
 	if level != .INITIALIZATION_SCENE { return }
 	context = ctx
@@ -148,12 +213,24 @@ initialize :: proc "c" (userdata: rawptr, level: gde.InitializationLevel) {
 	gde.string_new_with_latin1_chars(&empty_string, "")
 	emit_bind = method_bind("Object", "emit_signal", 4047867050)
 	on_register()
+	scene_classes = len(registered)
 }
 
 @(private)
 deinitialize :: proc "c" (userdata: rawptr, level: gde.InitializationLevel) {
-	if level != .INITIALIZATION_SCENE { return }
 	context = ctx
+	if level == .INITIALIZATION_EDITOR {
+		for i := len(plugins) - 1; i >= 0; i -= 1 { gde.editor_remove_plugin(plugins[i]) }
+		clear(&plugins)
+		for i := len(registered) - 1; i >= scene_classes; i -= 1 {
+			gde.classdb_unregister_extension_class(library, registered[i])
+		}
+		resize(&registered, scene_classes)
+		return
+	}
+	if level != .INITIALIZATION_SCENE { return }
+	engine := engine_singleton()
+	for i := len(singletons) - 1; i >= 0; i -= 1 { engine_unregister_singleton(engine, singletons[i]^) }
 	if on_unload != nil { on_unload() }
 	for i := len(registered) - 1; i >= 0; i -= 1 {
 		gde.classdb_unregister_extension_class(library, registered[i])
@@ -162,15 +239,28 @@ deinitialize :: proc "c" (userdata: rawptr, level: gde.InitializationLevel) {
 }
 
 // Registers class `name` extending the engine class `parent`. Each instance carries a `T`, zeroed
-// or as `fields` sets it, freed with the object; `notification` receives the object's notifications. `T` = `Static`
-// registers an abstract class for static methods only.
-class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, what: i64) = nil) -> ^Class(T) {
+// or as `fields` sets it, freed with the object; `notification` receives the object's notifications.
+// `options`, when given, sets the class's other hooks (`Options`). `T` = `Static` registers an
+// abstract class for static methods only.
+class :: proc {
+	class_plain,
+	class_options,
+}
+
+@(private)
+class_plain :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, what: i64) = nil) -> ^Class(T) {
+	return class_options(T, name, parent, notification, Options(T){})
+}
+
+@(private)
+class_options :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, what: i64), options: Options(T)) -> ^Class(T) {
 	#assert(align_of(T) <= HEADER)
 	c := new(Class(T))
 	gde.string_name_new_with_utf8_chars(&c.name, name)
 	gde.string_name_new_with_utf8_chars(&c.parent, parent)
 	c.title = string(name)
 	c.notification = notification
+	c.options = options
 	class_slot(T)^ = c
 
 	create :: proc "c" (userdata: rawptr, notify_postinitialize: gde.Bool) -> gde.ObjectPtr {
@@ -230,6 +320,7 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 
 	info := gde.ClassCreationInfo6 {
 		is_exposed     = 1,
+		is_runtime     = gde.Bool(options.runtime),
 		class_userdata = c,
 	}
 	when T == Static {
@@ -241,11 +332,129 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 		info.get_virtual_func = virtual_func
 		// Every notification the object gets would cross into `notify`: only a class with a handler pays.
 		if notification != nil { info.notification_func = notify }
+		hook_options(&info, options)
 	}
 	gde.classdb_register_extension_class6(library, &c.name, &c.parent, &info)
 	append(&registered, &c.name)
 	append(&owned, &c.name, &c.parent)
 	return c
+}
+
+// Points `info` at the trampolines of the hooks `options` sets; the engine skips the ones left nil.
+@(private)
+hook_options :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
+	opts :: #force_inline proc "contextless" (instance: gde.ClassInstancePtr) -> ^Options(T) {
+		return &(^Class(T))((^Header)(instance).class).options
+	}
+	get :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr, ret: gde.VariantPtr) -> gde.Bool {
+		context = ctx
+		enter()
+		v, ok := opts(instance).get(self_of(T, instance), (^StringName)(name)^)
+		if !ok { return 0 }
+		// The engine's `ret` holds null, which needs no destroy.
+		(^Variant)(ret)^ = v
+		return 1
+	}
+	set :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr, value: gde.ConstVariantPtr) -> gde.Bool {
+		context = ctx
+		enter()
+		return gde.Bool(opts(instance).set(self_of(T, instance), (^StringName)(name)^, (^Variant)(value)))
+	}
+	list :: proc "c" (instance: gde.ClassInstancePtr, count: [^]u32) -> ^gde.PropertyInfo {
+		context = ctx
+		enter()
+		props := make([dynamic]Property, context.temp_allocator)
+		opts(instance).property_list(self_of(T, instance), &props)
+		count[0] = u32(len(props))
+		return property_infos(props[:])
+	}
+	free_list :: proc "c" (instance: gde.ClassInstancePtr, list: ^gde.PropertyInfo, count: u32) {
+		context = ctx
+		free_property_infos(list, int(count))
+	}
+	can_revert :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr) -> gde.Bool {
+		context = ctx
+		enter()
+		return gde.Bool(opts(instance).can_revert(self_of(T, instance), (^StringName)(name)^))
+	}
+	get_revert :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr, ret: gde.VariantPtr) -> gde.Bool {
+		context = ctx
+		enter()
+		v, ok := opts(instance).get_revert(self_of(T, instance), (^StringName)(name)^)
+		if !ok { return 0 }
+		(^Variant)(ret)^ = v
+		return 1
+	}
+	validate :: proc "c" (instance: gde.ClassInstancePtr, info: ^gde.PropertyInfo) -> gde.Bool {
+		context = ctx
+		enter()
+		opts(instance).validate(self_of(T, instance), info)
+		return 1
+	}
+	to_string :: proc "c" (instance: gde.ClassInstancePtr, valid: ^gde.Bool, out: gde.StringPtr) {
+		context = ctx
+		enter()
+		text := opts(instance).to_string(self_of(T, instance))
+		// The engine's `out` is an empty String, which needs no destroy.
+		gde.string_new_with_utf8_chars_and_len(out, cstring(raw_data(text)), gde.Int(len(text)))
+		valid^ = 1
+	}
+	if options.get != nil { info.get_func = get }
+	if options.set != nil { info.set_func = set }
+	if options.property_list != nil {
+		info.get_property_list_func = list
+		info.free_property_list_func = free_list
+	}
+	if options.can_revert != nil { info.property_can_revert_func = can_revert }
+	if options.get_revert != nil { info.property_get_revert_func = get_revert }
+	if options.validate != nil { info.validate_property_func = validate }
+	if options.to_string != nil { info.to_string_func = to_string }
+}
+
+// The engine's copy of `props`: one allocation holding the PropertyInfos and, after them, the names
+// and hint texts they point to, which `free_property_infos` destroys. Nil for none.
+@(private)
+property_infos :: proc(props: []Property) -> ^gde.PropertyInfo {
+	n := len(props)
+	if n == 0 { return nil }
+	Text :: struct {
+		name, class: StringName,
+		hint:        String,
+	}
+	block := ([^]u8)(gde.mem_alloc2(uint(n * (size_of(gde.PropertyInfo) + size_of(Text))), 0))
+	infos := ([^]gde.PropertyInfo)(block)
+	texts := ([^]Text)(&block[n * size_of(gde.PropertyInfo)])
+	for p, i in props {
+		texts[i] = {name = name_of(p.name), class = name_of(p.class_name), hint = string_of(p.hint_string)}
+		usage := p.usage if p.usage != {} else PropertyUsageFlags_PROPERTY_USAGE_DEFAULT
+		infos[i] = {
+			type_       = p.type,
+			name        = &texts[i].name,
+			class_name  = &texts[i].class,
+			hint        = u32(p.hint),
+			hint_string = &texts[i].hint,
+			usage       = u32(usage),
+		}
+	}
+	return &infos[0]
+}
+
+@(private)
+free_property_infos :: proc "contextless" (list: ^gde.PropertyInfo, count: int) {
+	if list == nil { return }
+	infos := ([^]gde.PropertyInfo)(list)
+	for i in 0 ..< count {
+		destroy[.STRING_NAME](infos[i].name)
+		destroy[.STRING_NAME](infos[i].class_name)
+		destroy[.STRING](infos[i].hint_string)
+	}
+	gde.mem_free2(list, 0)
+}
+
+// Replaces the hint text of `info`, a property `Options.validate` is editing, with `text`.
+set_hint_string :: proc "contextless" (info: ^gde.PropertyInfo, text: string) {
+	destroy[.STRING](info.hint_string)
+	(^String)(info.hint_string)^ = string_of(text)
 }
 
 // Makes `f` class `c`'s override of the engine virtual `name` with API hash `hash`. The generated
@@ -494,6 +703,86 @@ emit :: proc "contextless" (self: ^$T, signal: ^StringName, args: ..Variant) {
 	for i in 0 ..< len(args) { gde.variant_destroy(&args[i]) }
 }
 
+// Registers `name` as a virtual a script extending class `c` can override, as `GDVIRTUAL` does in
+// godot-cpp. `P` is the virtual's shape, a proc type whose first parameter is `^T`; `args` names
+// the rest. The editor lists it among the overridable methods, and `required` makes the engine warn
+// about a script that leaves it out. Odin calls it with `call_script` and the name returned.
+script_virtual :: proc(c: ^Class($T), name: cstring, $P: typeid, args: []cstring = nil, required := false) -> ^StringName
+	where intrinsics.type_is_proc(P) {
+	#assert(intrinsics.type_proc_parameter_count(P) >= 1 && intrinsics.type_proc_parameter_type(P, 0) == ^T)
+	ARGS :: intrinsics.type_proc_parameter_count(P) - 1
+	RET :: intrinsics.type_proc_return_count(P)
+	#assert(ARGS <= MAX_ARGS && RET <= 1)
+	assert(args == nil || len(args) == ARGS, "godot_odin: one name per parameter")
+	d: Params
+	for i in 0 ..< ARGS {
+		arg_name := args[i] if args != nil else fmt.ctprintf("arg%d", i)
+		gde.string_name_new_with_utf8_chars(&d.names[i], arg_name)
+	}
+	describe_params(P, 1, &d)
+	virtual_name := new(StringName)
+	gde.string_name_new_with_utf8_chars(virtual_name, name)
+	flags := gde.FLAG_NORMAL | gde.FLAG_VIRTUAL
+	if required { flags |= gde.FLAG_VIRTUAL_REQUIRED }
+	info := gde.ClassVirtualMethodInfo {
+		name               = virtual_name,
+		method_flags       = u32(flags),
+		return_value       = {name = &empty_name, class_name = &empty_name, hint_string = &empty_string},
+		argument_count     = u32(ARGS),
+		arguments          = &d.infos[0],
+		arguments_metadata = &d.metas[0],
+	}
+	when RET == 1 {
+		R :: intrinsics.type_proc_return_type(P, 0)
+		info.return_value = info_of(R, &empty_name)
+		info.return_value_metadata = variant_meta(R)
+	}
+	gde.classdb_register_extension_class_virtual_method(library, &c.name, &info)
+	for i in 0 ..< ARGS { destroy[.STRING_NAME](&d.names[i]) }
+	append(&owned, virtual_name)
+	return virtual_name
+}
+
+// Calls `self`'s script's override of the virtual `name` (from `script_virtual`) with `args`, which
+// it destroys. `found` is false, and `ret` null, when the object's script does not define it. The
+// caller owns `ret`. A Variant call, as GDScript's own calls to a script method are.
+call_script :: proc "contextless" (self: ^$T, name: ^StringName, args: ..Variant, loc := #caller_location) -> (ret: Variant, found: bool) {
+	MOST :: 31
+	if len(args) > MOST { fail("odin: too many arguments", "call_script") }
+	defer for i in 0 ..< len(args) { gde.variant_destroy(&args[i]) }
+	object := rawptr(object_of(self))
+	if gde.object_has_script_method(object, name) == 0 { return }
+	at: [MOST]gde.ConstVariantPtr = ---
+	for i in 0 ..< len(args) { at[i] = &args[i] }
+	err: gde.CallError
+	gde.object_call_script_method(object, name, &at[0], gde.Int(len(args)), &ret, &err)
+	if err.error != .OK {
+		context = ctx
+		error("call_script: the script's override failed (call error %v)", err.error, loc = loc)
+	}
+	return ret, true
+}
+
+// Gives class `c` to the editor as a plugin; `c` must extend EditorPlugin. Call it from `entry`'s
+// `editor` proc, after `class`. It leaves the editor before the class unregisters.
+editor_plugin :: proc(c: ^Class($T)) {
+	assert(registering_editor, "godot_odin: editor_plugin runs in entry's editor proc")
+	gde.editor_add_plugin(&c.name)
+	append(&plugins, &c.name)
+}
+
+// Makes `object` the engine singleton `name`, which GDScript reaches as a global and Odin through
+// `singleton`. Call it from `register`. The name is taken back at unload, before `unload` runs;
+// the object stays the caller's to free, in `unload` or after.
+register_singleton :: proc(name: cstring, object: Object) {
+	assert(object != nil, "godot_odin: a singleton needs an object")
+	singleton_name := new(StringName)
+	gde.string_name_new_with_utf8_chars(singleton_name, name)
+	engine_register_singleton(engine_singleton(), singleton_name^, object)
+	append(&owned, singleton_name)
+	append(&singletons, singleton_name)
+}
+
 // A PropertyInfo for Odin type `A` named `name`; an engine class argument names its class.
 @(private)
 info_of :: proc($A: typeid, name: ^StringName) -> gde.PropertyInfo {
@@ -510,6 +799,11 @@ info_of :: proc($A: typeid, name: ^StringName) -> gde.PropertyInfo {
 		if qualified, ok := enum_names[A]; ok {
 			info.class_name = qualified
 			info.usage |= u32(PropertyUsageFlags_PROPERTY_USAGE_CLASS_IS_ENUM)
+		}
+	} else when intrinsics.type_is_bit_set(A) {
+		if qualified, ok := flag_names[intrinsics.type_bit_set_elem_type(A)]; ok {
+			info.class_name = qualified
+			info.usage |= u32(PropertyUsageFlags_PROPERTY_USAGE_CLASS_IS_BITFIELD)
 		}
 	} else when intrinsics.type_is_pointer(A) && intrinsics.type_base_type(A) != rawptr {
 		c := (^Class(intrinsics.type_elem_type(A)))(class_slot(intrinsics.type_elem_type(A))^)

@@ -26,11 +26,17 @@ Field :: struct {
 	offset:   uintptr,
 	size:     int,
 	type:     gde.VariantType,
+	// INT: the Odin integer is unsigned (a bit_set is), so it widens with zeros.
+	unsigned: bool,
 	// OBJECT: the class tag a Variant write must match. ARRAY: the element class of a typed array.
 	tag:      rawptr,
 	array_of: ^StringName,
 	// ARRAY with `array_of`: the element type, OBJECT for a class or the builtin `array_of` names.
+	// DICTIONARY with `array_of`: the value type, the same way; NIL for Variant.
 	element:  gde.VariantType,
+	// DICTIONARY with `array_of`: the key class (empty for a builtin key) and the key type.
+	key_of:   ^StringName,
+	key:      gde.VariantType,
 	// OBJECT: the field's class is RefCounted or Object, so what it holds may be counted. A field of
 	// any other class is held raw and never touched at store, create or free.
 	counted:  bool,
@@ -53,6 +59,9 @@ Layout :: struct {
 @(private)
 enum_names: map[typeid]^StringName
 
+// The bitfield name ("Class.Flags") `enumerate_flags` gave each enum, for `bit_set`s of it.
+@(private)
+flag_names: map[typeid]^StringName
 @(private)
 nil_variant: Variant
 
@@ -98,6 +107,30 @@ enumerate :: proc(c: ^Class($T), name: cstring, $E: typeid) where intrinsics.typ
 	enum_names[E] = qualified
 }
 
+// Registers each value `v` of enum `E` as the bitfield constant `1 << v` of `c` in `name`, read from
+// GDScript as `Class.name.VALUE`, and makes a `bit_set[E]` field or parameter cross as that
+// bitfield: an integer of those bits, a flags checklist in the inspector. `E`'s values run from 0,
+// below 64. Runs before `fields` or `method` meets `bit_set[E]`.
+enumerate_flags :: proc(c: ^Class($T), name: cstring, $E: typeid) where intrinsics.type_is_enum(E) {
+	enum_sn: StringName
+	gde.string_name_new_with_utf8_chars(&enum_sn, name)
+	lowest := max(i64)
+	for f in reflect.enum_fields_zipped(E) {
+		v := i64(f.value)
+		assert(v >= 0 && v < 64, "godot_odin: a flag's value is its bit, from 0 to 63")
+		lowest = min(lowest, v)
+		value_sn := name_of(f.name)
+		gde.classdb_register_extension_class_integer_constant(library, &c.name, &enum_sn, &value_sn, gde.Int(1) << uint(v), 1)
+		destroy[.STRING_NAME](&value_sn)
+	}
+	assert(lowest == 0, "godot_odin: a flags enum starts at 0, so bit_set bit k is value k")
+	destroy[.STRING_NAME](&enum_sn)
+	qualified := new(StringName)
+	qualified^ = name_of(fmt.tprintf("%s.%s", c.title, name))
+	append(&owned, qualified)
+	flag_names[E] = qualified
+}
+
 // Makes fields and parameters of enum `E` cross as `qualified` ("Class.Enum"), an enum a script
 // class declares, registering no constant: `E` must hold the script enum's values, in its order.
 mirror :: proc($E: typeid, qualified: string) where intrinsics.type_is_enum(E) {
@@ -121,9 +154,11 @@ constant :: proc(c: ^Class($T), name: string, value: i64) {
 // `range:"min,max,step"` and `hint:"color_no_alpha"` set its inspector hint; `group:"Name"` and
 // `subgroup:"Name"` open a group before it; `array:"Class"` types an Array field's elements to that
 // class, or to the builtin it names (`array:"PackedInt32Array"`);
+// `dict:"Key,Value"` types a Dictionary field's keys and values, each a builtin, a class or `Variant`;
 // `class:"Name"` types an Object field to an extension class, read back through `instance_of`;
 // `godot:"new"` gives each instance a new object of a RefCounted field's class, released at free.
 // Array and Dictionary fields always start empty: the template's must be zero, as must a new one's.
+// A `bit_set` of an enum crosses as an integer of its bits, a flags checklist in the inspector.
 fields :: proc(c: ^Class($T), template: ^T = nil) {
 	if template != nil {
 		t := new(T)
@@ -196,8 +231,15 @@ field_of :: proc(sf: reflect.Struct_Field) -> (f: Field) {
 	#partial switch info in runtime.type_info_base(sf.type).variant {
 	case runtime.Type_Info_Boolean:
 		f.type = .BOOL
-	case runtime.Type_Info_Integer, runtime.Type_Info_Enum:
+	case runtime.Type_Info_Integer:
 		f.type = .INT
+		f.unsigned = !info.signed
+	case runtime.Type_Info_Enum:
+		f.type = .INT
+	case runtime.Type_Info_Bit_Set:
+		assert(info.lower == 0, "godot_odin: a bit_set field's enum starts at 0")
+		f.type = .INT
+		f.unsigned = true
 	case runtime.Type_Info_Float:
 		f.type = .FLOAT
 	case runtime.Type_Info_Pointer:
@@ -351,6 +393,16 @@ register_field :: proc(class: ^StringName, sf: reflect.Struct_Field, f: ^Field) 
 		destroy[.STRING_NAME](&node_sn)
 		append(&owned, class_sn)
 		info.class_name = class_sn
+	} else if d, ok := reflect.struct_tag_lookup(sf.tag, "dict"); ok {
+		assert(f.type == .DICTIONARY, "godot_odin: a dict tag on a field that is not a Dictionary")
+		info.hint, hint_text = dict_types(f, d)
+	} else if set, is_set := runtime.type_info_base(sf.type).variant.(runtime.Type_Info_Bit_Set); is_set {
+		info.hint = u32(PropertyHint.PROPERTY_HINT_FLAGS)
+		hint_text = enum_hint(set.elem.id, flags = true)
+		if qualified, named := flag_names[set.elem.id]; named {
+			info.class_name = qualified
+			info.usage |= u32(PropertyUsageFlags_PROPERTY_USAGE_CLASS_IS_BITFIELD)
+		}
 	} else if _, is_enum := runtime.type_info_base(sf.type).variant.(runtime.Type_Info_Enum); is_enum {
 		info.hint = u32(PropertyHint.PROPERTY_HINT_ENUM)
 		hint_text = enum_hint(sf.type.id)
@@ -434,10 +486,36 @@ array_hint :: proc(class: StringName, name: string) -> (u32, string) {
 	return u32(PropertyHint.PROPERTY_HINT_TYPE_STRING), element
 }
 
+// Types a Dictionary field by its `dict:"Key,Value"` tag, each a builtin type name, a class, or
+// `Variant`, and returns its DICTIONARY_TYPE hint.
+@(private)
+dict_types :: proc(f: ^Field, tag: string) -> (u32, string) {
+	comma := strings.index_byte(tag, ',')
+	assert(comma > 0, "godot_odin: a dict tag is \"Key,Value\"")
+	key_text := strings.trim_space(tag[:comma])
+	value_text := strings.trim_space(tag[comma + 1:])
+	f.key, f.key_of = dict_side(key_text)
+	f.element, f.array_of = dict_side(value_text)
+	return u32(PropertyHint.PROPERTY_HINT_DICTIONARY_TYPE), fmt.tprintf("%s;%s", key_text, value_text)
+}
+
+// One side of a typed dictionary: its Variant type, and its class name, empty for a builtin.
+@(private)
+dict_side :: proc(text: string) -> (gde.VariantType, ^StringName) {
+	if text == "Variant" { return .NIL, &empty_name }
+	t := builtin_named(text)
+	if t != .NIL { return t, &empty_name }
+	class_sn := new(StringName)
+	class_sn^ = name_of(text)
+	append(&owned, class_sn)
+	return .OBJECT, class_sn
+}
+
 // The ENUM hint text for enum type `id`: "Name:value" for each value, comma-separated, each
 // UPPER_SNAKE name capitalized as the engine's String.capitalize does ("HOLE_UP" reads "Hole Up").
+// `flags` gives the FLAGS hint text instead, each value as its bit, `1 << value`.
 @(private)
-enum_hint :: proc(id: typeid) -> string {
+enum_hint :: proc(id: typeid, flags := false) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	for f, i in reflect.enum_fields_zipped(id) {
 		if i > 0 { strings.write_byte(&b, ',') }
@@ -452,7 +530,7 @@ enum_hint :: proc(id: typeid) -> string {
 			strings.write_byte(&b, c if word_start else c + ('a' - 'A'))
 			word_start = false
 		}
-		fmt.sbprintf(&b, ":%d", f.value)
+		fmt.sbprintf(&b, ":%d", i64(1) << uint(f.value) if flags else i64(f.value))
 	}
 	return strings.to_string(b)
 }
@@ -476,6 +554,14 @@ packed_element :: proc "contextless" (t: gde.VariantType) -> gde.VariantType {
 field_meta :: proc "contextless" (f: ^Field) -> gde.ClassMethodArgumentMetadata {
 	#partial switch f.type {
 	case .INT:
+		if f.unsigned {
+			switch f.size {
+			case 1: return .INT_IS_UINT8
+			case 2: return .INT_IS_UINT16
+			case 4: return .INT_IS_UINT32
+			}
+			return .INT_IS_UINT64
+		}
 		switch f.size {
 		case 1: return .INT_IS_INT8
 		case 2: return .INT_IS_INT16
@@ -489,7 +575,15 @@ field_meta :: proc "contextless" (f: ^Field) -> gde.ClassMethodArgumentMetadata 
 }
 
 @(private)
-read_int :: #force_inline proc "contextless" (p: rawptr, size: int) -> i64 {
+read_int :: #force_inline proc "contextless" (p: rawptr, size: int, unsigned: bool) -> i64 {
+	if unsigned {
+		switch size {
+		case 1: return i64((^u8)(p)^)
+		case 2: return i64((^u16)(p)^)
+		case 4: return i64((^u32)(p)^)
+		}
+		return (^i64)(p)^
+	}
 	switch size {
 	case 1: return i64((^i8)(p)^)
 	case 2: return i64((^i16)(p)^)
@@ -579,7 +673,7 @@ field_get_ptr :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, arg
 	case .BOOL:
 		(^u8)(ret)^ = (^u8)(p)^
 	case .INT:
-		(^i64)(ret)^ = read_int(p, f.size)
+		(^i64)(ret)^ = read_int(p, f.size, f.unsigned)
 	case .FLOAT:
 		(^f64)(ret)^ = read_float(p, f.size)
 	case .OBJECT:
@@ -617,7 +711,7 @@ field_get_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, ar
 	case .BOOL:
 		variant_into((^Variant)(ret), (^u8)(p)^ != 0)
 	case .INT:
-		variant_into((^Variant)(ret), read_int(p, f.size))
+		variant_into((^Variant)(ret), read_int(p, f.size, f.unsigned))
 	case .FLOAT:
 		variant_into((^Variant)(ret), read_float(p, f.size))
 	case .OBJECT:
@@ -644,6 +738,17 @@ field_set_ptr :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, arg
 		context = ctx
 		enter()
 		store_object(f, p, (^rawptr)(a)^)
+	case .DICTIONARY:
+		// As a typed Array: assign converts the entries or refuses and leaves the field.
+		if f.array_of != nil {
+			dictionary_assign((^Dictionary)(p), (^Dictionary)(a)^)
+		} else {
+			tmp: Dictionary
+			src := [1]gde.ConstTypePtr{a}
+			copy_from[.DICTIONARY](&tmp, &src[0])
+			destroy[.DICTIONARY](p)
+			(^Dictionary)(p)^ = tmp
+		}
 	case .ARRAY:
 		// A typed field keeps its type: assign converts the elements or refuses and leaves it.
 		if f.array_of != nil {
@@ -728,6 +833,9 @@ field_set_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, ar
 		if f.type == .ARRAY && f.array_of != nil {
 			array_assign((^Array)(p), (^Array)(&tmp)^)
 			destroy[.ARRAY](&tmp)
+		} else if f.type == .DICTIONARY && f.array_of != nil {
+			dictionary_assign((^Dictionary)(p), (^Dictionary)(&tmp)^)
+			destroy[.DICTIONARY](&tmp)
 		} else {
 			if counted(f.type) { destroy[f.type](p) }
 			intrinsics.mem_copy(p, &tmp, f.size)
@@ -748,6 +856,10 @@ fields_init :: proc(l: ^Layout, self: rawptr, size: int) {
 		case .ARRAY, .DICTIONARY:
 			make_empty[f.type](p, nil)
 			if f.array_of == nil { continue }
+			if f.type == .DICTIONARY {
+				gde.dictionary_set_typed(p, f.key, f.key_of, &nil_variant, f.element, f.array_of, &nil_variant)
+				continue
+			}
 			class := f.array_of if f.element == .OBJECT else &empty_name
 			gde.array_set_typed(p, f.element, class, &nil_variant)
 		case .OBJECT:
