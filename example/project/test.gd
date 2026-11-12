@@ -168,6 +168,30 @@ func _check_extras() -> int:
 	if b2.second([1, "two", 3]) != "two" or b2.second([1]) != null:
 		print("FAIL: Bag.second gave %s and %s, not two and null" % [b2.second([1, "two", 3]), b2.second([1])])
 		failures += 1
+	var img: Image = Image.create_empty(2, 2, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 1, 1))
+	b2.redden(img)
+	if img.get_pixel(1, 1) != Color(1, 0, 1, 1):
+		print("FAIL: Bag.redden gave %s, not (1, 0, 1, 1)" % img.get_pixel(1, 1))
+		failures += 1
+	var bytes := PackedByteArray()
+	for i in 200:
+		bytes.append(i)
+	var fw: FileAccess = FileAccess.open("user://bag_sum.bin", FileAccess.WRITE)
+	fw.store_buffer(bytes)
+	fw.close()
+	if b2.file_sum("user://bag_sum.bin") != 19900 or b2.file_sum("user://missing.bin") != -1:
+		print("FAIL: Bag.file_sum gave %d and %d, not 19900 and -1" % [b2.file_sum("user://bag_sum.bin"), b2.file_sum("user://missing.bin")])
+		failures += 1
+	if b2.shout("hé") != "hé!¡?hé" or b2.shout("") != "!¡?":
+		print("FAIL: Bag.shout gave %s and %s" % [b2.shout("hé"), b2.shout("")])
+		failures += 1
+	if b2.parallel_sum(100000) != 4999950000 or b2.parallel_sum(0) != 0:
+		print("FAIL: Bag.parallel_sum gave %d, not 4999950000" % b2.parallel_sum(100000))
+		failures += 1
+	if b2.task_text(1234) != 9:
+		print("FAIL: Bag.task_text gave %d, not 9" % b2.task_text(1234))
+		failures += 1
 	var tally: Object = Engine.get_singleton(&"ExampleTally")
 	if tally == null or tally.bump() != 1 or tally.bump() != 2:
 		print("FAIL: the ExampleTally singleton is missing or miscounts")

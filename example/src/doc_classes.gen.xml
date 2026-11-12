@@ -93,6 +93,21 @@
 		<method name="second">
 			<description>Element 1 of [code]xs[/code], or null when it has none.</description>
 		</method>
+		<method name="redden">
+			<description>Sets the red of every pixel of [code]img[/code], an RGBA8 image, to full, written in place. Any other format is left alone.</description>
+		</method>
+		<method name="file_sum">
+			<description>The sum of the bytes of the file at [code]path[/code], read 64 at a time; -1 when it cannot be opened.</description>
+		</method>
+		<method name="shout">
+			<description>[code]s[/code], then "!¡", '?' and [code]s[/code] again, appended in place to one new String.</description>
+		</method>
+		<method name="parallel_sum">
+			<description>The sum of 0 to [code]n - 1[/code], in chunks spread over the engine's worker threads.</description>
+		</method>
+		<method name="task_text">
+			<description>The length of "task &lt;x&gt;", formatted on a worker thread in that thread's temp memory.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

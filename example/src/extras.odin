@@ -72,6 +72,11 @@ register_extras :: proc() {
 	godot.method(b, "colors", bag_colors)
 	godot.method(b, "vowels", bag_vowels, {"s"})
 	godot.method(b, "second", bag_second, {"xs"})
+	godot.method(b, "redden", bag_redden, {"img"})
+	godot.method(b, "file_sum", bag_file_sum, {"path"})
+	godot.method(b, "shout", bag_shout, {"s"})
+	godot.method(b, "parallel_sum", bag_parallel_sum, {"n"})
+	godot.method(b, "task_text", bag_task_text, {"x"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -217,6 +222,78 @@ bag_second :: proc(self: ^Bag, xs: godot.Array) -> godot.Variant {
 	out: godot.Variant
 	if v := godot.array_at(&xs, 1); v != nil { gde.variant_new_copy(&out, v) }
 	return out
+}
+
+// Sets the red of every pixel of `img`, an RGBA8 image, to full, written in place. Any other
+// format is left alone.
+bag_redden :: proc(self: ^Bag, img: godot.Image) {
+	if godot.image_get_format(img) != .FORMAT_RGBA8 { return }
+	px := godot.image_write(img)
+	for i := 0; i < len(px); i += 4 { px[i] = 255 }
+}
+
+// The sum of the bytes of the file at `path`, read 64 at a time; -1 when it cannot be opened.
+bag_file_sum :: proc(self: ^Bag, path: godot.String) -> i64 {
+	f := godot.file_access_open(path, .READ)
+	if f == nil { return -1 }
+	defer godot.release(f)
+	buf: [64]u8
+	sum: i64
+	for {
+		n := godot.file_read(f, buf[:])
+		for x in buf[:n] { sum += i64(x) }
+		if n < len(buf) { break }
+	}
+	return sum
+}
+
+// `s`, then "!¡", '?' and `s` again, appended in place to one new String.
+bag_shout :: proc(self: ^Bag, s: godot.String) -> godot.String {
+	out := godot.string_new_from_string(s)
+	godot.string_append(&out, "!¡")
+	godot.string_append(&out, '?')
+	godot.string_append(&out, s)
+	return out
+}
+
+SUM_CHUNK :: 1024
+
+// A sum split into chunks, one per worker call; each call writes only its own part.
+Sum_Job :: struct {
+	n:     int,
+	parts: []i64,
+}
+
+// The sum of 0 to `n - 1`, in chunks spread over the engine's worker threads.
+bag_parallel_sum :: proc(self: ^Bag, n: i64) -> i64 {
+	count := int(max(n, 0))
+	job := Sum_Job{n = count, parts = make([]i64, (count + SUM_CHUNK - 1) / SUM_CHUNK, context.temp_allocator)}
+	if len(job.parts) == 0 { return 0 }
+	godot.wait_group(godot.run_group(sum_chunk, &job, len(job.parts), description = "Bag.parallel_sum"))
+	sum: i64
+	for p in job.parts { sum += p }
+	return sum
+}
+
+sum_chunk :: proc(job: ^Sum_Job, i: int) {
+	for k in i * SUM_CHUNK ..< min((i + 1) * SUM_CHUNK, job.n) { job.parts[i] += i64(k) }
+}
+
+// The input and result of one worker task.
+Text_Job :: struct {
+	x:   i64,
+	len: int,
+}
+
+// The length of "task <x>", formatted on a worker thread in that thread's temp memory.
+bag_task_text :: proc(self: ^Bag, x: i64) -> i64 {
+	job := Text_Job{x = x}
+	godot.wait_task(godot.run_task(text_task, &job))
+	return i64(job.len)
+}
+
+text_task :: proc(job: ^Text_Job) {
+	job.len = len(fmt.tprintf("task %d", job.x))
 }
 
 // Calls so far, counting this one.

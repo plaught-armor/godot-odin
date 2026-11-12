@@ -43,6 +43,10 @@ register :: proc() {
 	godot.method(c, "packed_build_ns", packed_build_ns, {"fast", "n"})
 	godot.method(c, "string_scan_ns", string_scan_ns, {"s", "fast", "n"})
 	godot.method(c, "array_read_ns", array_read_ns, {"xs", "fast", "n"})
+	godot.method(c, "image_fill_ns", image_fill_ns, {"fast", "n"})
+	godot.method(c, "file_read_ns", file_read_ns, {"path", "fast", "n"})
+	godot.method(c, "task_ns", task_ns, {"n"})
+	godot.method(c, "group_item_ns", group_item_ns, {"n"})
 	godot.method(c, "callable_call_ns", callable_call_ns, {"f", "n"})
 }
 
@@ -166,6 +170,89 @@ array_read_ns :: proc(self: ^Bench, xs: godot.Array, fast: bool, n: i64) -> f64 
 	}
 	ns := f64(time.tick_since(start)) / f64(n * count)
 	self.total += sum
+	return ns
+}
+
+// Nanoseconds per pixel to fill a 64x64 RGBA8 Image: through `image_write` when `fast`, else by
+// one `set_pixel` per pixel. Over `n` rounds.
+image_fill_ns :: proc(self: ^Bench, fast: bool, n: i64) -> f64 {
+	SIDE :: 64
+	img := godot.image_create_empty(SIDE, SIDE, false, .FORMAT_RGBA8)
+	defer godot.release(img)
+	start := time.tick_now()
+	for r in 0 ..< n {
+		if fast {
+			px := godot.image_write(img)
+			for i := 0; i < len(px); i += 4 { px[i], px[i + 1], px[i + 2], px[i + 3] = u8(r), 0, 0, 255 }
+		} else {
+			c := godot.Color{f32(r & 255) / 255, 0, 0, 1}
+			for y in 0 ..< i64(SIDE) {
+				for x in 0 ..< i64(SIDE) { godot.image_set_pixel(img, x, y, c) }
+			}
+		}
+	}
+	ns := f64(time.tick_since(start)) / f64(n * SIDE * SIDE)
+	self.total += godot.image_get_data_size(img)
+	return ns
+}
+
+// Nanoseconds per 4 KiB chunk to read the file at `path` from start to end: into an Odin buffer with
+// `file_read` when `fast`, else as a new PackedByteArray from `get_buffer`, read in place and
+// destroyed. Over `n` rounds.
+file_read_ns :: proc(self: ^Bench, path: godot.String, fast: bool, n: i64) -> f64 {
+	CHUNK :: 4096
+	f := godot.file_access_open(path, .READ)
+	if f == nil { return -1 }
+	defer godot.release(f)
+	buf: [CHUNK]u8
+	sum, chunks: i64
+	start := time.tick_now()
+	for _ in 0 ..< n {
+		godot.file_access_seek(f, 0)
+		for {
+			got: int
+			if fast {
+				got = godot.file_read(f, buf[:])
+				sum += i64(buf[0])
+			} else {
+				b := godot.file_access_get_buffer(f, CHUNK)
+				bytes := godot.packed_read(&b)
+				got = len(bytes)
+				if got > 0 { sum += i64(bytes[0]) }
+				godot.packed_byte_array_destroy(&b)
+			}
+			chunks += 1
+			if got < CHUNK { break }
+		}
+	}
+	ns := f64(time.tick_since(start)) / f64(chunks)
+	self.total += sum
+	return ns
+}
+
+// Bumps one counter, as a worker task.
+bump_task :: proc(x: ^i64) { x^ += 1 }
+
+// Bumps the counter for index `i`, as one call of a group.
+bump_item :: proc(xs: ^[1024]i64, i: int) { xs[i] += 1 }
+
+// Nanoseconds per task to queue one `run_task` and wait for it, `n` times in a row.
+task_ns :: proc(self: ^Bench, n: i64) -> f64 {
+	x: i64
+	start := time.tick_now()
+	for _ in 0 ..< n { godot.wait_task(godot.run_task(bump_task, &x)) }
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += x
+	return ns
+}
+
+// Nanoseconds per call of a 1024-call `run_group`, waited for, over `n` groups.
+group_item_ns :: proc(self: ^Bench, n: i64) -> f64 {
+	xs: [1024]i64
+	start := time.tick_now()
+	for _ in 0 ..< n { godot.wait_group(godot.run_group(bump_item, &xs, len(xs))) }
+	ns := f64(time.tick_since(start)) / f64(n * len(xs))
+	self.total += xs[0]
 	return ns
 }
 

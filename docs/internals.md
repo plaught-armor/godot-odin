@@ -19,9 +19,9 @@ the engine dumps, and writes:
 | `godot/gen_calls.odin` | Per-arity call dispatch for registered methods. |
 | `godot/gen_skipped.txt` | Anything the generator could not bind (empty for 4.7). |
 
-The hand-written core (`core.odin`, `class.odin`, `fields.odin`, `variant.odin`, `callable.odin`)
-turns Odin structs and procs into engine classes. It uses the generated code; the generated code
-calls back into `core.odin` only to look up its engine pointers.
+The hand-written core (`core.odin`, `class.odin`, `fields.odin`, `variant.odin`, `callable.odin`,
+`access.odin`, `tasks.odin`) turns Odin structs and procs into engine classes. It uses the
+generated code; the generated code calls back into `core.odin` only to look up its engine pointers.
 
 ## Method calls
 

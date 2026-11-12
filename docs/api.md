@@ -173,6 +173,8 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `same_name(a, b) -> bool` | StringName equality. Names are interned, so this is one compare. |
 | `array_name_at(&array, i) -> StringName` | Element `i` as a StringName, which you destroy. |
 | `string_read(&s) -> []rune` | A String's characters as a slice over its storage, read in place: about 0.07 ns per character, against 4.4 ns for `unicode_at`. Valid until `s` changes. Do not write through it. |
+| `string_write(&s) -> []rune` | The same, writable. A shared String gets storage of its own first. Only on a String you own. |
+| `string_append(&s, x)` | Appends Odin text, a String or a rune to `s` in place. Text goes through the engine's UTF-8 parser, as `string_of` does, so the result matches a String built from the same bytes. Only on a String you own. |
 
 ## Packed arrays
 
@@ -181,6 +183,30 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `packed_read(&a) -> []E` | A packed array's elements as a slice over its storage, read in place: about 0.05 ns per element in a sum loop, against 3.2 ns for `packed_int64_array_get`. Valid until `a` changes. Do not write through it, since the storage may be shared. |
 | `packed_write(&a) -> []E` | The same, writable. A shared array gets storage of its own first. Use it only on an array you own, such as a copy made with `packed_<type>_array_new_from_packed_<type>_array`, never on a borrowed parameter. |
 | `packed_of(xs) -> PackedX` | A new packed array copied from an Odin slice in one resize and one copy, for any of the ten element types: about 0.14 ns per element, against 2 ns for one `set` each. A String element is copied as a new reference. You destroy it, or return it. |
+
+## Images and files
+
+| Proc | Use |
+|---|---|
+| `image_read(img) -> []u8` | An Image's pixel bytes, read in place, laid out as `image_get_format` says. Valid until `img` changes. Do not write through it. |
+| `image_write(img) -> []u8` | The same, writable: about 0.6 ns per RGBA8 pixel, against 5 ns for `image_set_pixel`. A texture made from `img` sees the writes only once updated from it. |
+| `file_read(f, dst) -> int` | Reads up to `len(dst)` bytes of `f` into `dst` and returns how many it read, without a PackedByteArray: about 470 ns per 4 KiB, against 535 ns for `get_buffer`. |
+| `file_write(f, src)` | Writes `src` to `f`. `file_access_get_error` reports a failure. |
+
+## Worker threads
+
+| Proc | Use |
+|---|---|
+| `run_task(f, &data) -> id` | Runs `f(&data)` once on the engine's WorkerThreadPool. `f` is a compile-time constant proc. |
+| `run_group(f, &data, count) -> id` | Runs `f(&data, i)` for `i` in `0 ..< count`, spread over the pool. `tasks` caps the threads; -1 lets the engine choose. |
+| `wait_task(id)` / `wait_group(id)` | Waits for a task or group to finish. Wait before `data` goes out of scope. |
+
+Each worker call runs with the core's allocator and that worker thread's own temp allocator, rolled
+back when `f` returns. It does not run `enter`: Odin class callbacks and engine calls the engine
+does not allow off the main thread must not be made from `f`, and `f` must not touch what the main
+thread is changing. Queueing and waiting cost the same as the engine's own `add_task` with a
+Callable, about 4 µs for one task and 23 ns per group call; `f` itself runs as plain Odin, with no
+Variant or Callable in between.
 
 ## Temp memory and threads
 

@@ -43,6 +43,19 @@ func _initialize() -> void:
 		words.append("word %d" % i)
 	_report("Odin read Array of Strings, get(), per element", func() -> float: return b.array_read_ns(words, false, N / 1000))
 	_report("Odin read Array of Strings, array_at, per element", func() -> float: return b.array_read_ns(words, true, N / 1000))
+	_report("Odin fill Image, set_pixel(), per pixel", func() -> float: return b.image_fill_ns(false, N / 4096))
+	_report("Odin fill Image, image_write, per pixel", func() -> float: return b.image_fill_ns(true, N / 4096))
+	var data := PackedByteArray()
+	data.resize(1 << 20)
+	var fw: FileAccess = FileAccess.open("user://bench_read.bin", FileAccess.WRITE)
+	fw.store_buffer(data)
+	fw.close()
+	_report("Odin read file, get_buffer(), per 4 KiB", func() -> float: return b.file_read_ns("user://bench_read.bin", false, N / 100000))
+	_report("Odin read file, file_read, per 4 KiB", func() -> float: return b.file_read_ns("user://bench_read.bin", true, N / 100000))
+	_report("Odin run_task + wait_task, per task", func() -> float: return b.task_ns(N / 1000))
+	_report("GDScript add_task + wait, per task (Callable)", func() -> float: return _gd_tasks())
+	_report("Odin run_group of 1024 + wait, per call", func() -> float: return b.group_item_ns(N / 10000))
+	_report("GDScript add_group_task of 1024 + wait, per call", func() -> float: return _gd_groups())
 	var bump: Callable = func(x: int) -> int: return x + 1
 	_report("Odin -> Callable.call (GDScript lambda)", func() -> float: return b.callable_call_ns(bump, N))
 	_report("GDScript -> Callable.call (same lambda)", func() -> float: return _callable_calls(bump))
@@ -141,6 +154,24 @@ func _callable_calls(f: Callable) -> float:
 	for i in N:
 		f.call(1)
 	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+# Queues one empty task on the pool and waits for it, N / 1000 times.
+func _gd_tasks() -> float:
+	var f: Callable = func() -> void: pass
+	var t: int = Time.get_ticks_usec()
+	for i in N / 1000:
+		WorkerThreadPool.wait_for_task_completion(WorkerThreadPool.add_task(f))
+	return float(Time.get_ticks_usec() - t) * 1000.0 / (N / 1000)
+
+
+# Queues a 1024-call group of empty calls and waits for it, N / 10000 times.
+func _gd_groups() -> float:
+	var f: Callable = func(_i: int) -> void: pass
+	var t: int = Time.get_ticks_usec()
+	for i in N / 10000:
+		WorkerThreadPool.wait_for_group_task_completion(WorkerThreadPool.add_group_task(f, 1024))
+	return float(Time.get_ticks_usec() - t) * 1000.0 / (N / 10000 * 1024)
 
 
 func _emits(b: Bench) -> float:
