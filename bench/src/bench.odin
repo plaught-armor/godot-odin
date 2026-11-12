@@ -467,6 +467,8 @@ Ident :: enum i64 {
 	FINDN_TEXT,        // string_findn_text of the same Odin text
 	NOCASE_ENGINE,     // the generated string_nocasecmp_to against a cached String in other case
 	EQUAL_NOCASE,      // string_equal_text_nocase of the same Odin text
+	COUNT_ENGINE,      // the generated string_count of a cached String in the sentence
+	COUNT_TEXT,        // string_count_text of the same Odin text
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -672,6 +674,21 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 	case .EQUAL_NOCASE:
 		for _ in 0 ..< n {
 			sum += i64(godot.string_equal_text_nocase(intrinsics.volatile_load(&ref), "PLAYER_JUMP"))
+		}
+	case .COUNT_ENGINE:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		needle := godot.intern_text("the")
+		for _ in 0 ..< n {
+			sum += godot.string_count(intrinsics.volatile_load(&h), needle, 0, 0)
+		}
+	case .COUNT_TEXT:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		for _ in 0 ..< n {
+			sum += godot.string_count_text(intrinsics.volatile_load(&h), "the")
 		}
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)

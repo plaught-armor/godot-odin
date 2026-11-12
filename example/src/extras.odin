@@ -124,6 +124,7 @@ register_extras :: proc() {
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
 	godot.method(b, "nocase", bag_nocase, {"s", "part", "from"})
+	godot.method(b, "count_text", bag_count_text, {"s", "part", "from", "to"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -600,6 +601,15 @@ bag_nocase :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64) -
 	r |= i64(godot.string_containsn_text(&s, text)) << 32
 	r |= i64(godot.string_equal_text_nocase(&s, text)) << 33
 	return r
+}
+
+// `string_count_text` of `part`'s text in `s` between `from` and `to` in bits 0 to 31, and
+// `string_countn_text` in bits 32 and up.
+bag_count_text :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64, to: i64) -> i64 {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	return godot.string_count_text(&s, text, from, to) | godot.string_countn_text(&s, text, from, to) << 32
 }
 
 // Where `part`'s text last appears in `s` at or before `from`, by `string_rfind_text`.

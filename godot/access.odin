@@ -227,6 +227,37 @@ string_equal_text_nocase :: proc "contextless" (s: ^String, text: string) -> boo
 	return ok && n == len(chars)
 }
 
+// How many times Odin text `text` appears in `s` between characters `from` and `to`, not
+// overlapping: the engine's `count`, compared in place. As there, `to` 0 means the end, a `to` past
+// the end stops there, and empty text, a negative bound or `from` at or past `to` gives 0.
+string_count_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0, to: i64 = 0) -> i64 {
+	return count_in(string_read(s), needle_of(text, false), from, to, false)
+}
+
+// `string_count_text` ignoring case: the engine's `countn`.
+string_countn_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0, to: i64 = 0) -> i64 {
+	return count_in(string_read(s), needle_of(text, true), from, to, true)
+}
+
+@(private)
+count_in :: #force_inline proc "contextless" (chars: []rune, n: Needle, from, to: i64, $NOCASE: bool) -> (count: i64) {
+	if n.count == 0 || from < 0 || to < 0 { return 0 }
+	end := i64(len(chars)) if to == 0 else min(to, i64(len(chars)))
+	if from >= end { return 0 }
+	part := chars[from:end]
+	last := len(part) - n.count
+	start := 0
+	// Each match moves `start` on by at least one, so `len(part) + 1` rounds cover it.
+	for _ in 0 ..= len(part) {
+		if start > last { break }
+		at := find_forward(part, start, last, n, NOCASE)
+		if at < 0 { break }
+		count += 1
+		start = int(at) + n.count
+	}
+	return
+}
+
 // The first place from `start` up to `last` where `n` appears in `chars`, or -1. Four places per
 // step while none of them can hold `n`'s first character, then one at a time through a step that
 // can. Every round moves `i` on, so `len(chars) + 1` rounds cover it.

@@ -366,6 +366,16 @@ func _check_extras() -> int:
 			if b2.nocase(s, c[1], from) != want:
 				print("FAIL: Bag.nocase(%s, %s, %d) gave %x, not %x" % [s, c[1], from, b2.nocase(s, c[1], from), want])
 				failures += 1
+	var count_cases: Array = [["", ""], ["abc", ""], ["aaaa", "aa"], ["aAaA", "aa"], ["abcABCabc", "abc"],
+		["\u0130x\u0130", "ix"], ["\u65E5\u672C\u65E5\u672C", "\u672C"], ["ab", "abc"], ["--ab--ab-ab", "ab"]]
+	for c: Array in count_cases:
+		var s: String = c[0]
+		for range_: Array in [[0, 0], [1, 0], [0, 3], [2, 5], [3, 3], [4, 2], [-1, 0], [0, -1], [0, 40], [20, 0]]:
+			var got: int = b2.count_text(s, c[1], range_[0], range_[1])
+			var want: int = s.count(c[1], range_[0], range_[1]) | s.countn(c[1], range_[0], range_[1]) << 32
+			if got != want:
+				print("FAIL: Bag.count_text(%s, %s, %d, %d) gave %x, not %x" % [s, c[1], range_[0], range_[1], got, want])
+				failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
 		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]
