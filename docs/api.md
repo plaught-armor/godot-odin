@@ -161,6 +161,8 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `variant_type(A)`, `variant_meta(A)` | The Variant type and the width metadata an Odin type crosses as. |
 | `converts(have, want)`, `reshapes(have, want)`, `reshape(&v, want, &out)` | The conversion rules a Variant call follows. |
 | `destroy[type]` | Destructors by Variant type, for builtins: `destroy[.STRING](&s)`. |
+| `array_at(&a, i) -> ^Variant` | Element `i` of an Array, borrowed: no copy, and you do not destroy it. Nil when `i` is out of range. |
+| `dict_at(&d, &key) -> ^Variant` | The value a Dictionary holds for `key`, borrowed the same way. Nil when the key is missing. |
 
 ## Strings and names
 
@@ -171,6 +173,7 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `static_name("literal") -> StringName` | A StringName kept for the life of the process. Cache it in a global at register time. |
 | `same_name(a, b) -> bool` | StringName equality. Names are interned, so this is one compare. |
 | `array_name_at(&array, i) -> StringName` | Element `i` as a StringName, which you destroy. |
+| `string_read(&s) -> []rune` | A String's characters as a slice over its storage, read in place. Valid until `s` changes. Do not write through it. |
 
 ## Packed arrays
 
@@ -178,6 +181,7 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 |---|---|
 | `packed_read(&a) -> []E` | A packed array's elements as a slice over its storage, read in place: about 0.07 ns per element in a sum loop, against 3.6 ns for `packed_int64_array_get`. Valid until `a` changes. Do not write through it, since the storage may be shared. |
 | `packed_write(&a) -> []E` | The same, writable. A shared array gets storage of its own first. Use it only on an array you own, such as a copy made with `packed_<type>_array_new_from_packed_<type>_array`, never on a borrowed parameter. |
+| `packed_of(xs) -> PackedX` | A new packed array copied from an Odin slice in one resize and one copy, for any of the ten element types. A String element is copied as a new reference. You destroy it, or return it. |
 
 ## Temp memory and threads
 

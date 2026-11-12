@@ -68,6 +68,11 @@ register_extras :: proc() {
 	godot.method(b, "has_marks", bag_has_marks, {"marks"})
 	godot.method(b, "total", bag_total, {"xs"})
 	godot.method(b, "doubled", bag_doubled, {"xs"})
+	godot.method(b, "squares", bag_squares, {"n"})
+	godot.method(b, "colors", bag_colors)
+	godot.method(b, "vowels", bag_vowels, {"s"})
+	godot.method(b, "second", bag_second, {"xs"})
+	godot.method(b, "lookup", bag_lookup, {"d", "key"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -178,6 +183,48 @@ bag_total :: proc(self: ^Bag, xs: godot.PackedInt64Array) -> i64 {
 bag_doubled :: proc(self: ^Bag, xs: godot.PackedInt64Array) -> godot.PackedInt64Array {
 	out := godot.packed_int64_array_new_from_packed_int64_array(xs)
 	for &x in godot.packed_write(&out) { x *= 2 }
+	return out
+}
+
+// The squares of 0 to `n - 1`, built in an Odin slice and handed over in one copy.
+bag_squares :: proc(self: ^Bag, n: i64) -> godot.PackedInt64Array {
+	xs := make([]i64, max(n, 0), context.temp_allocator)
+	for &x, i in xs { x = i64(i * i) }
+	return godot.packed_of(xs)
+}
+
+// The names of the bag's flags.
+bag_colors :: proc(self: ^Bag) -> godot.PackedStringArray {
+	names := [3]godot.String{godot.string_of("red"), godot.string_of("green"), godot.string_of("blue")}
+	defer for &n in names { godot.destroy[.STRING](&n) }
+	return godot.packed_of(names[:])
+}
+
+// The vowels in `s`, read in place, counting accented ones.
+bag_vowels :: proc(self: ^Bag, s: godot.String) -> i64 {
+	s := s
+	n: i64
+	for c in godot.string_read(&s) {
+		switch c {
+		case 'a', 'e', 'i', 'o', 'u', 'é', 'è', 'à': n += 1
+		}
+	}
+	return n
+}
+
+// Element 1 of `xs`, or null when it has none.
+bag_second :: proc(self: ^Bag, xs: godot.Array) -> godot.Variant {
+	xs := xs
+	out: godot.Variant
+	if v := godot.array_at(&xs, 1); v != nil { gde.variant_new_copy(&out, v) }
+	return out
+}
+
+// The value `d` holds for `key`, or null when it has none.
+bag_lookup :: proc(self: ^Bag, d: godot.Dictionary, key: godot.Variant) -> godot.Variant {
+	d, key := d, key
+	out: godot.Variant
+	if v := godot.dict_at(&d, &key); v != nil { gde.variant_new_copy(&out, v) }
 	return out
 }
 

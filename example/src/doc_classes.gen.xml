@@ -81,6 +81,21 @@
 		<method name="doubled">
 			<description>A copy of [code]xs[/code] with every element doubled. [code]xs[/code] is borrowed, so the copy is written, not [code]xs[/code].</description>
 		</method>
+		<method name="squares">
+			<description>The squares of 0 to [code]n - 1[/code], built in an Odin slice and handed over in one copy.</description>
+		</method>
+		<method name="colors">
+			<description>The names of the bag's flags.</description>
+		</method>
+		<method name="vowels">
+			<description>The vowels in [code]s[/code], read in place, counting accented ones.</description>
+		</method>
+		<method name="second">
+			<description>Element 1 of [code]xs[/code], or null when it has none.</description>
+		</method>
+		<method name="lookup">
+			<description>The value [code]d[/code] holds for [code]key[/code], or null when it has none.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

@@ -156,6 +156,22 @@ func _check_extras() -> int:
 	if u.total(PackedInt64Array()) != 0:
 		print("FAIL: Bag.total of an empty array is %s, not 0" % u.total(PackedInt64Array()))
 		failures += 1
+	if b2.squares(4) != PackedInt64Array([0, 1, 4, 9]) or b2.squares(0) != PackedInt64Array():
+		print("FAIL: Bag.squares gave %s and %s, not [0, 1, 4, 9] and []" % [b2.squares(4), b2.squares(0)])
+		failures += 1
+	if b2.colors() != PackedStringArray(["red", "green", "blue"]):
+		print("FAIL: Bag.colors gave %s" % b2.colors())
+		failures += 1
+	if b2.vowels("héllo wörld") != 2 or b2.vowels("") != 0:
+		print("FAIL: Bag.vowels counted %d and %d, not 2 and 0" % [b2.vowels("héllo wörld"), b2.vowels("")])
+		failures += 1
+	if b2.second([1, "two", 3]) != "two" or b2.second([1]) != null:
+		print("FAIL: Bag.second gave %s and %s, not two and null" % [b2.second([1, "two", 3]), b2.second([1])])
+		failures += 1
+	var d := {"a": [1, 2], 3: "c"}
+	if b2.lookup(d, "a") != [1, 2] or b2.lookup(d, 3) != "c" or b2.lookup(d, "zz") != null or d.size() != 2:
+		print("FAIL: Bag.lookup gave %s, %s and %s, and left %s" % [b2.lookup(d, "a"), b2.lookup(d, 3), b2.lookup(d, "zz"), d])
+		failures += 1
 	var tally: Object = Engine.get_singleton(&"ExampleTally")
 	if tally == null or tally.bump() != 1 or tally.bump() != 2:
 		print("FAIL: the ExampleTally singleton is missing or miscounts")

@@ -112,6 +112,60 @@ packed_slice :: #force_inline proc "contextless" ($E: typeid, a: rawptr, n: i64,
 	return ([^]E)(rawptr(at(a, 0)))[:n]
 }
 
+// A new packed array holding a copy of `xs`, which the caller destroys or returns. A String element
+// is copied as a new reference; the others are copied as bytes.
+packed_of :: proc {
+	packed_of_byte, packed_of_int32, packed_of_int64, packed_of_float32, packed_of_float64,
+	packed_of_string, packed_of_vector2, packed_of_vector3, packed_of_vector4, packed_of_color,
+}
+
+packed_of_byte :: proc "contextless" (xs: []u8) -> (out: PackedByteArray) { out = packed_byte_array_new(); packed_fill(&out, xs, packed_byte_array_resize, packed_write_byte); return }
+packed_of_int32 :: proc "contextless" (xs: []i32) -> (out: PackedInt32Array) { out = packed_int32_array_new(); packed_fill(&out, xs, packed_int32_array_resize, packed_write_int32); return }
+packed_of_int64 :: proc "contextless" (xs: []i64) -> (out: PackedInt64Array) { out = packed_int64_array_new(); packed_fill(&out, xs, packed_int64_array_resize, packed_write_int64); return }
+packed_of_float32 :: proc "contextless" (xs: []f32) -> (out: PackedFloat32Array) { out = packed_float32_array_new(); packed_fill(&out, xs, packed_float32_array_resize, packed_write_float32); return }
+packed_of_float64 :: proc "contextless" (xs: []f64) -> (out: PackedFloat64Array) { out = packed_float64_array_new(); packed_fill(&out, xs, packed_float64_array_resize, packed_write_float64); return }
+packed_of_vector2 :: proc "contextless" (xs: []Vector2) -> (out: PackedVector2Array) { out = packed_vector2_array_new(); packed_fill(&out, xs, packed_vector2_array_resize, packed_write_vector2); return }
+packed_of_vector3 :: proc "contextless" (xs: []Vector3) -> (out: PackedVector3Array) { out = packed_vector3_array_new(); packed_fill(&out, xs, packed_vector3_array_resize, packed_write_vector3); return }
+packed_of_vector4 :: proc "contextless" (xs: []Vector4) -> (out: PackedVector4Array) { out = packed_vector4_array_new(); packed_fill(&out, xs, packed_vector4_array_resize, packed_write_vector4); return }
+packed_of_color :: proc "contextless" (xs: []Color) -> (out: PackedColorArray) { out = packed_color_array_new(); packed_fill(&out, xs, packed_color_array_resize, packed_write_color); return }
+
+packed_of_string :: proc "contextless" (xs: []String) -> (out: PackedStringArray) {
+	out = packed_string_array_new()
+	packed_string_array_resize(&out, i64(len(xs)))
+	// Each new slot is an empty String, which holds nothing to release before it is overwritten.
+	for &s, i in packed_write_string(&out) { s = string_new_from_string(xs[i]) }
+	return
+}
+
+// Sizes `out` to `xs` and copies `xs` into it as bytes.
+@(private)
+packed_fill :: #force_inline proc "contextless" (out: ^$A, xs: []$E, resize: proc "contextless" (^A, i64) -> i64, write: proc "contextless" (^A) -> []E) {
+	resize(out, i64(len(xs)))
+	copy(write(out), xs)
+}
+
+// The characters of `s` as a slice over its storage, read in place. It stays valid until `s` is
+// written or destroyed. Do not write through it: the storage may be shared with copies of `s`.
+string_read :: proc "contextless" (s: ^String) -> []rune {
+	n := string_length(s)
+	if n <= 0 { return nil }
+	return gde.string_operator_index_const(s, 0)[:n]
+}
+
+// Element `i` of `a`, borrowed: valid until `a` changes or is destroyed, and not to be destroyed.
+// Nil when `i` is out of range.
+array_at :: proc "contextless" (a: ^Array, i: i64) -> ^Variant {
+	return (^Variant)(gde.array_operator_index_const(a, i))
+}
+
+// The value `d` holds for `key`, borrowed: valid until `d` changes or is destroyed, and not to be
+// destroyed. Nil when `d` has no such key.
+dict_at :: proc "contextless" (d: ^Dictionary, key: ^Variant) -> ^Variant {
+	// The engine reports an error for a missing key, so ask first.
+	if !dictionary_has(d, key^) { return nil }
+	return (^Variant)(gde.dictionary_operator_index_const(d, key))
+}
+
 // Drops one reference to the counted object `obj` and frees it when that was the last.
 release :: proc "contextless" (obj: $T) where intrinsics.type_base_type(T) == rawptr {
 	if obj == nil { return }
