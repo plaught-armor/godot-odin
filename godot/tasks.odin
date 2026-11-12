@@ -9,18 +9,18 @@ import gde "../gdextension"
 // `wait_task` takes. `f` must be a compile-time constant proc taking `^D`.
 //
 // `f` runs off the main thread, in a context of its own: the core's allocator, and the worker
-// thread's own temp allocator, rolled back when `f` returns. It must not touch what the main thread
+// thread's own temp allocator, rolled back when `f` returns and emptied, down to at most one
+// default block, once the thread's outermost call has returned. It must not touch what the main thread
 // is changing, and every engine call it makes must be one the engine allows off the main thread.
 // `data` must outlive the task: wait for it before freeing `data` or unloading.
 run_task :: proc($f: $P, data: ^$D, high_priority := false, description := "") -> i64 where intrinsics.type_is_proc(P) {
 	run :: proc "c" (userdata: rawptr) {
 		// The core's context, with this worker thread's own temp arena in place of the main
-		// thread's that `ctx` holds, marked and rolled back around the call.
+		// thread's that `ctx` holds, marked before the call and rolled back after it.
 		context = ctx
 		t := worker_temp()
 		context.temp_allocator.data = t
 		temp := runtime.arena_temp_begin(&t.arena)
-		defer runtime.arena_temp_end(temp)
 		// Saved and restored: a worker waiting on another task may run it on this thread.
 		when ODIN_DEBUG {
 			was := in_task
@@ -28,6 +28,7 @@ run_task :: proc($f: $P, data: ^$D, high_priority := false, description := "") -
 		}
 		f((^D)(userdata))
 		when ODIN_DEBUG { in_task = was }
+		worker_done(temp)
 	}
 	return add_task(run, data, high_priority, description)
 }
@@ -39,12 +40,11 @@ run_task :: proc($f: $P, data: ^$D, high_priority := false, description := "") -
 run_group :: proc($f: $P, data: ^$D, count: int, tasks := -1, high_priority := false, description := "") -> i64 where intrinsics.type_is_proc(P) {
 	run :: proc "c" (userdata: rawptr, i: u32) {
 		// The core's context, with this worker thread's own temp arena in place of the main
-		// thread's that `ctx` holds, marked and rolled back around the call.
+		// thread's that `ctx` holds, marked before the call and rolled back after it.
 		context = ctx
 		t := worker_temp()
 		context.temp_allocator.data = t
 		temp := runtime.arena_temp_begin(&t.arena)
-		defer runtime.arena_temp_end(temp)
 		// Saved and restored: a worker waiting on another task may run it on this thread.
 		when ODIN_DEBUG {
 			was := in_task
@@ -52,6 +52,7 @@ run_group :: proc($f: $P, data: ^$D, count: int, tasks := -1, high_priority := f
 		}
 		f((^D)(userdata), int(i))
 		when ODIN_DEBUG { in_task = was }
+		worker_done(temp)
 	}
 	assert(count >= 0 && count <= int(max(i32)), "godot_odin: run_group count out of range")
 	return add_group(run, data, count, tasks, high_priority, description)
@@ -71,6 +72,24 @@ wait_group :: proc "contextless" (id: i64) {
 @(private)
 worker_temp :: #force_inline proc "contextless" () -> ^runtime.Default_Temp_Allocator {
 	return &runtime.global_default_temp_allocator_data
+}
+
+// Rolls this thread's temp arena back to `temp`, the mark taken before a worker call. The arena
+// keeps its first block across rollbacks, with the bytes the first call took still marked used, so
+// once the outermost call on the thread has returned the arena is emptied: down to one block of the
+// default size, or to none when a call needed a bigger one, so one large task does not hold its
+// memory for the life of the thread. A call that runs inside another, on a thread that waits, or on
+// the main thread inside an engine call, leaves the outer marks alone.
+@(private)
+worker_done :: proc(temp: runtime.Arena_Temp) {
+	runtime.arena_temp_end(temp)
+	a := temp.arena
+	if a.temp_count != 0 { return }
+	if a.total_capacity > runtime.DEFAULT_ARENA_GROWING_MINIMUM_BLOCK_SIZE {
+		runtime.arena_destroy(a)
+	} else {
+		runtime.arena_free_all(a)
+	}
 }
 
 // Queues `run(data)` on the pool. The engine reads `description` before this returns.

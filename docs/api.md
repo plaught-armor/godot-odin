@@ -208,7 +208,8 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `wait_task(id)` / `wait_group(id)` | Waits for a task or group to finish. Wait before `data` goes out of scope. |
 
 Each worker call runs with the core's allocator and that worker thread's own temp allocator, rolled
-back when `f` returns. It does not run `enter`: Odin class callbacks and engine calls the engine
+back when `f` returns. Once a thread's outermost call returns, its temp arena is emptied, down to one
+4 MiB block, or to none after a call that needed more, so a large task does not keep its memory. It does not run `enter`: Odin class callbacks and engine calls the engine
 does not allow off the main thread must not be made from `f`, and `f` must not touch what the main
 thread is changing. A debug build stops with `godot_odin: a run_task or run_group proc called into
 an Odin class` when a task does, directly or through an engine call that reaches one; a release

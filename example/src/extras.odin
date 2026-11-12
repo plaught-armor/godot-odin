@@ -5,6 +5,7 @@ package example
 
 import "../../godot"
 import gde "../../gdextension"
+import "base:runtime"
 import "core:fmt"
 
 // The flags a Bag can carry; bit_set[Mark] crosses as their bitfield.
@@ -77,6 +78,7 @@ register_extras :: proc() {
 	godot.method(b, "file_sum", bag_file_sum, {"path"})
 	godot.method(b, "shout", bag_shout, {"s"})
 	godot.method(b, "parallel_sum", bag_parallel_sum, {"n"})
+	godot.method(b, "worker_temp_freed", bag_worker_temp_freed)
 	godot.method(b, "task_text", bag_task_text, {"x"})
 	godot.method(b, "misuse_task", bag_misuse_task)
 	godot.method(b, "bump_all", bag_bump_all, {"xs"})
@@ -305,6 +307,37 @@ bag_task_text :: proc(self: ^Bag, x: i64) -> i64 {
 
 text_task :: proc(job: ^Text_Job) {
 	job.len = len(fmt.tprintf("task %d", job.x))
+}
+
+// Whether worker threads give back the temp memory a task used: one group takes 8 MiB of temp per
+// call, twice the default block, then a second group finds every worker's temp arena empty and
+// no bigger than one default block.
+bag_worker_temp_freed :: proc(self: ^Bag) -> bool {
+	CALLS :: 64
+	job := Temp_Job{kept = make([]uint, CALLS, context.temp_allocator)}
+	godot.wait_group(godot.run_group(take_temp, &job, CALLS))
+	godot.wait_group(godot.run_group(check_temp, &job, CALLS))
+	for k in job.kept {
+		if k > runtime.DEFAULT_ARENA_GROWING_MINIMUM_BLOCK_SIZE { return false }
+	}
+	return true
+}
+
+Temp_Job :: struct {
+	// Per call of `check_temp`: its thread's temp capacity, or max(uint) when bytes stayed in use.
+	kept: []uint,
+}
+
+take_temp :: proc(job: ^Temp_Job, i: int) {
+	buf := make([]u8, 8 << 20, context.temp_allocator)
+	buf[len(buf) - 1] = u8(i)
+}
+
+check_temp :: proc(job: ^Temp_Job, i: int) {
+	// The arena as the call found it: the trampoline's mark is the only one on it.
+	a := &(^runtime.Default_Temp_Allocator)(context.temp_allocator.data).arena
+	used := a.curr_block.used if a.curr_block != nil else 0
+	job.kept[i] = max(uint) if used != 0 else a.total_capacity
 }
 
 // Adds 1 to every int element of `xs` in place, which the caller sees, as with `xs[i] += 1` in

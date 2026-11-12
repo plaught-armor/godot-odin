@@ -189,6 +189,9 @@ func _check_extras() -> int:
 	if b2.parallel_sum(100000) != 4999950000 or b2.parallel_sum(0) != 0:
 		print("FAIL: Bag.parallel_sum gave %d, not 4999950000" % b2.parallel_sum(100000))
 		failures += 1
+	if not b2.worker_temp_freed():
+		print("FAIL: a worker thread kept the temp memory of an earlier task")
+		failures += 1
 	if b2.task_text(1234) != 9:
 		print("FAIL: Bag.task_text gave %d, not 9" % b2.task_text(1234))
 		failures += 1
