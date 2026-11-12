@@ -19,6 +19,12 @@ the engine dumps, and writes:
 | `godot/gen_calls.odin` | Per-arity call dispatch for registered methods. |
 | `godot/gen_skipped.txt` | Anything the generator could not bind (empty for 4.7). |
 
+`tools/gen_caps.py` writes `godot/gen_caps.odin` from the engine source's
+`core/string/ucaps.h`, which the API dumps do not carry: the engine's case tables, for the
+case-insensitive String compares to fold characters as the engine does. Regenerate it from the
+release the bindings target when that release changes the tables:
+`tools/gen_caps.py ucaps.h godot/gen_caps.odin`.
+
 The hand-written core (`core.odin`, `class.odin`, `fields.odin`, `variant.odin`, `callable.odin`,
 `access.odin`, `tasks.odin`) turns Odin structs and procs into engine classes. It uses the
 generated code; the generated code calls back into `core.odin` only to look up its engine pointers.

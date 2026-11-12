@@ -463,6 +463,10 @@ Ident :: enum i64 {
 	NAME_WHICH,        // name_which on a Name_Set of them
 	RFIND_ENGINE,      // the generated string_rfind of a cached String near the start of the sentence
 	RFIND_TEXT,        // string_rfind_text of the same Odin text
+	FINDN_ENGINE,      // the generated string_findn of a cached String, in other case, in the sentence
+	FINDN_TEXT,        // string_findn_text of the same Odin text
+	NOCASE_ENGINE,     // the generated string_nocasecmp_to against a cached String in other case
+	EQUAL_NOCASE,      // string_equal_text_nocase of the same Odin text
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -644,6 +648,30 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		h := &hay
 		for _ in 0 ..< n {
 			sum += godot.string_rfind_text(intrinsics.volatile_load(&h), "quick")
+		}
+	case .FINDN_ENGINE:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		needle := godot.intern_text("LAZY")
+		for _ in 0 ..< n {
+			sum += godot.string_findn(intrinsics.volatile_load(&h), needle, 0)
+		}
+	case .FINDN_TEXT:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		for _ in 0 ..< n {
+			sum += godot.string_findn_text(intrinsics.volatile_load(&h), "LAZY")
+		}
+	case .NOCASE_ENGINE:
+		other := godot.intern_text("PLAYER_JUMP")
+		for _ in 0 ..< n {
+			sum += godot.string_nocasecmp_to(intrinsics.volatile_load(&ref), other)
+		}
+	case .EQUAL_NOCASE:
+		for _ in 0 ..< n {
+			sum += i64(godot.string_equal_text_nocase(intrinsics.volatile_load(&ref), "PLAYER_JUMP"))
 		}
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)

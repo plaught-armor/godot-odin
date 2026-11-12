@@ -123,6 +123,7 @@ register_extras :: proc() {
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
+	godot.method(b, "nocase", bag_nocase, {"s", "part", "from"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -585,6 +586,20 @@ bag_find_text :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64
 	text := godot.utf8(part)
 	defer delete(text)
 	return godot.string_find_text(&s, text, from)
+}
+
+// The case-insensitive compares of `part`'s text against `s`, packed for one call: bits 0 to 15
+// hold `string_findn_text` + 1, bits 16 to 31 `string_rfindn_text` + 1, bit 32
+// `string_containsn_text` and bit 33 `string_equal_text_nocase`.
+bag_nocase :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64) -> i64 {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	r := (godot.string_findn_text(&s, text, from) + 1) & 0xFFFF
+	r |= ((godot.string_rfindn_text(&s, text, from) + 1) & 0xFFFF) << 16
+	r |= i64(godot.string_containsn_text(&s, text)) << 32
+	r |= i64(godot.string_equal_text_nocase(&s, text)) << 33
+	return r
 }
 
 // Where `part`'s text last appears in `s` at or before `from`, by `string_rfind_text`.

@@ -350,6 +350,22 @@ func _check_extras() -> int:
 		if b2.which_name(w) != which_name_cases[w]:
 			print("FAIL: Bag.which_name(%s) gave %d, not %d" % [w, b2.which_name(w), which_name_cases[w]])
 			failures += 1
+	# Case pairs, with the characters the engine's tables fold into ASCII: U+0130 and the Kelvin
+	# sign lower to i and k, U+0131 and long s raise to I and S.
+	var nocase_cases: Array = [["Hello", "hello"], ["HELLO world", "WORLD"], ["abc", "ABD"], ["", ""],
+		["x", ""], ["", "x"], ["İstanbul", "istanbul"], ["Kelvin", "kelvin"], ["ı", "I"],
+		["ſun", "SUN"], ["ÉtÉ", "été"], ["Straße", "STRASSE"], ["Σσ", "σΣ"],
+		["xxİAb-", "iab"], ["--a-b-ab", "AB"], ["@[`{", "`{"], ["İ", "i̇"], ["kKk", "KK"]]
+	for pad: int in 6:
+		nocase_cases.append(["é".repeat(pad) + "zZ" + "-".repeat(pad), "Zz"])
+	for c: Array in nocase_cases:
+		var s: String = c[0]
+		for from: int in [-3, -1, 0, 1, 2, 5]:
+			var want: int = ((s.findn(c[1], from) + 1) & 0xFFFF) | (((s.rfindn(c[1], from) + 1) & 0xFFFF) << 16)
+			want |= int(s.containsn(c[1])) << 32 | int(s.nocasecmp_to(c[1]) == 0) << 33
+			if b2.nocase(s, c[1], from) != want:
+				print("FAIL: Bag.nocase(%s, %s, %d) gave %x, not %x" % [s, c[1], from, b2.nocase(s, c[1], from), want])
+				failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
 		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]

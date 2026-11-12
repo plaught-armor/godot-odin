@@ -173,27 +173,10 @@ string_ends_with_text :: proc "contextless" (s: ^String, text: string) -> bool {
 // place `text`'s first character appears, and compares the rest there.
 string_find_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0) -> i64 {
 	chars := string_read(s)
-	n := needle_of(text)
+	n := needle_of(text, false)
 	start, last, ok := find_start(len(chars), n, from)
 	if !ok { return -1 }
-	// Four starts per step while none of them holds `first`, then one at a time through a step
-	// that does. Every round moves `i` on, so `len(chars) + 1` rounds cover it.
-	f := u32(n.first)
-	firsts := #simd[4]u32{f, f, f, f}
-	i := start
-	for _ in 0 ..= len(chars) {
-		if i > last { break }
-		if i + 3 <= last {
-			v := intrinsics.unaligned_load((^#simd[4]u32)(&chars[i]))
-			if intrinsics.simd_reduce_or(intrinsics.simd_lanes_eq(v, firsts)) == 0 {
-				i += 4
-				continue
-			}
-		}
-		if needle_at(chars, i, n) { return i64(i) }
-		i += 1
-	}
-	return -1
+	return find_forward(chars, start, last, n, false)
 }
 
 // Where Odin text `text` last appears in `s` at or before character `from`, in characters, or -1:
@@ -201,41 +184,118 @@ string_find_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0)
 // -1 searches from the last place `text` fits, and a `from` past that place gives -1.
 string_rfind_text :: proc "contextless" (s: ^String, text: string, from: i64 = -1) -> i64 {
 	chars := string_read(s)
-	n := needle_of(text)
+	n := needle_of(text, false)
 	start, _, ok := find_start(len(chars), n, from)
 	if !ok { return -1 }
-	// As in `string_find_text`, walking down: four starts ending at `i` per step while none holds
-	// `first`.
-	f := u32(n.first)
-	firsts := #simd[4]u32{f, f, f, f}
+	return find_backward(chars, start, n, false)
+}
+
+// `string_find_text` ignoring case: the engine's `findn`, which lowers each character of both
+// through the engine's Unicode case table before comparing.
+string_findn_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0) -> i64 {
+	chars := string_read(s)
+	n := needle_of(text, true)
+	start, last, ok := find_start(len(chars), n, from)
+	if !ok { return -1 }
+	return find_forward(chars, start, last, n, true)
+}
+
+// `string_rfind_text` ignoring case: the engine's `rfindn`.
+string_rfindn_text :: proc "contextless" (s: ^String, text: string, from: i64 = -1) -> i64 {
+	chars := string_read(s)
+	n := needle_of(text, true)
+	start, _, ok := find_start(len(chars), n, from)
+	if !ok { return -1 }
+	return find_backward(chars, start, n, true)
+}
+
+// Whether Odin text `text` appears in `s` ignoring case: the engine's `containsn`.
+string_containsn_text :: proc "contextless" (s: ^String, text: string) -> bool {
+	return string_findn_text(s, text) >= 0
+}
+
+// Whether `s` holds Odin text `text` ignoring case: the engine's `nocasecmp_to(text) == 0`, which
+// raises each character of both through the engine's Unicode case table before comparing. All
+// ASCII on both sides compares with no branch per character.
+string_equal_text_nocase :: proc "contextless" (s: ^String, text: string) -> bool {
+	chars := string_read(s)
+	if len(chars) > len(text) || len(chars) * 4 < len(text) { return false }
+	if len(chars) == len(text) {
+		if equal, plain := ascii_nocase_matches(chars, text); plain { return equal }
+	}
+	n, ok := fold_prefix_of(chars, text, true)
+	return ok && n == len(chars)
+}
+
+// The first place from `start` up to `last` where `n` appears in `chars`, or -1. Four places per
+// step while none of them can hold `n`'s first character, then one at a time through a step that
+// can. Every round moves `i` on, so `len(chars) + 1` rounds cover it.
+@(private)
+find_forward :: #force_inline proc "contextless" (chars: []rune, start, last: int, n: Needle, $NOCASE: bool) -> i64 {
+	i := start
+	for _ in 0 ..= len(chars) {
+		if i > last { break }
+		if i + 3 <= last {
+			v := intrinsics.unaligned_load((^#simd[4]u32)(&chars[i]))
+			if !may_hold_first(v, n, NOCASE) {
+				i += 4
+				continue
+			}
+		}
+		if needle_at(chars, i, n, NOCASE) { return i64(i) }
+		i += 1
+	}
+	return -1
+}
+
+// As `find_forward`, walking down from `start` to 0: four places ending at `i` per step.
+@(private)
+find_backward :: #force_inline proc "contextless" (chars: []rune, start: int, n: Needle, $NOCASE: bool) -> i64 {
 	i := start
 	for _ in 0 ..= len(chars) {
 		if i < 0 { break }
 		if i >= 3 {
 			v := intrinsics.unaligned_load((^#simd[4]u32)(&chars[i - 3]))
-			if intrinsics.simd_reduce_or(intrinsics.simd_lanes_eq(v, firsts)) == 0 {
+			if !may_hold_first(v, n, NOCASE) {
 				i -= 4
 				continue
 			}
 		}
-		if needle_at(chars, i, n) { return i64(i) }
+		if needle_at(chars, i, n, NOCASE) { return i64(i) }
 		i -= 1
 	}
 	return -1
 }
 
-// Text searched for by `string_find_text` and `string_rfind_text`, with its length in characters
-// and its first character.
+// Whether any of four characters may be `n`'s first. Ignoring case, an ASCII letter matches with
+// bit 5 set, and any non-ASCII character may lower to it.
+@(private)
+may_hold_first :: #force_inline proc "contextless" (v: #simd[4]u32, n: Needle, $NOCASE: bool) -> bool {
+	f := u32(n.first)
+	firsts := #simd[4]u32{f, f, f, f}
+	when NOCASE {
+		m := n.fold_bit
+		hit := intrinsics.simd_lanes_eq(intrinsics.simd_bit_or(v, #simd[4]u32{m, m, m, m}), firsts)
+		wide := intrinsics.simd_lanes_ge(v, #simd[4]u32{0x80, 0x80, 0x80, 0x80})
+		return intrinsics.simd_reduce_or(intrinsics.simd_bit_or(hit, wide)) != 0
+	} else {
+		return intrinsics.simd_reduce_or(intrinsics.simd_lanes_eq(v, firsts)) != 0
+	}
+}
+
+// Text searched for by the find procs, with its length in characters and its first character,
+// lowered when the search ignores case. `fold_bit` is 0x20 when that character is an ASCII letter.
 @(private)
 Needle :: struct {
-	text:  string,
-	ascii: bool,
-	count: int,
-	first: rune,
+	text:     string,
+	ascii:    bool,
+	count:    int,
+	first:    rune,
+	fold_bit: u32,
 }
 
 @(private)
-needle_of :: #force_inline proc "contextless" (text: string) -> (n: Needle) {
+needle_of :: #force_inline proc "contextless" (text: string, $NOCASE: bool) -> (n: Needle) {
 	n.text = text
 	if len(text) == 0 { return }
 	n.ascii = text_is_ascii(text)
@@ -244,6 +304,10 @@ needle_of :: #force_inline proc "contextless" (text: string) -> (n: Needle) {
 	} else {
 		n.count = text_rune_count(text)
 		n.first, _ = utf8.decode_rune_in_string(text)
+	}
+	when NOCASE {
+		n.first = rune_lower(n.first)
+		if n.first >= 'a' && n.first <= 'z' { n.fold_bit = 0x20 }
 	}
 	return
 }
@@ -261,12 +325,21 @@ find_start :: #force_inline proc "contextless" (length: int, n: Needle, from: i6
 
 // Whether `n` appears at character `i` of `chars`, which it fits in.
 @(private)
-needle_at :: #force_inline proc "contextless" (chars: []rune, i: int, n: Needle) -> bool {
-	if chars[i] != n.first { return false }
+needle_at :: #force_inline proc "contextless" (chars: []rune, i: int, n: Needle, $NOCASE: bool) -> bool {
 	window := chars[i:][:n.count]
-	if n.ascii { return ascii_matches(window, n.text) }
-	_, ok := text_prefix_of(window, n.text)
-	return ok
+	when NOCASE {
+		if rune_lower(chars[i]) != n.first { return false }
+		if n.ascii {
+			if equal, plain := ascii_nocase_matches(window, n.text); plain { return equal }
+		}
+		_, ok := fold_prefix_of(window, n.text, false)
+		return ok
+	} else {
+		if chars[i] != n.first { return false }
+		if n.ascii { return ascii_matches(window, n.text) }
+		_, ok := text_prefix_of(window, n.text)
+		return ok
+	}
 }
 
 // Whether Odin text `text` appears in `s`, compared in place: `string_find_text` from the start.
@@ -398,6 +471,75 @@ text_rune_count :: proc "contextless" (text: string) -> (n: int) {
 		n += 1
 	}
 	return
+}
+
+// `chars` against the ASCII text `text` of the same length, ignoring ASCII case, with no branch per
+// character. `plain` is false when `chars` holds a non-ASCII character, which may fold to ASCII
+// through the engine's table (U+0130 lowers to 'i'), so `equal` is no answer then.
+@(private)
+ascii_nocase_matches :: #force_inline proc "contextless" (chars: []rune, text: string) -> (equal, plain: bool) {
+	diff, wide: u32
+	for c, k in chars {
+		u := u32(c)
+		wide |= u
+		diff |= ascii_lower(u) ~ ascii_lower(u32(text[k]))
+	}
+	return diff == 0, wide < 0x80
+}
+
+// `c` with an ASCII capital lowered, and anything else as it is.
+@(private)
+ascii_lower :: #force_inline proc "contextless" (c: u32) -> u32 {
+	return c | u32(c - 'A' < 26) << 5
+}
+
+// As `text_prefix_of`, comparing each character raised (`UPPER`) or lowered through the engine's
+// case tables.
+@(private)
+fold_prefix_of :: proc "contextless" (chars: []rune, text: string, $UPPER: bool) -> (count: int, ok: bool) {
+	i := 0
+	for _ in 0 ..< len(text) {
+		if i >= len(text) { break }
+		if count >= len(chars) { return count, false }
+		r, w := rune(text[i]), 1
+		if text[i] >= 0x80 { r, w = utf8.decode_rune_in_string(text[i:]) }
+		when UPPER {
+			if rune_upper(chars[count]) != rune_upper(r) { return count, false }
+		} else {
+			if rune_lower(chars[count]) != rune_lower(r) { return count, false }
+		}
+		i += w
+		count += 1
+	}
+	return count, true
+}
+
+// `c` raised as the engine's `_find_upper` does.
+@(private)
+rune_upper :: #force_inline proc "contextless" (c: rune) -> rune {
+	if u32(c) < 0x80 { return c - 0x20 if c >= 'a' && c <= 'z' else c }
+	return caps_find(CAPS_UPPER_FROM[:], CAPS_UPPER_TO[:], c)
+}
+
+// `c` lowered as the engine's `_find_lower` does.
+@(private)
+rune_lower :: #force_inline proc "contextless" (c: rune) -> rune {
+	if u32(c) < 0x80 { return c + 0x20 if c >= 'A' && c <= 'Z' else c }
+	return caps_find(CAPS_LOWER_FROM[:], CAPS_LOWER_TO[:], c)
+}
+
+// The value paired with `c` in a sorted case table, or `c` when it has none. Halving 1500 keys
+// takes 11 rounds; 16 bounds it.
+@(private)
+caps_find :: proc "contextless" (from, to: []u32, c: rune) -> rune {
+	lo, hi := 0, len(from)
+	for _ in 0 ..< 16 {
+		if lo >= hi { break }
+		mid := (lo + hi) / 2
+		if from[mid] < u32(c) { lo = mid + 1 } else { hi = mid }
+	}
+	if lo < len(from) && from[lo] == u32(c) { return rune(to[lo]) }
+	return c
 }
 
 // Element `i` of `a`, borrowed: valid until `a` changes or is destroyed, and not to be destroyed.

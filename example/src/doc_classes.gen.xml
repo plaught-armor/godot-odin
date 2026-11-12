@@ -225,6 +225,9 @@
 		<method name="rfind_text">
 			<description>Where [code]part[/code]'s text last appears in [code]s[/code] at or before [code]from[/code], by [code]string_rfind_text[/code].</description>
 		</method>
+		<method name="nocase">
+			<description>The case-insensitive compares of [code]part[/code]'s text against [code]s[/code], packed for one call: bits 0 to 15 hold [code]string_findn_text[/code] + 1, bits 16 to 31 [code]string_rfindn_text[/code] + 1, bit 32 [code]string_containsn_text[/code] and bit 33 [code]string_equal_text_nocase[/code].</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>
