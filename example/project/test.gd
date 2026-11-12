@@ -345,6 +345,11 @@ func _check_extras() -> int:
 			print("FAIL: Bag.which(%s) gave %d, not %d" % [w, b2.which(w), which_cases[w]])
 			failures += 1
 	# The engine's find and contains are the reference, from several starts.
+	var which_name_cases: Dictionary = {&"jump": 0, &"run": 1, &"日本": 2, &"": 3, &"runs": -1, &"Jump": -1}
+	for w: StringName in which_name_cases:
+		if b2.which_name(w) != which_name_cases[w]:
+			print("FAIL: Bag.which_name(%s) gave %d, not %d" % [w, b2.which_name(w), which_name_cases[w]])
+			failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
 		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]

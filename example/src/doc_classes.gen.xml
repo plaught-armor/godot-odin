@@ -213,6 +213,9 @@
 		<method name="which">
 			<description>The index of [code]s[/code] among a fixed set of names by [code]string_which[/code], or -1. "jump" and "jo-p" share a key, so the full compare picks between them; "rin", "jamp" and "jo本p" match a key and no name.</description>
 		</method>
+		<method name="which_name">
+			<description>The index of [code]name[/code] among a fixed set of names by [code]name_which[/code], or -1.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>

@@ -459,6 +459,8 @@ Ident :: enum i64 {
 	WHICH,             // string_which on a Text_Set of them
 	FIND_ENGINE,       // the generated string_find of a cached String in a 43-character sentence
 	FIND_TEXT,         // string_find_text of the same Odin text
+	NAME_CHAIN,        // same_name against intern of each of the 8 names in turn, the match last
+	NAME_WHICH,        // name_which on a Name_Set of them
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -625,6 +627,32 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		h := &hay
 		for _ in 0 ..< n {
 			sum += godot.string_find_text(intrinsics.volatile_load(&h), "lazy")
+		}
+	case .NAME_CHAIN:
+		sn := godot.name_of(text)
+		defer godot.destroy[.STRING_NAME](&sn)
+		r := &sn
+		for _ in 0 ..< n {
+			name := intrinsics.volatile_load(&r)^
+			switch {
+			case godot.same_name(name, godot.intern("player_jum")):    sum += 0
+			case godot.same_name(name, godot.intern("player_run")):    sum += 1
+			case godot.same_name(name, godot.intern("player_walk")):   sum += 2
+			case godot.same_name(name, godot.intern("player_dash")):   sum += 3
+			case godot.same_name(name, godot.intern("pause")):         sum += 4
+			case godot.same_name(name, godot.intern("player_crouch")): sum += 5
+			case godot.same_name(name, godot.intern("player_jumq")):   sum += 6
+			case godot.same_name(name, godot.intern("player_jump")):   sum += 7
+			}
+		}
+	case .NAME_WHICH:
+		sn := godot.name_of(text)
+		defer godot.destroy[.STRING_NAME](&sn)
+		r := &sn
+		set := godot.name_set(WHICH_NAMES)
+		defer godot.name_set_destroy(&set)
+		for _ in 0 ..< n {
+			sum += i64(godot.name_which(intrinsics.volatile_load(&r)^, &set))
 		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)

@@ -119,6 +119,7 @@ register_extras :: proc() {
 	godot.method(b, "lone_byte_matches", bag_lone_byte_matches)
 	godot.method(b, "text_ends", bag_text_ends, {"s", "part"})
 	godot.method(b, "which", bag_which, {"s"})
+	godot.method(b, "which_name", bag_which_name, {"name"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
@@ -568,6 +569,13 @@ bag_which :: proc(self: ^Bag, s: godot.String) -> i64 {
 	}
 	s := s
 	return i64(godot.string_which(&s, &set))
+}
+
+// The index of `name` among a fixed set of names by `name_which`, or -1.
+bag_which_name :: proc(self: ^Bag, name: godot.StringName) -> i64 {
+	set := godot.name_set([4]string{"jump", "run", "日本", ""})
+	defer godot.name_set_destroy(&set)
+	return i64(godot.name_which(name, &set))
 }
 
 // Where `part`'s text first appears in `s` at or after `from`, by `string_find_text`.
