@@ -118,6 +118,7 @@ register_extras :: proc() {
 	godot.method(b, "same_text", bag_same_text, {"a", "b"})
 	godot.method(b, "lone_byte_matches", bag_lone_byte_matches)
 	godot.method(b, "text_ends", bag_text_ends, {"s", "part"})
+	godot.method(b, "which", bag_which, {"s"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -552,6 +553,19 @@ bag_text_ends :: proc(self: ^Bag, s: godot.String, part: godot.String) -> i64 {
 	text := godot.utf8(part)
 	defer delete(text)
 	return i64(godot.string_begins_with_text(&s, text)) | i64(godot.string_ends_with_text(&s, text)) << 1
+}
+
+// The index of `s` among a fixed set of names by `string_which`, or -1. "jump" and "jo-p" share a
+// key, so the full compare picks between them; "rin", "jamp" and "jo本p" match a key and no name.
+bag_which :: proc(self: ^Bag, s: godot.String) -> i64 {
+	@(static) set: godot.Text_Set(7)
+	@(static) built: bool
+	if !built {
+		set = godot.text_set([7]string{"jump", "run", "walk", "日本", "", "runs", "jo-p"})
+		built = true
+	}
+	s := s
+	return i64(godot.string_which(&s, &set))
 }
 
 // One channel of the tint, 0 to 2; 0 for any other index.

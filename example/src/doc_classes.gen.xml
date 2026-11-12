@@ -210,6 +210,9 @@
 		<method name="text_ends">
 			<description>Whether [code]s[/code] begins with [code]part[/code]'s text, as bit 0, and ends with it, as bit 1: by [code]string_begins_with_text[/code] and [code]string_ends_with_text[/code].</description>
 		</method>
+		<method name="which">
+			<description>The index of [code]s[/code] among a fixed set of names by [code]string_which[/code], or -1. "rum" and "rim" share the key of "run" and "jump" of "jo-p", so they show the full compare after a key match.</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

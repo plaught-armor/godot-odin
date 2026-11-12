@@ -167,6 +167,57 @@ string_ends_with_text :: proc "contextless" (s: ^String, text: string) -> bool {
 	return ok
 }
 
+// A fixed set of names to match a String against, as `string_which` does. Each name has a key, its
+// length in characters with its first and last characters, so a lookup compares one integer per
+// name, and the characters of only the names whose key matches: names sharing a prefix, as
+// "player_jump" and "player_walk" do, still differ in their last character.
+Text_Set :: struct($N: int) {
+	keys:  [N]u64,
+	ascii: [N]bool,
+	names: [N]string,
+}
+
+// The set of `names`, for `string_which`. Build it once and keep it: it holds `names` themselves,
+// so they must outlive it (literals do).
+text_set :: proc "contextless" (names: [$N]string) -> (set: Text_Set(N)) {
+	set.names = names
+	for name, i in names {
+		first, last: rune
+		if len(name) > 0 {
+			first, _ = utf8.decode_rune_in_string(name)
+			last, _ = utf8.decode_last_rune_in_string(name)
+		}
+		set.keys[i] = text_key(text_rune_count(name), first, last)
+		set.ascii[i] = text_is_ascii(name)
+	}
+	return
+}
+
+// The index in `set` of the name `s` holds, the first one when names repeat; -1 when none.
+string_which :: proc "contextless" (s: ^String, set: ^Text_Set($N)) -> int {
+	chars := string_read(s)
+	first, last: rune
+	if len(chars) > 0 { first, last = chars[0], chars[len(chars) - 1] }
+	key := text_key(len(chars), first, last)
+	for k, i in set.keys {
+		if k != key { continue }
+		// The key matched, so an ASCII name is as long in bytes as `s` is in characters.
+		if set.ascii[i] {
+			if ascii_matches(chars, set.names[i]) { return i }
+		} else if _, ok := text_prefix_of(chars, set.names[i]); ok {
+			return i
+		}
+	}
+	return -1
+}
+
+// A name's key in a `Text_Set`: its length in characters, 22 bits of it, and its first and last
+// characters, 21 bits each. Names with one key still compare in full.
+@(private)
+text_key :: #force_inline proc "contextless" (count: int, first, last: rune) -> u64 {
+	return (u64(count) & (1 << 22 - 1)) << 42 | u64(u32(first)) << 21 | u64(u32(last))
+}
+
 // Whether every byte of `text` is ASCII: one pass with no branch per byte.
 @(private)
 text_is_ascii :: #force_inline proc "contextless" (text: string) -> bool {

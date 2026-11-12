@@ -338,6 +338,12 @@ func _check_extras() -> int:
 		if b2.text_ends(s, c[1]) != want:
 			print("FAIL: Bag.text_ends(%s, %s) gave %d, not %d" % [s, c[1], b2.text_ends(s, c[1]), want])
 			failures += 1
+	var which_cases: Dictionary = {"jump": 0, "run": 1, "walk": 2, "日本": 3, "": 4, "runs": 5,
+		"jo-p": 6, "rin": -1, "jamp": -1, "Jump": -1, "日": -1, "日本語": -1, "jumps": -1, "jo本p": -1}
+	for w: String in which_cases:
+		if b2.which(w) != which_cases[w]:
+			print("FAIL: Bag.which(%s) gave %d, not %d" % [w, b2.which(w), which_cases[w]])
+			failures += 1
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1

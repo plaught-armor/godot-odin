@@ -454,7 +454,14 @@ Ident :: enum i64 {
 	BEGINS_ENGINE,     // the generated string_begins_with, its prefix a cached String
 	BEGINS_TEXT,       // string_begins_with_text, its prefix Odin text
 	ENDS_TEXT,         // string_ends_with_text, its suffix Odin text
+	WHICH_ENGINE,      // the engine's String == over 8 cached Strings, the match last
+	WHICH_LOOP,        // string_equal_text over the same 8 names
+	WHICH,             // string_which on a Text_Set of them
 }
+
+// Action names for the `string_which` rows, the bench's identifier last, others of its length and
+// first character among them.
+WHICH_NAMES :: [8]string{"player_jum", "player_run", "player_walk", "player_dash", "pause", "player_crouch", "player_jumq", "player_jump"}
 
 // Nanoseconds per `kind` round on a short identifier, over `n` rounds.
 ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
@@ -573,6 +580,31 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 	case .ENDS_TEXT:
 		for _ in 0 ..< n {
 			sum += i64(godot.string_ends_with_text(intrinsics.volatile_load(&ref), "_jump"))
+		}
+	case .WHICH_ENGINE:
+		eq := gde.variant_get_ptr_operator_evaluator(.EQUAL, .STRING, .STRING)
+		cached: [len(WHICH_NAMES)]godot.String
+		for name, i in WHICH_NAMES { cached[i] = godot.string_of(name) }
+		defer for &c in cached { godot.destroy[.STRING](&c) }
+		for _ in 0 ..< n {
+			r := intrinsics.volatile_load(&ref)
+			for &c, i in cached {
+				hit: u8
+				eq(r, &c, &hit)
+				if hit != 0 { sum += i64(i); break }
+			}
+		}
+	case .WHICH_LOOP:
+		for _ in 0 ..< n {
+			r := intrinsics.volatile_load(&ref)
+			for name, i in WHICH_NAMES {
+				if godot.string_equal_text(r, name) { sum += i64(i); break }
+			}
+		}
+	case .WHICH:
+		set := godot.text_set(WHICH_NAMES)
+		for _ in 0 ..< n {
+			sum += i64(godot.string_which(intrinsics.volatile_load(&ref), &set))
 		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
