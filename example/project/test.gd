@@ -415,6 +415,19 @@ func _check_extras() -> int:
 		if b2.split_lengths(s, c[1]) != lengths:
 			print("FAIL: Bag.split_lengths(%s, %s) gave %s, not %s" % [s, c[1], b2.split_lengths(s, c[1]), lengths])
 			failures += 1
+	var strip_cases: Array = [["", ","], ["   ", ","], [" a , b ,c ", ","], ["\t x\n,\u0001y\u0020,\u00A0z\u00A0", ","],
+		[" \u65E5 ; \u672C\t;;  ", ";"], ["a b", ""], ["\u0021 \u001F!", "|"]]
+	for c: Array in strip_cases:
+		var s: String = c[0]
+		for sides: int in 4:
+			var left: bool = sides & 1 != 0
+			var right: bool = sides & 2 != 0
+			var want: PackedStringArray = []
+			for part: String in s.split(c[1]):
+				want.append(part.strip_edges(left, right))
+			if b2.split_strip(s, c[1], left, right) != want:
+				print("FAIL: Bag.split_strip(%s, %s, %s, %s) gave %s, not %s" % [s, c[1], left, right, b2.split_strip(s, c[1], left, right), want])
+				failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
 		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]

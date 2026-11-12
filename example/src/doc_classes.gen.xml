@@ -240,6 +240,9 @@
 		<method name="split_lengths">
 			<description>The length of each part of [code]s[/code] split on [code]part[/code]'s text, read through [code]string_split_parts[/code].</description>
 		</method>
+		<method name="split_strip">
+			<description>The parts of [code]s[/code] split on [code]part[/code]'s text, each trimmed by [code]runes_strip_edges[/code] and made a String by [code]string_of_runes[/code].</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

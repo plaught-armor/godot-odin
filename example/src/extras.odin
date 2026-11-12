@@ -128,6 +128,7 @@ register_extras :: proc() {
 	godot.method(b, "replace_text", bag_replace_text, {"s", "part", "with", "nocase"})
 	godot.method(b, "split_text", bag_split_text, {"s", "part", "allow_empty", "maxsplit"})
 	godot.method(b, "split_lengths", bag_split_lengths, {"s", "part"})
+	godot.method(b, "split_strip", bag_split_strip, {"s", "part", "left", "right"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -626,6 +627,22 @@ bag_split_lengths :: proc(self: ^Bag, s: godot.String, part: godot.String) -> go
 	parts := godot.string_split_parts(&s, text)
 	for p in godot.split_next(&parts) {
 		godot.packed_int64_array_append(&out, i64(len(p)))
+	}
+	return out
+}
+
+// The parts of `s` split on `part`'s text, each trimmed by `runes_strip_edges` and made a String
+// by `string_of_runes`.
+bag_split_strip :: proc(self: ^Bag, s: godot.String, part: godot.String, left: bool, right: bool) -> godot.PackedStringArray {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	out := godot.packed_string_array_new()
+	parts := godot.string_split_parts(&s, text)
+	for p in godot.split_next(&parts) {
+		t := godot.string_of_runes(godot.runes_strip_edges(p, left, right))
+		godot.packed_string_array_append(&out, t)
+		godot.destroy[.STRING](&t)
 	}
 	return out
 }

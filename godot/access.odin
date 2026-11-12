@@ -341,6 +341,31 @@ split_next :: #force_inline proc "contextless" (parts: ^Split_Parts) -> (part: [
 	return
 }
 
+// `chars` without the whitespace at its left and right ends, as the engine's `strip_edges` trims a
+// String: any character up to 32, space, is whitespace. A slice of `chars`, so a part from
+// `split_next` is trimmed with no String made.
+runes_strip_edges :: proc "contextless" (chars: []rune, left := true, right := true) -> []rune {
+	beg, end := 0, len(chars)
+	for _ in 0 ..< len(chars) {
+		if !left || beg == end || u32(chars[beg]) > 32 { break }
+		beg += 1
+	}
+	for _ in 0 ..< len(chars) {
+		if !right || end == beg || u32(chars[end - 1]) > 32 { break }
+		end -= 1
+	}
+	return chars[beg:end]
+}
+
+// A String holding `chars`, which the caller destroys. They are copied as they are, without the
+// check a String made from outside characters gets, so they should come from a String: a part
+// from `split_next` or `runes_strip_edges`.
+string_of_runes :: proc "contextless" (chars: []rune) -> (out: String) {
+	// A zeroed String is the engine's empty one.
+	if len(chars) > 0 { string_fill(&out, chars) }
+	return
+}
+
 // The parts of `s` between each Odin text `delimiter`: the engine's `split`. Empty `delimiter` gives
 // one part per character; `allow_empty` false drops empty parts; a positive `maxsplit` stops after
 // that many parts and adds the rest of `s` as one more. The parts are counted first so the array is
