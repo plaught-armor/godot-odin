@@ -135,6 +135,18 @@ func _check_extras() -> int:
 	if b.level != 200:
 		print("FAIL: Bag.level reads %d, not 200" % b.level)
 		failures += 1
+	var box: RefCounted = b.box
+	if box == null or box.get_reference_count() != 2:
+		print("FAIL: Bag.box is %s, not a RefCounted the bag and this test hold" % box)
+		failures += 1
+	b = null
+	if box != null and box.get_reference_count() != 1:
+		print("FAIL: Bag.box holds %d references after its bag went, not 1" % box.get_reference_count())
+		failures += 1
+	var u: Variant = Bag.new()
+	if u.total([1, 2, 3]) != 6 or u.total(PackedInt64Array([4, 5])) != 9:
+		print("FAIL: untyped Bag.total answered %s and %s, not 6 and 9" % [u.total([1, 2, 3]), u.total(PackedInt64Array([4, 5]))])
+		failures += 1
 	var tally: Object = Engine.get_singleton(&"ExampleTally")
 	if tally == null or tally.bump() != 1 or tally.bump() != 2:
 		print("FAIL: the ExampleTally singleton is missing or miscounts")

@@ -75,6 +75,9 @@
 		<method name="has_marks">
 			<description>Whether the bag carries every flag in [code]marks[/code].</description>
 		</method>
+		<method name="total">
+			<description>The sum of [code]xs[/code]. An untyped call may pass an Array, which arrives converted.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>
@@ -82,6 +85,7 @@
 		<member name="level" type="">An unsigned byte, which reads back past 127.</member>
 		<member name="note" type="">Shown in the inspector only while [code]show_note[/code] is set.</member>
 		<member name="show_note" type=""></member>
+		<member name="box" type="">An object of its own, made with the bag and released with it.</member>
 	</members>
 	<constants>
 		<constant name="RED" value="0" enum="Mark"></constant>

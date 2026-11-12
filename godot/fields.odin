@@ -55,6 +55,9 @@ Field :: struct {
 Layout :: struct {
 	fields:   [dynamic]^Field,
 	template: rawptr,
+	// Some field needs work at create or free: an Array, Dictionary, counted builtin or counted
+	// object. Without one, create only copies the template in and free does nothing.
+	counted:  bool,
 }
 
 // The "Class.Enum" name each enumerated Odin enum crosses as, set by `enumerate`.
@@ -191,6 +194,7 @@ fields :: proc(c: ^Class($T), template: ^T = nil) {
 				if rc := counted_object((^rawptr)(at)^); rc != nil { ref_counted_reference(rc) }
 			}
 		}
+		if counted(f.type) || (f.type == .OBJECT && f.counted) { c.layout.counted = true }
 		append(&c.layout.fields, f)
 		if g, ok := reflect.struct_tag_lookup(sf.tag, "group"); ok { open_group(&c.name, g, false) }
 		if g, ok := reflect.struct_tag_lookup(sf.tag, "subgroup"); ok { open_group(&c.name, g, true) }
@@ -875,12 +879,11 @@ field_set_slow :: proc "contextless" (f: ^Field, instance: gde.ClassInstancePtr,
 	err.error = .OK
 }
 
-// Makes a new instance's fields at `self` valid: the template's values, counted ones copied and
-// objects referenced; Array and Dictionary fields empty, typed as their tag says; a new field its
-// own object.
+// Makes the counted fields of a new instance at `self`, which holds a bitwise copy of the template,
+// valid: the template's counted values copied and objects referenced; Array and Dictionary fields
+// empty, typed as their tag says; a new field its own object.
 @(private)
-fields_init :: proc(l: ^Layout, self: rawptr, size: int) {
-	if l.template != nil { intrinsics.mem_copy(self, l.template, size) }
+fields_init :: proc(l: ^Layout, self: rawptr) {
 	for f in l.fields {
 		p := rawptr(uintptr(self) + f.offset)
 		#partial switch f.type {
@@ -896,8 +899,9 @@ fields_init :: proc(l: ^Layout, self: rawptr, size: int) {
 		case .OBJECT:
 			if !f.counted { continue }
 			if f.fresh != nil {
-				obj := gde.classdb_construct_object2(f.fresh)
-				if rc := counted_object(rawptr(obj)); rc != nil { ref_counted_init_ref(rc) }
+				// A RefCounted object returns holding the one reference the field takes over.
+				obj := gde.classdb_construct_object3(f.fresh)
+				object_notification(Object(obj), 0, false)
 				(^rawptr)(p)^ = rawptr(obj)
 				continue
 			}

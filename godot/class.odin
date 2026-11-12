@@ -289,16 +289,25 @@ class_options :: proc($T: typeid, name, parent: cstring, notification: proc(self
 	// Makes the instance behind `object`: the header and a `T` as `fields` sets it.
 	attach :: proc "contextless" (c: ^Class(T), object: gde.ObjectPtr) -> gde.ClassInstancePtr {
 		h := (^Header)(gde.mem_alloc2(uint(HEADER + size_of(T)), 0))
-		intrinsics.mem_zero(h, HEADER + size_of(T))
-		context = ctx
-		enter()
-		fields_init(&c.layout, rawptr(uintptr(h) + HEADER), size_of(T))
-		h.object = Object(object)
-		h.class = c
+		h^ = {object = Object(object), class = c}
+		self := rawptr(uintptr(h) + HEADER)
+		l := &c.layout
+		if l.template != nil {
+			intrinsics.mem_copy(self, l.template, size_of(T))
+		} else {
+			intrinsics.mem_zero(self, size_of(T))
+		}
+		if l.counted {
+			context = ctx
+			enter()
+			fields_init(l, self)
+		}
 		if c.gdtype != nil {
 			put_instance(object, c.extension, h, c.gdtype)
 			return h
 		}
+		context = ctx
+		enter()
 		before := ([^][SCAN_WORDS]rawptr)(object)[0]
 		gde.object_set_instance(object, &c.name, h)
 		if !slot_checked { find_instance_slot(object, h, &before) }
@@ -311,9 +320,12 @@ class_options :: proc($T: typeid, name, parent: cstring, notification: proc(self
 		return h
 	}
 	free :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr) {
-		context = ctx
-		enter()
-		fields_release(&(^Class(T))(userdata).layout, rawptr(uintptr(instance) + HEADER))
+		l := &(^Class(T))(userdata).layout
+		if l.counted {
+			context = ctx
+			enter()
+			fields_release(l, rawptr(uintptr(instance) + HEADER))
+		}
 		gde.mem_free2(instance, 0)
 	}
 	notify :: proc "c" (instance: gde.ClassInstancePtr, what: i32, reversed: gde.Bool) {
@@ -608,15 +620,30 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 		defer for i in 0 ..< m.count {
 			if built[i] { gde.variant_destroy(&made[i]) }
 		}
-		if !fill_args(m, args, count, &filled[0], &made[0], &built[0], err) { return }
-		c := Call{self = self_of(T, instance) if SELF else nil, variants = &filled[0]}
+		if !fill_args(m, args, count, &filled[0], &made[0], &built[0], err, false) { return }
+		finish(m, instance, &filled[0], ret)
+		err.error = .OK
+	}
+	// `call` for a method no argument of which can need a new value built: none is an Array or a
+	// packed array, so each argument is passed as it came or not at all.
+	call_plain :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
+		context = ctx
+		enter()
+		variant_calls += 1
+		m := (^Method)(userdata)
+		filled: [MAX_ARGS + 1]gde.ConstVariantPtr = ---
+		if !fill_args(m, args, count, &filled[0], nil, nil, err, true) { return }
+		finish(m, instance, &filled[0], ret)
+		err.error = .OK
+	}
+	finish :: #force_inline proc(m: ^Method, instance: gde.ClassInstancePtr, filled: [^]gde.ConstVariantPtr, ret: gde.VariantPtr) {
+		c := Call{self = self_of(T, instance) if SELF else nil, variants = filled}
 		when RET == 1 {
 			R :: intrinsics.type_proc_return_type(P, 0)
 			put_return(ret, invoke_ret(P(m.f), R, SELF, false, &c))
 		} else {
 			invoke_void(P(m.f), SELF, false, &c)
 		}
-		err.error = .OK
 	}
 
 	m := new(Method)
@@ -631,6 +658,10 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 	}
 	describe_params(P, FIRST, &d)
 	m.types = d.types
+	plain := true
+	for i in 0 ..< int(m.count) {
+		if m.types[i] == .ARRAY || reshapes(.ARRAY, m.types[i]) { plain = false }
+	}
 	for d, k in defaults {
 		at := int(m.required) + k
 		m.defaults[at] = default_variant(d, m.types[at])
@@ -649,7 +680,7 @@ method :: proc(c: ^Class($T), name: cstring, f: $P, args: []cstring = nil, defau
 	info := gde.ClassMethodInfo {
 		name                   = &method_name,
 		method_userdata        = m,
-		call_func              = call,
+		call_func              = call_plain if plain else call,
 		ptrcall_func           = ptrcall,
 		method_flags           = u32(flags),
 		has_return_value       = gde.Bool(RET),
@@ -919,9 +950,9 @@ Call :: struct {
 // Checks a Variant call's `args` against `m` and fills `filled` with them and the defaults past
 // `count`. An argument that `reshapes` to its parameter is built into `made`, its `built` flag set;
 // the caller destroys those after the call, on either result. False, with `err` naming the first
-// misfit, when they do not fit.
+// misfit, when they do not fit. `PLAIN` leaves that step out, for a method `call_plain` serves.
 @(private)
-fill_args :: proc "contextless" (m: ^Method, args: [^]gde.ConstVariantPtr, count: gde.Int, filled: [^]gde.ConstVariantPtr, made: [^]Variant, built: [^]bool, err: ^gde.CallError) -> bool {
+fill_args :: #force_inline proc "contextless" (m: ^Method, args: [^]gde.ConstVariantPtr, count: gde.Int, filled: [^]gde.ConstVariantPtr, made: [^]Variant, built: [^]bool, err: ^gde.CallError, $PLAIN: bool) -> bool {
 	n := i32(count)
 	if n > m.count || n < m.required {
 		err.error = .ERROR_TOO_MANY_ARGUMENTS if n > m.count else .ERROR_TOO_FEW_ARGUMENTS
@@ -938,10 +969,12 @@ fill_args :: proc "contextless" (m: ^Method, args: [^]gde.ConstVariantPtr, count
 			filled[i] = args[i]
 			continue
 		}
-		if reshapes(have, m.types[i]) {
-			built[i] = reshape(args[i], m.types[i], &made[i])
-			filled[i] = &made[i]
-			if built[i] { continue }
+		when !PLAIN {
+			if reshapes(have, m.types[i]) {
+				built[i] = reshape(args[i], m.types[i], &made[i])
+				filled[i] = &made[i]
+				if built[i] { continue }
+			}
 		}
 		err.error = .ERROR_INVALID_ARGUMENT
 		err.argument = i

@@ -181,17 +181,14 @@ error :: proc(format: string, args: ..any, loc := #caller_location) {
 construct :: proc($T: typeid) -> T where intrinsics.type_base_type(T) == rawptr {
 	// The class name and whether it is RefCounted are fixed per `T`: looked up on the first call.
 	@(static) sn: StringName
-	@(static) counted: bool
 	@(static) known: bool
 	if !known {
 		named := type_info_of(T).variant.(runtime.Type_Info_Named)
 		gde.string_name_new_with_latin1_chars(&sn, fmt.ctprintf("%s", named.name), 1)
-	}
-	obj := gde.classdb_construct_object2(&sn)
-	if !known {
-		counted = cast_to(obj, RefCounted) != nil
 		known = true
 	}
-	if counted { ref_counted_init_ref(RefCounted(obj)) }
+	// A RefCounted object returns holding the one reference the caller takes over.
+	obj := gde.classdb_construct_object3(&sn)
+	object_notification(Object(obj), 0, false)
 	return T(obj)
 }

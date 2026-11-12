@@ -27,6 +27,8 @@ Bag :: struct {
 	// Shown in the inspector only while `show_note` is set.
 	note:   i64,
 	show_note: bool,
+	// An object of its own, made with the bag and released with it.
+	box:    godot.RefCounted `godot:"new"`,
 	slots:  [SLOTS]i64 `godot:"-"`,
 }
 
@@ -64,12 +66,14 @@ register_extras :: proc() {
 	godot.fields(b)
 	godot.method(b, "score", bag_score, {"x"})
 	godot.method(b, "has_marks", bag_has_marks, {"marks"})
+	godot.method(b, "total", bag_total, {"xs"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
 	godot.method(t, "bump", tally_bump)
 	tally_name := godot.static_name("Tally")
-	tally = gde.classdb_construct_object2(&tally_name)
+	tally = gde.classdb_construct_object3(&tally_name)
+	godot.object_notification(godot.Object(tally), 0, false)
 	godot.register_singleton("ExampleTally", godot.Object(tally))
 
 	g := godot.class(Ghost, "Ghost", "Node", nil, godot.Options(Ghost){runtime = true})
@@ -159,6 +163,14 @@ bag_score :: proc(self: ^Bag, x: i64) -> i64 {
 // Whether the bag carries every flag in `marks`.
 bag_has_marks :: proc(self: ^Bag, marks: bit_set[Mark]) -> bool {
 	return marks <= self.marks
+}
+
+// The sum of `xs`. An untyped call may pass an Array, which arrives converted.
+bag_total :: proc(self: ^Bag, xs: godot.PackedInt64Array) -> i64 {
+	xs := xs
+	sum: i64
+	for i in 0 ..< godot.packed_int64_array_size(&xs) { sum += godot.packed_int64_array_get(&xs, i) }
+	return sum
 }
 
 // Calls so far, counting this one.

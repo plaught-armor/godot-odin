@@ -33,7 +33,9 @@ calls back into `core.odin` only to look up its engine pointers.
 - **Variant call.** An untyped call passes Variants. The core checks each argument's type,
   converts where the engine's own binds would (int, float and bool into one another, an Array to
   a packed array and back, null to an object), and fills in defaults for
-  missing trailing arguments. It costs about 3 ns more than the engine's own Variant call.
+  missing trailing arguments. It costs about 2 ns more than the engine's own Variant call. A
+  method with no Array or packed array parameter gets a leaner entry point, since none of its
+  arguments can need a new value built.
 
 A property read or write from GDScript, such as `b.rate` or `b.rate = x`, takes a slower path
 than either. In Godot 4.7 the GDScript compiler has no fast path for properties of engine or
@@ -67,16 +69,22 @@ it reads that offset from then on. If not, it falls back to an instance binding,
 engine supports officially.
 
 The fallback works but costs more: a binding allocates per object and takes a mutex on every
-reference change. `Bench.new()` from GDScript takes about 190 ns without a binding and 260 ns with
-one.
+reference change. `Bench.new()` from GDScript takes about 170 ns in the editor without a binding,
+and about 70 ns more with one.
 
 The same first instance also finds the object's type record. The core compares the object's first
 32 words from before and after `object_set_instance`. If exactly one word changed besides the
 pair, that word is the type record. Every later instance of the class then gets the three words
 written directly, which skips `object_set_instance`'s class table lookup, its lock and its
 StringName copy. On a 4.7 release export template that takes `Bench.new()` from about 160 ns to
-150 ns, against about 108 ns for `RefCounted.new()`. An editor build always makes the engine's
-call, because there `object_set_instance` also records each instance for hot reload.
+150 ns. An editor build always makes the engine's call, because there `object_set_instance` also
+records each instance for hot reload.
+
+`fields` notes whether any field needs work when an instance is made or freed: an Array, a
+Dictionary, a String or other counted value, or an object it holds. A class with none, like
+`Bench`, has its template copied in at create and nothing done at free, without entering the
+Odin context. That takes `Bench.new()` on the release template to about 135 ns, against about
+105 ns for `RefCounted.new()`.
 
 ## Variants
 
