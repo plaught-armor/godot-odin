@@ -229,7 +229,7 @@ from_variant :: proc "contextless" ($A: typeid, v: gde.ConstVariantPtr) -> A {
 }
 
 // A Variant of type `type` that aliases `value^` with no copy and no new reference, for handing a
-// Callable or Signal to an engine call that only reads it, such as `variant_call`. The caller must
+// Callable, Signal, Dictionary or Array to an engine call that only reads it, such as `variant_call`. The caller must
 // not destroy it or let the engine keep it. Built from the engine's Variant layout: the type tag in
 // the first 4 bytes, the value inline at byte 8. `check_borrow_layout` proves that layout at load.
 // It saves a copy and two atomic reference counts per call, about 9 ns per Callable.call (bench/).
@@ -267,7 +267,7 @@ variant_value :: #force_inline proc "contextless" ($A: typeid, v: gde.ConstVaria
 
 // Stops the load when the engine's Variant layout is not the one `borrowed`, `scalar_into`,
 // `variant_tag` and `variant_value` read: the type tag first, an int's, a float's and a bool's
-// value at byte 8, and a Callable's and a Signal's value at byte 8.
+// value at byte 8, and a Callable's, a Signal's, a Dictionary's and an Array's value at byte 8.
 @(private)
 check_borrow_layout :: proc "contextless" () {
 	n := i64(0x0123_4567_89ab_cdef)
@@ -288,10 +288,10 @@ check_borrow_layout :: proc "contextless" () {
 			fail("odin: unexpected Variant layout", "BOOL")
 		}
 	}
-	for type in ([2]gde.VariantType{.CALLABLE, .SIGNAL}) {
+	for type in ([4]gde.VariantType{.CALLABLE, .SIGNAL, .DICTIONARY, .ARRAY}) {
 		e: Variant
 		if rawptr(internal[type](&e)) != rawptr(&e._opaque[8]) {
-			fail("odin: unexpected Variant layout", "CALLABLE or SIGNAL")
+			fail("odin: unexpected Variant layout", "CALLABLE, SIGNAL, DICTIONARY or ARRAY")
 		}
 	}
 }

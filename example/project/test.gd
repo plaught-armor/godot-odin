@@ -293,6 +293,20 @@ func _check_extras() -> int:
 	if b2.tint_r != 1.0 or b2.tint_b != 1.0 or b2.get_brightness() != 1.0:
 		print("FAIL: Bag.brightness did not set the tint")
 		failures += 1
+	var tally_words := {"a": 2, 3: "three", "n": null}
+	if not is_same(b2.lookup(tally_words, "a"), 2) or not is_same(b2.lookup(tally_words, 3), "three") or not is_same(b2.lookup(tally_words, "zz"), "missing") or b2.lookup(tally_words, "n") != null:
+		print("FAIL: Bag.lookup read %s %s %s" % [b2.lookup(tally_words, "a"), b2.lookup(tally_words, 3), b2.lookup(tally_words, "zz")])
+		failures += 1
+	if not b2.tally(tally_words, "a") or not b2.tally(tally_words, "new") or not is_same(tally_words["a"], 3) or not is_same(tally_words.get("new"), 1):
+		print("FAIL: Bag.tally left %s" % tally_words)
+		failures += 1
+	var typed_counts: Dictionary[String, int] = {"x": 1}
+	if b2.put(typed_counts, "y", "not an int") or typed_counts.has("y") or not b2.put(typed_counts, "y", 5) or typed_counts["y"] != 5:
+		print("FAIL: Bag.put on a typed Dictionary left %s" % typed_counts)
+		failures += 1
+	if not is_same(b2.member(Vector2(1.5, 2), "y"), 2.0) or not is_same(b2.member(Vector2(), "w"), "missing") or not is_same(b2.member({"k": 1}, "k"), 1):
+		print("FAIL: Bag.member read %s %s" % [b2.member(Vector2(1.5, 2), "y"), b2.member(Vector2(), "w")])
+		failures += 1
 	var lib: String = Bag.lib_path()
 	if not lib.ends_with(".so") or not FileAccess.file_exists(lib):
 		print("FAIL: Bag.lib_path is %s" % lib)

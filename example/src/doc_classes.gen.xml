@@ -204,6 +204,18 @@
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>
+		<method name="lookup">
+			<description>[code]d[key][/code], or "missing" when [code]d[/code] has no such key.</description>
+		</method>
+		<method name="tally">
+			<description>Counts [code]word[/code] in [code]d[/code], a Dictionary of words to counts, through an Odin string key. False when [code]d[/code] does not take it.</description>
+		</method>
+		<method name="put">
+			<description>[code]d[key] = value[/code], or false when [code]d[/code] does not take them.</description>
+		</method>
+		<method name="member">
+			<description>[code]v[key][/code] for any Variant, or "missing".</description>
+		</method>
 		<method name="temp_live">
 			<description>The live temp_text count between calls: 0.</description>
 		</method>

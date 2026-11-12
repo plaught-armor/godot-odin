@@ -117,6 +117,10 @@ register_extras :: proc() {
 	godot.method(b, "text_size", bag_text_size, {"s"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
+	godot.method(b, "lookup", bag_lookup, {"d", "key"})
+	godot.method(b, "tally", bag_tally, {"d", "word"})
+	godot.method(b, "put", bag_put, {"d", "key", "value"})
+	godot.method(b, "member", bag_member, {"v", "key"})
 	godot.property(b, "brightness", bag_get_brightness, bag_set_brightness)
 	godot.method(b, "temp_live", bag_temp_live)
 	godot.method(b, "count", bag_count)
@@ -541,6 +545,40 @@ bag_get_brightness :: proc(self: ^Bag) -> f64 {
 // Sets every channel of the tint to `value`.
 bag_set_brightness :: proc(self: ^Bag, value: f64) {
 	self.tint = value
+}
+
+// `d[key]`, or "missing" when `d` has no such key.
+bag_lookup :: proc(self: ^Bag, d: godot.Dictionary, key: godot.Variant) -> godot.Variant {
+	d := d
+	value, found := godot.dict_get(&d, key)
+	if !found { return godot.variant("missing") }
+	return value
+}
+
+// Counts `word` in `d`, a Dictionary of words to counts, through an Odin string key. False when `d`
+// does not take it.
+bag_tally :: proc(self: ^Bag, d: godot.Dictionary, word: string) -> bool {
+	d := d
+	n: i64
+	if v, found := godot.dict_get(&d, word); found {
+		n = godot.variant_int(&v)
+		gde.variant_destroy(&v)
+	}
+	return godot.dict_set(&d, word, n + 1)
+}
+
+// `d[key] = value`, or false when `d` does not take them.
+bag_put :: proc(self: ^Bag, d: godot.Dictionary, key, value: godot.Variant) -> bool {
+	d := d
+	return godot.dict_set(&d, key, value)
+}
+
+// `v[key]` for any Variant, or "missing".
+bag_member :: proc(self: ^Bag, v: godot.Variant, key: string) -> godot.Variant {
+	v := v
+	value, found := godot.variant_get(&v, key)
+	if !found { return godot.variant("missing") }
+	return value
 }
 
 // This library's path, as the engine reports it.

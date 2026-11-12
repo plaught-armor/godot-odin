@@ -48,6 +48,7 @@ register :: proc() {
 	godot.method(c, "array_write_ns", array_write_ns, {"typed", "fast", "n"})
 	godot.method(c, "dict_iter_ns", dict_iter_ns, {"d", "fast", "n"})
 	godot.method(c, "dict_build_ns", dict_build_ns, {"fast", "n"})
+	godot.method(c, "dict_get_ns", dict_get_ns, {"kind", "n"})
 	godot.method(c, "image_fill_ns", image_fill_ns, {"fast", "n"})
 	godot.method(c, "file_read_ns", file_read_ns, {"path", "fast", "n"})
 	godot.method(c, "task_ns", task_ns, {"n"})
@@ -182,6 +183,35 @@ array_read_ns :: proc(self: ^Bench, xs: godot.Array, fast: bool, n: i64) -> f64 
 }
 
 // Nanoseconds per element to build a 1000-int Array, an Array[int] when `typed`: from a slice with
+// Nanoseconds per lookup in a Dictionary of 1000 int keys, `n` rounds of 1000: by the generated
+// `dictionary_get` (kind 0), `dict_get` (1) or `dict_get_into` (2).
+dict_get_ns :: proc(self: ^Bench, kind: i64, n: i64) -> f64 {
+	keys: [1000]i64
+	for &x, i in keys { x = i64(i) }
+	d := godot.dict_of(keys[:], keys[:])
+	defer godot.destroy[.DICTIONARY](&d)
+	sum: i64
+	start := time.tick_now()
+	for _ in 0 ..< n {
+		for k in keys {
+			key := godot.variant(k)
+			out: godot.Variant
+			switch kind {
+			case 0:
+				out = godot.dictionary_get(&d, key, {})
+			case 1:
+				out, _ = godot.dict_get(&d, &key)
+			case:
+				godot.dict_get_into(&d, &key, &out)
+			}
+			sum += godot.variant_int(&out)
+		}
+	}
+	ns := f64(time.tick_since(start)) / f64(n * len(keys))
+	self.total += sum
+	return ns
+}
+
 // Nanoseconds per entry to build a Dictionary of 1000 int keys to int values, `n` times: one
 // `set` per entry, or `dict_of`.
 dict_build_ns :: proc(self: ^Bench, fast: bool, n: i64) -> f64 {

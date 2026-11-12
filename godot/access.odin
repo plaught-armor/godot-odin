@@ -220,6 +220,94 @@ dict_items :: proc "contextless" (d: ^Dictionary) -> (keys, values: Array) {
 	return dictionary_keys(d), dictionary_values(d)
 }
 
+// The value `key` maps to in `d`, and true; or a nil Variant and false when `d` has no such key.
+// `key` is a `^Variant`, a Variant, or any value `variant` converts. One hash lookup through the
+// engine's keyed get. You destroy the value.
+dict_get :: proc "contextless" (d: ^Dictionary, key: $K) -> (value: Variant, found: bool) {
+	found = dict_get_into(d, key, &value)
+	return
+}
+
+// `dict_get` writing the value to `out`, which must hold nothing to destroy: it saves copying the
+// result back, about 6 ns of the 27 a `dict_get` takes (bench/). False, with `out` nil, when `d`
+// has no such key.
+dict_get_into :: proc "contextless" (d: ^Dictionary, key: $K, out: ^Variant) -> bool {
+	self := borrowed(.DICTIONARY, d)
+	valid: gde.Bool
+	when K == ^Variant {
+		k := key
+	} else when K == Variant {
+		kv := key
+		k := &kv
+	} else {
+		kv := variant(key)
+		k := &kv
+		defer gde.variant_destroy(&kv)
+	}
+	gde.variant_get_keyed(&self, k, out, &valid)
+	return valid != 0
+}
+
+// Maps `key` to `value` in `d`, each a Variant or any value `variant` converts, through the
+// engine's keyed set. False when `d` is read-only or typed and either side does not fit.
+dict_set :: proc "contextless" (d: ^Dictionary, key: $K, value: $V) -> bool {
+	self := borrowed(.DICTIONARY, d)
+	return set_at(&self, key, value, gde.variant_set_keyed)
+}
+
+// `v[key]` for any Variant `v`, as GDScript reads it: a Dictionary's value, an Array's element, an
+// Object's property, a Vector2's `"x"`. False when `v` has no such key, with a nil Variant. `key`
+// is a Variant or any value `variant` converts. You destroy the value.
+variant_get :: proc "contextless" (v: ^Variant, key: $K) -> (value: Variant, found: bool) {
+	return get_at(v, key, gde.variant_get)
+}
+
+// `v[key] = value` for any Variant `v`, as GDScript writes it, each side a Variant or any value
+// `variant` converts. False when `v` takes no such key or value. A Dictionary, Array or Object
+// shares its storage, so the write reaches every holder; a Vector2 or other value type changes only
+// `v`.
+variant_set :: proc "contextless" (v: ^Variant, key: $K, value: $V) -> bool {
+	return set_at(v, key, value, gde.variant_set)
+}
+
+// `v[key]` through `get`, the engine's generic or keyed get, with `key` converted to a Variant
+// unless it is one.
+@(private)
+get_at :: #force_inline proc "contextless" (
+	v: ^Variant,
+	key: $K,
+	get: proc "c" (gde.ConstVariantPtr, gde.ConstVariantPtr, gde.UninitializedVariantPtr, ^gde.Bool),
+) -> (value: Variant, found: bool) {
+	valid: gde.Bool
+	when K == Variant {
+		k := key
+		get(v, &k, &value, &valid)
+	} else {
+		k := variant(key)
+		get(v, &k, &value, &valid)
+		gde.variant_destroy(&k)
+	}
+	return value, valid != 0
+}
+
+// `v[key] = value` through `set`, the engine's generic or keyed set, with each side converted to a
+// Variant unless it is one.
+@(private)
+set_at :: #force_inline proc "contextless" (
+	v: ^Variant,
+	key: $K,
+	value: $V,
+	set: proc "c" (gde.VariantPtr, gde.ConstVariantPtr, gde.ConstVariantPtr, ^gde.Bool),
+) -> bool {
+	valid: gde.Bool
+	when K == Variant { k := key } else { k := variant(key) }
+	when V == Variant { x := value } else { x := variant(value) }
+	set(v, &k, &x, &valid)
+	when K != Variant { gde.variant_destroy(&k) }
+	when V != Variant { gde.variant_destroy(&x) }
+	return valid != 0
+}
+
 // A new untyped Dictionary mapping `keys[i]` to `values[i]`, each converted as `variant` does. A
 // repeated key keeps its last value. `keys` and `values` have the same length. You destroy it, or
 // return it.
