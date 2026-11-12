@@ -252,6 +252,15 @@
 		<method name="part_floats">
 			<description>[code]runes_to_float[/code] of each part of [code]s[/code] split on [code]part[/code]'s text.</description>
 		</method>
+		<method name="int_texts">
+			<description>[code]string_of_int[/code] of each number.</description>
+		</method>
+		<method name="float_texts">
+			<description>[code]string_of_float[/code] of each number.</description>
+		</method>
+		<method name="real_texts">
+			<description>[code]string_of_real[/code] of each number.</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

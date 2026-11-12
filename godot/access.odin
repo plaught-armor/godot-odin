@@ -4,6 +4,9 @@ package godot
 
 import "base:intrinsics"
 import "base:runtime"
+import "core:c/libc"
+import "core:math"
+import "core:strconv"
 import "core:unicode/utf8"
 import gde "../gdextension"
 
@@ -462,6 +465,194 @@ string_of_runes :: proc "contextless" (chars: []rune) -> (out: String) {
 	// A zeroed String is the engine's empty one.
 	if len(chars) > 0 { string_fill(&out, chars) }
 	return
+}
+
+// `number` written in `base`, 2 to 36, as the engine's `String.num_int64` writes it: a '-' when
+// negative, then digits, with letters past 9 that are lowercase unless `capitalize_hex`. Written
+// straight into the String, with no text for the engine to read back. The caller destroys it.
+string_of_int :: proc "contextless" (number: i64, base: i64 = 10, capitalize_hex := false) -> (out: String) {
+	runtime.assert_contextless(base >= 2 && base <= 36, "godot_odin: string_of_int takes a base from 2 to 36")
+	buf: [65]rune
+	// The magnitude as unsigned, so the most negative number has one too.
+	m := u64(number) if number >= 0 else 0 - u64(number)
+	at := len(buf)
+	if base == 10 {
+		// A constant base, so each division is a multiply.
+		for _ in 0 ..< 20 {
+			at -= 1
+			buf[at] = '0' + rune(m % 10)
+			m /= 10
+			if m == 0 { break }
+		}
+	} else {
+		b := u64(base)
+		letter: rune = 'A' if capitalize_hex else 'a'
+		for _ in 0 ..< 64 {
+			d := rune(m % b)
+			at -= 1
+			buf[at] = '0' + d if d < 10 else letter + d - 10
+			m /= b
+			if m == 0 { break }
+		}
+	}
+	if number < 0 {
+		at -= 1
+		buf[at] = '-'
+	}
+	string_fill(&out, buf[at:])
+	return
+}
+
+// `number` written as the engine's `String.num` writes it: "nan", "inf" or "-inf", else rounded to
+// `decimals` places as C's "%.*f" rounds, with trailing zeros dropped down to one after the '.'. A
+// negative `decimals` asks for the engine's default, 14 places less the number's power of ten when
+// it is past 10, and the engine's format reads a default below zero as six places. Places past 32
+// are taken as 32. The caller destroys the result.
+string_of_float :: proc(number: f64, decimals: i64 = -1) -> (out: String) {
+	buf: [400]byte
+	ascii_fill(&out, float_text(buf[:], number, decimals))
+	return
+}
+
+// `number` written as the engine's `String.num_real` writes it, which `str` and printing use for a
+// float: a whole number in the 64-bit range as `string_of_int` writes it, with ".0" after when
+// `trailing`, and any other number as `string_of_float` with its default places. The caller
+// destroys the result.
+string_of_real :: proc(number: f64, trailing := true) -> (out: String) {
+	buf: [400]byte
+	text: []byte
+	// The engine checks whether the number survives a trip through a 64-bit int; that conversion
+	// gives the most negative int for a number out of range, here as there.
+	if whole := i64(number); !math.is_nan(number) && !math.is_inf(number) && number == f64(whole) {
+		digits := string_of_int(whole)
+		if !trailing { return digits }
+		defer destroy[.STRING](&digits)
+		chars := string_read(&digits)
+		for c, k in chars { buf[k] = u8(c) }
+		copy(buf[len(chars):], ".0")
+		text = buf[:len(chars) + 2]
+	} else {
+		text = float_text(buf[:], number, -1)
+	}
+	ascii_fill(&out, text)
+	return
+}
+
+// The text of the engine's `String.num` for `number`, written in `buf`, which holds 400 bytes: the
+// most a double takes at 32 places.
+@(private)
+float_text :: proc(buf: []byte, number: f64, decimals: i64) -> []byte {
+	if math.is_nan(number) { return transmute([]byte)string("nan") }
+	if math.is_inf(number) { return transmute([]byte)string("-inf" if number < 0 else "inf") }
+	places := decimals
+	if places < 0 {
+		places = 14
+		// The engine's own log10, from the C library, so the powers of ten fall where they fall there.
+		if a := abs(number); a > 10 { places -= i64(math.floor(libc.log10(a))) }
+	}
+	places = min(places, 32)
+	// The engine's format reads a negative place count as no place count: "%lf", six places.
+	if places < 0 { places = 6 }
+	text, fits := fixed_text(buf, number, int(places))
+	if !fits {
+		// Odin's fixed-point writer rounds the exact value half to even, as C's printf does.
+		text = strconv.generic_ftoa(buf, number, 'f', int(places), 64)
+		if text[0] == '+' { text = text[1:] }
+	}
+	// Trailing zeros go, down to one after the '.', which stops the walk; with no places there is
+	// no '.' and nothing to walk.
+	end := len(text)
+	for _ in 0 ..< places {
+		if text[end - 1] != '0' { break }
+		end -= 1
+	}
+	if text[end - 1] == '.' { end += 1 }
+	return text[:end]
+}
+
+// The powers of ten up to 10^22, the most places `fixed_text` takes: 10^22 times a 53-bit mantissa
+// fits 128 bits.
+@(private, rodata)
+FIXED_TENS := [23]u128{
+	1, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16,
+	1e17, 1e18, 1e19, 1e20, 1e21, 1e22,
+}
+
+// The finite `number` written with `places` places in `buf`, rounded as C's "%.*f" rounds: the
+// exact binary value, half to even. The value times 10^places is worked in 128-bit integers, so
+// this returns false for a number too big for that, or more than 22 places, and writes nothing.
+@(private)
+fixed_text :: proc "contextless" (buf: []byte, number: f64, places: int) -> ([]byte, bool) {
+	if places > 22 { return nil, false }
+	bits := transmute(u64)number
+	mant := bits & (1 << 52 - 1)
+	biased := int(bits >> 52 & 0x7FF)
+	if biased != 0 { mant |= 1 << 52 } else { biased = 1 }
+	// number = mant * 2^shift, and scaled = mant * 10^places, below 2^127.
+	shift := biased - 1075
+	scaled := u128(mant) * FIXED_TENS[places]
+	q: u128
+	switch {
+	case shift >= 0:
+		if mant != 0 && shift >= int(intrinsics.count_leading_zeros(scaled)) { return nil, false }
+		q = scaled << uint(shift)
+	case shift > -128:
+		s := uint(-shift)
+		q = scaled >> s
+		r := scaled & (u128(1) << s - 1)
+		half := u128(1) << (s - 1)
+		if r > half || (r == half && q & 1 == 1) { q += 1 }
+	// Below 2^-128 of scaled, which is below 2^127: under one half, so zero.
+	}
+	// The digits of q, last first, in 64-bit halves so each digit is a 64-bit division: the low 19
+	// digits, all of them when there are more, then the rest, then zeros up to places + 1 so there
+	// is a leading 0. q is below 2^127, so the rest is below 2^64.
+	lo, hi := u64(q), u64(0)
+	if q >> 64 != 0 {
+		lo = u64(q % 1e19)
+		hi = u64(q / 1e19)
+	}
+	digits: [40]byte
+	n := 0
+	for _ in 0 ..< 20 {
+		digits[n] = '0' + u8(lo % 10)
+		n += 1
+		lo /= 10
+		if lo == 0 && (hi == 0 || n == 19) { break }
+	}
+	for _ in 0 ..< 20 {
+		if hi == 0 { break }
+		digits[n] = '0' + u8(hi % 10)
+		n += 1
+		hi /= 10
+	}
+	for n <= places {
+		digits[n] = '0'
+		n += 1
+	}
+	k := 0
+	if bits >> 63 != 0 {
+		buf[0] = '-'
+		k = 1
+	}
+	for i := n - 1; i >= 0; i -= 1 {
+		if i == places - 1 {
+			buf[k] = '.'
+			k += 1
+		}
+		buf[k] = digits[i]
+		k += 1
+	}
+	return buf[:k], true
+}
+
+// Sizes the empty String `s` to the ASCII `text` and writes it in, with the terminator.
+@(private)
+ascii_fill :: proc "contextless" (s: ^String, text: []byte) {
+	gde.string_resize(s, gde.Int(len(text) + 1))
+	w := (^[^]rune)(s)^ if string_layout_known else gde.string_operator_index(s, 0)
+	for c, k in text { w[k] = rune(c) }
+	w[len(text)] = 0
 }
 
 // The parts of `s` between each Odin text `delimiter`: the engine's `split`. Empty `delimiter` gives

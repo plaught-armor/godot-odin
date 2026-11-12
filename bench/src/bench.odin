@@ -479,6 +479,10 @@ Ident :: enum i64 {
 	TO_INT_RUNES,      // runes_to_int of the same String's characters
 	TO_FLOAT_ENGINE,   // the generated string_to_float of a cached "-123.456e-2"
 	TO_FLOAT_RUNES,    // runes_to_float of the same String's characters
+	INT_TEXT_ENGINE,   // the generated string_num_int64 of -1234567, made and destroyed
+	INT_TEXT,          // string_of_int of the same number
+	FLOAT_TEXT_ENGINE, // the generated string_num of -123.456 at the default places
+	FLOAT_TEXT,        // string_of_float of the same number
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -773,6 +777,34 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		defer godot.destroy[.STRING](&num)
 		p := &num
 		for _ in 0 ..< n { sum += i64(godot.runes_to_float(godot.string_read(intrinsics.volatile_load(&p)))) }
+	case .INT_TEXT_ENGINE:
+		v := i64(-1234567)
+		for _ in 0 ..< n {
+			s := godot.string_num_int64(intrinsics.volatile_load(&v), 10, false)
+			sum += i64(godot.string_length(&s))
+			godot.destroy[.STRING](&s)
+		}
+	case .INT_TEXT:
+		v := i64(-1234567)
+		for _ in 0 ..< n {
+			s := godot.string_of_int(intrinsics.volatile_load(&v))
+			sum += i64(godot.string_length(&s))
+			godot.destroy[.STRING](&s)
+		}
+	case .FLOAT_TEXT_ENGINE:
+		v := -123.456
+		for _ in 0 ..< n {
+			s := godot.string_num(intrinsics.volatile_load(&v), -1)
+			sum += i64(godot.string_length(&s))
+			godot.destroy[.STRING](&s)
+		}
+	case .FLOAT_TEXT:
+		v := -123.456
+		for _ in 0 ..< n {
+			s := godot.string_of_float(intrinsics.volatile_load(&v))
+			sum += i64(godot.string_length(&s))
+			godot.destroy[.STRING](&s)
+		}
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)
 		defer godot.destroy[.STRING_NAME](&sn)

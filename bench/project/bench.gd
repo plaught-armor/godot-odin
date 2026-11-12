@@ -99,6 +99,10 @@ func _initialize() -> void:
 	_report("Odin runes_to_int, the String read in place", func() -> float: return b.ident_ns(40, N))
 	_report("Generated string_to_float, cached String", func() -> float: return b.ident_ns(41, N))
 	_report("Odin runes_to_float, the String read in place", func() -> float: return b.ident_ns(42, N))
+	_report("Generated string_num_int64, made and destroyed", func() -> float: return b.ident_ns(43, N))
+	_report("Odin string_of_int, made and destroyed", func() -> float: return b.ident_ns(44, N))
+	_report("Generated string_num, made and destroyed", func() -> float: return b.ident_ns(45, N))
+	_report("Odin string_of_float, made and destroyed", func() -> float: return b.ident_ns(46, N))
 	_report("GDScript -> Odin, typed, String param", func() -> float: return _string_param(b, false))
 	_report("GDScript -> Odin, typed, string param", func() -> float: return _string_param(b, true))
 	var table: Dictionary = {}

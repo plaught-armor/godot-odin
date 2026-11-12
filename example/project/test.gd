@@ -448,6 +448,32 @@ func _check_extras() -> int:
 	if got_floats.to_byte_array() != want_floats.to_byte_array():
 		print("FAIL: Bag.part_floats gave %s, not %s" % [got_floats, want_floats])
 		failures += 1
+	var int_values: PackedInt64Array = [0, 1, -1, 9, 10, -10, 35, 36, 255, -256, 123456789, -987654321, 9223372036854775807, -9223372036854775807 - 1]
+	for base: int in [10, 2, 7, 16, 36]:
+		for caps: bool in [false, true]:
+			var want_digits: PackedStringArray = []
+			for v: int in int_values:
+				want_digits.append(String.num_int64(v, base, caps))
+			var got_digits: PackedStringArray = b2.int_texts(int_values, base, caps)
+			if got_digits != want_digits:
+				print("FAIL: Bag.int_texts base %d gave %s, not %s" % [base, got_digits, want_digits])
+				failures += 1
+	var float_values: PackedFloat64Array = [0.0, -0.0, 1.0, -1.0, 1.5, -1.5, 0.1, 0.5, 2.5, 2.675, 1.005, 123.456, -123.456e-2, 10.0, 10.000000000000002, 9.999999999999998, 99.99999999999999, 999.9999999999999, 1000.0, 12345678.9, 1e15 + 0.3, 1e20, 1e300, 1.7976931348623157e308, 5e-324, 1e-5, 0.000123456, 3.14159265358979, 0.1 + 0.2, 9223372036854775807.0, -9223372036854775808.0, 1e19, 4294967296.5, 0.125, 0.375, -0.625, -1e-30, 1e22, 123456789012345678.0, 18446744073709551616.0, NAN, INF, -INF]
+	for decimals: int in [-1, 0, 1, 2, 5, 14, 22, 23, 32, 40]:
+		var want_nums: PackedStringArray = []
+		for v: float in float_values:
+			want_nums.append(String.num(v, decimals))
+		var got_nums: PackedStringArray = b2.float_texts(float_values, decimals)
+		if got_nums != want_nums:
+			print("FAIL: Bag.float_texts %d places gave %s, not %s" % [decimals, got_nums, want_nums])
+			failures += 1
+	var want_reals: PackedStringArray = []
+	for v: float in float_values:
+		want_reals.append(str(v))
+	var got_reals: PackedStringArray = b2.real_texts(float_values, true)
+	if got_reals != want_reals:
+		print("FAIL: Bag.real_texts gave %s, not %s" % [got_reals, want_reals])
+		failures += 1
 	for word: String in ["jump", "JUMP", "\u0130x", "ix", "", "jum", "jumps", "\u65E5"]:
 		var keywords: String = "jump;Jump;;JUMP;jum;jumps;ix;IX;\u0130x;\u65E5;\u65E5\u672C"
 		var want_is: PackedInt64Array = []

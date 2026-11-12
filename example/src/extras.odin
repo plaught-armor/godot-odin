@@ -132,6 +132,9 @@ register_extras :: proc() {
 	godot.method(b, "part_ints", bag_part_ints, {"s", "part"})
 	godot.method(b, "part_is", bag_part_is, {"s", "part", "word"})
 	godot.method(b, "part_floats", bag_part_floats, {"s", "part"})
+	godot.method(b, "int_texts", bag_int_texts, {"numbers", "base", "capitalize_hex"})
+	godot.method(b, "float_texts", bag_float_texts, {"numbers", "decimals"})
+	godot.method(b, "real_texts", bag_real_texts, {"numbers", "trailing"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -660,6 +663,36 @@ bag_part_ints :: proc(self: ^Bag, s: godot.String, part: godot.String) -> godot.
 	for p in godot.split_next(&parts) {
 		godot.packed_int64_array_append(&out, godot.runes_to_int(p))
 	}
+	return out
+}
+
+// `string_of_int` of each number.
+bag_int_texts :: proc(self: ^Bag, numbers: godot.PackedInt64Array, base: i64, capitalize_hex: bool) -> godot.PackedStringArray {
+	numbers := numbers
+	values := godot.packed_read_int64(&numbers)
+	out := godot.packed_string_array_new()
+	godot.packed_string_array_resize(&out, i64(len(values)))
+	for &slot, k in godot.packed_write_string(&out) { slot = godot.string_of_int(values[k], base, capitalize_hex) }
+	return out
+}
+
+// `string_of_float` of each number.
+bag_float_texts :: proc(self: ^Bag, numbers: godot.PackedFloat64Array, decimals: i64) -> godot.PackedStringArray {
+	numbers := numbers
+	values := godot.packed_read_float64(&numbers)
+	out := godot.packed_string_array_new()
+	godot.packed_string_array_resize(&out, i64(len(values)))
+	for &slot, k in godot.packed_write_string(&out) { slot = godot.string_of_float(values[k], decimals) }
+	return out
+}
+
+// `string_of_real` of each number.
+bag_real_texts :: proc(self: ^Bag, numbers: godot.PackedFloat64Array, trailing: bool) -> godot.PackedStringArray {
+	numbers := numbers
+	values := godot.packed_read_float64(&numbers)
+	out := godot.packed_string_array_new()
+	godot.packed_string_array_resize(&out, i64(len(values)))
+	for &slot, k in godot.packed_write_string(&out) { slot = godot.string_of_real(values[k], trailing) }
 	return out
 }
 
