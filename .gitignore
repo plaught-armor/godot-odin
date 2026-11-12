@@ -4,3 +4,5 @@ example/project/bin/
 __pycache__/
 bench/project/.godot/
 bench/project/bin/
+demos/project/.godot/
+demos/project/bin/

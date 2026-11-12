@@ -42,6 +42,7 @@ They were built for, and run in, a shipping-bound Godot game. Its simulation lay
 | `example/` | A minimal extension, a project that loads it, and a test. |
 | `addons/odin_build/` | An editor plugin that rebuilds and reloads the extension when its Odin sources change. |
 | `bench/` | Timing loops for the call paths the core owns. `bench/build.sh /path/to/godot` runs them. |
+| `demos/` | Four in-game demos, each one algorithm written twice, in Odin and in GDScript, switchable at runtime. |
 
 ## Use
 
@@ -99,6 +100,36 @@ linux.release.x86_64 = "res://bin/libmy_ext.linux.x86_64.so"
 ```
 
 `example/` is the same thing complete. `example/build.sh /path/to/godot` builds it and runs its test.
+
+## Demos
+
+`demos/project` is a Godot project with four scenes behind a menu. Every scene runs one algorithm
+in Odin (`demos/src`) and the same algorithm in GDScript, from the same seed and in the same
+operation order, so the two produce identical output. Tab switches between them and the readout
+shows the time each frame's work took.
+
+```sh
+demos/build.sh /path/to/godot   # builds the extension, then checks both backends match and times them
+godot --path demos/project      # runs the menu
+```
+
+In every demo: Tab switches Odin/GDScript, R resets, Esc goes back to the menu (Esc there quits).
+
+| Demo | What it exercises | Controls |
+|---|---|---|
+| Boids swarm | Float math in a tight loop: neighbours through a uniform grid | Up/Down double/halve the flock, left mouse pushes, right mouse pulls |
+| Falling sand | Byte reads and writes over a 480 by 270 grid, every cell every frame | Left mouse paints, right mouse erases, 1-4 pick sand/water/wall/erase, wheel sets the radius, E toggles the emitters |
+| Pathfinding swarm | Dijkstra over 37 000 cells with a heap, rebuilt while the target moves | Hold left mouse to drag the target, Up/Down double/halve the units |
+| Procedural terrain | Fractal Perlin noise, normals and colours for up to 262 000 vertices | Right mouse drag orbits, wheel zooms, sliders rebuild, M morphs every frame |
+
+What `demos/build.sh` measured here (`-o:speed`, output identical bit for bit on both sides):
+
+| Demo | Work | Odin | GDScript | Ratio |
+|---|---|---|---|---|
+| Boids | 2000 boids, 60 steps | 16.4 ms | 368 ms | 22x |
+| Falling sand | 120 steps | 24.1 ms | 2896 ms | 120x |
+| Pathfinding | 4000 units, 120 steps | 20.8 ms | 1699 ms | 82x |
+| Terrain | 256 by 256 vertices, 6 octaves | 4.05 ms | 329 ms | 81x |
 
 ## What the core does
 
