@@ -124,6 +124,9 @@ register_extras :: proc() {
 
 	ghost_class = godot.class(Ghost, "Ghost", "Node", nil, godot.Options(Ghost){runtime = true})
 	godot.fields(ghost_class)
+	// Bag methods that take or make Ghosts register after Ghost.
+	godot.method(b, "typed_ghosts", bag_typed_ghosts, {"g", "n"})
+	godot.method(b, "ghost_total", bag_ghost_total, {"xs"})
 }
 
 unload_extras :: proc() {
@@ -400,6 +403,26 @@ bag_typed_words :: proc(self: ^Bag) -> godot.Array {
 bag_typed_nodes :: proc(self: ^Bag, n: i64) -> godot.Array {
 	xs := make([]godot.Node, max(n, 0), context.temp_allocator)
 	return godot.array_typed_of(xs)
+}
+
+// `g`, `n` times, in a new Array[Ghost]: a typed Array of a registered class.
+bag_typed_ghosts :: proc(self: ^Bag, g: ^Ghost, n: i64) -> godot.Array {
+	xs := make([]^Ghost, max(n, 0), context.temp_allocator)
+	for &x in xs { x = g }
+	return godot.array_typed_of(xs)
+}
+
+// The sum of `seen` over the Array[Ghost] `xs`; -1 for any other Array.
+bag_ghost_total :: proc(self: ^Bag, xs: godot.Array) -> i64 {
+	xs := xs
+	if godot.array_size(&xs) == 0 { return 0 }
+	slots := godot.array_write_typed(&xs, ^Ghost)
+	if slots == nil { return -1 }
+	total: i64
+	for &v in slots {
+		if g := godot.from_variant(^Ghost, &v); g != nil { total += g.seen }
+	}
+	return total
 }
 
 // Adds 1 to every element of the Array[int] `xs` in place. False, with `xs` untouched, for any

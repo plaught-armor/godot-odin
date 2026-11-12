@@ -166,12 +166,17 @@ array_write_typed :: proc "contextless" (a: ^Array, $T: typeid) -> []Variant {
 	return ([^]Variant)(gde.array_operator_index(a, 0))[:n]
 }
 
-// The class name an `Array[T]` carries: `T`'s own for an engine class, else empty. Looked up once
-// per `T`, and kept for the life of the process.
+// The class name an `Array[T]` carries: `T`'s own for an engine class, the registered class's for
+// `^S` of a registered struct `S`, else empty. Looked up once per engine class `T`, and kept for
+// the life of the process; a registered class must register before its first typed Array.
 @(private)
 typed_class :: proc "contextless" ($T: typeid) -> ^StringName {
 	#assert(T != Variant, "godot_odin: a typed Array needs a type; use array_of for an untyped one")
-	#assert(!(intrinsics.type_is_pointer(T) && intrinsics.type_base_type(T) != rawptr), "godot_odin: a typed Array of a registered class is not supported")
+	when intrinsics.type_is_pointer(T) && intrinsics.type_base_type(T) != rawptr {
+		c := (^Class(intrinsics.type_elem_type(T)))(class_slot(intrinsics.type_elem_type(T))^)
+		runtime.assert_contextless(c != nil, "godot_odin: a class must register before a typed Array of it")
+		return &c.name
+	}
 	@(static) name: StringName
 	@(static) known: bool
 	when intrinsics.type_base_type(T) == rawptr {
@@ -207,7 +212,8 @@ array_typed_as :: proc "contextless" (a: ^Array, type: gde.VariantType, class: ^
 	defer destroy[.STRING_NAME](&got)
 	script := array_get_typed_script(a)
 	defer gde.variant_destroy(&script)
-	return same_name(got, class^) && variant_tag(&script) == .NIL
+	// The engine answers an Array with no script with a null Object, not a NIL Variant.
+	return same_name(got, class^) && from_variant(rawptr, &script) == nil
 }
 
 // The keys and the values of `d`, as two new Arrays in matching order: `keys[i]` maps to

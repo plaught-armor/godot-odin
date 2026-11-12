@@ -228,6 +228,12 @@
 	<brief_description>A Node that exists only in a running game: in the editor its instances are placeholders.</brief_description>
 	<description></description>
 	<methods>
+		<method name="typed_ghosts">
+			<description>[code]g[/code], [code]n[/code] times, in a new Array[Ghost]: a typed Array of a registered class.</description>
+		</method>
+		<method name="ghost_total">
+			<description>The sum of [code]seen[/code] over the Array[Ghost] [code]xs[/code]; -1 for any other Array.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="seen" type=""></member>

@@ -258,6 +258,14 @@ func _check_extras() -> int:
 	if b2.texts(&"héllo😀", NodePath("a/b:c")) != "héllo😀|a/b:c" or b2.texts(&"", NodePath()) != "|":
 		print("FAIL: Bag.texts gave %s" % b2.texts(&"héllo😀", NodePath("a/b:c")))
 		failures += 1
+	var ghosts: Array[Ghost] = b2.typed_ghosts(g, 2)
+	var mine: Array[Ghost] = [g]
+	if ghosts.size() != 2 or ghosts[1] != g or ghosts.get_typed_class_name() != &"Ghost" or b2.typed_ghosts(g, 0).get_typed_class_name() != &"Ghost":
+		print("FAIL: Bag.typed_ghosts gave %s typed %s" % [ghosts, ghosts.get_typed_class_name()])
+		failures += 1
+	if b2.ghost_total(ghosts) != 6 or b2.ghost_total(mine) != 3 or b2.ghost_total([g]) != -1 or b2.ghost_total(b2.typed_nodes(1)) != -1:
+		print("FAIL: Bag.ghost_total gave %s" % [[b2.ghost_total(ghosts), b2.ghost_total(mine), b2.ghost_total([g]), b2.ghost_total(b2.typed_nodes(1))]])
+		failures += 1
 	if b2.kinds("x") != "x:" or b2.kinds("x", 1, 2.0, "s", [3], &"n") != "x:2,3,4,28,21" or b2.callv("kinds", ["y", null]) != "y:0":
 		print("FAIL: Bag.kinds gave %s" % b2.kinds("x", 1, 2.0, "s", [3], &"n"))
 		failures += 1
