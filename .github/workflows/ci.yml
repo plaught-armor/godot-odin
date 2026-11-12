@@ -1,0 +1,58 @@
+# Checks every Odin package on Linux, Windows and macOS, builds the example as a shared library on
+# each, and on Linux runs the example's tests against the engine.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  ODIN_RELEASE: dev-2026-10
+  GODOT_VERSION: 4.7-stable
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            lib: libexample.linux.x86_64.so
+          - os: windows-latest
+            lib: example.windows.x86_64.dll
+          - os: macos-latest
+            lib: libexample.macos.dylib
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: laytan/setup-odin@v2
+        with:
+          release: ${{ env.ODIN_RELEASE }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check
+        shell: bash
+        run: |
+          odin check example/src -no-entry-point -vet
+          odin check bench/src -no-entry-point -vet
+          odin check demos/src -no-entry-point -vet
+      - name: Build the example
+        shell: bash
+        run: odin build example/src -build-mode:shared -out:example/project/bin/${{ matrix.lib }}
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: laytan/setup-odin@v2
+        with:
+          release: ${{ env.ODIN_RELEASE }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download Godot
+        run: |
+          curl -fsSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q godot.zip
+          echo "GODOT=$PWD/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
+      - name: Test the example
+        run: example/build.sh "$GODOT"

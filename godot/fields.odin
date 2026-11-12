@@ -243,7 +243,7 @@ field_of :: proc(sf: reflect.Struct_Field) -> (f: Field) {
 	case runtime.Type_Info_Float:
 		f.type = .FLOAT
 	case runtime.Type_Info_Pointer:
-		named, ok := sf.type.variant.(runtime.Type_Info_Named)
+		_, ok := sf.type.variant.(runtime.Type_Info_Named)
 		assert(ok && info.elem == nil, "godot_odin: a pointer field must be an engine class")
 		f.type = .OBJECT
 		class_text := object_class(sf)
@@ -351,13 +351,13 @@ register_field :: proc(class: ^StringName, sf: reflect.Struct_Field, f: ^Field) 
 		usage       = u32(PropertyUsageFlags_PROPERTY_USAGE_DEFAULT),
 	}
 	hint_text := ""
-	if r, ok := reflect.struct_tag_lookup(sf.tag, "range"); ok {
+	if r, has_range := reflect.struct_tag_lookup(sf.tag, "range"); has_range {
 		info.hint = u32(PropertyHint.PROPERTY_HINT_RANGE)
 		hint_text = r
-	} else if h, ok := reflect.struct_tag_lookup(sf.tag, "hint"); ok {
+	} else if h, has_hint := reflect.struct_tag_lookup(sf.tag, "hint"); has_hint {
 		assert(h == "color_no_alpha", "godot_odin: the only hint tag is color_no_alpha")
 		info.hint = u32(PropertyHint.PROPERTY_HINT_COLOR_NO_ALPHA)
-	} else if a, ok := reflect.struct_tag_lookup(sf.tag, "array"); ok {
+	} else if a, has_array := reflect.struct_tag_lookup(sf.tag, "array"); has_array {
 		assert(f.type == .ARRAY, "godot_odin: an array tag on a field that is not an Array")
 		f.array_of = new(StringName)
 		f.array_of^ = name_of(a)
@@ -393,7 +393,7 @@ register_field :: proc(class: ^StringName, sf: reflect.Struct_Field, f: ^Field) 
 		destroy[.STRING_NAME](&node_sn)
 		append(&owned, class_sn)
 		info.class_name = class_sn
-	} else if d, ok := reflect.struct_tag_lookup(sf.tag, "dict"); ok {
+	} else if d, has_dict := reflect.struct_tag_lookup(sf.tag, "dict"); has_dict {
 		assert(f.type == .DICTIONARY, "godot_odin: a dict tag on a field that is not a Dictionary")
 		info.hint, hint_text = dict_types(f, d)
 	} else if set, is_set := runtime.type_info_base(sf.type).variant.(runtime.Type_Info_Bit_Set); is_set {
@@ -406,7 +406,7 @@ register_field :: proc(class: ^StringName, sf: reflect.Struct_Field, f: ^Field) 
 	} else if _, is_enum := runtime.type_info_base(sf.type).variant.(runtime.Type_Info_Enum); is_enum {
 		info.hint = u32(PropertyHint.PROPERTY_HINT_ENUM)
 		hint_text = enum_hint(sf.type.id)
-		if qualified, ok := enum_names[sf.type.id]; ok {
+		if qualified, has_qualified := enum_names[sf.type.id]; has_qualified {
 			info.class_name = qualified
 			info.usage |= u32(PropertyUsageFlags_PROPERTY_USAGE_CLASS_IS_ENUM)
 		}
