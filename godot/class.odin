@@ -747,8 +747,8 @@ describe_param :: proc($A: typeid, k: int, d: ^Params) {
 property :: proc(
 	c: ^Class($T),
 	name: cstring,
-	get: $G,
-	set: $S,
+	$get: $G,
+	$set: $S,
 	hint := PropertyHint.PROPERTY_HINT_NONE,
 	hint_string: cstring = "",
 	usage := PropertyUsageFlags_PROPERTY_USAGE_DEFAULT,
@@ -757,17 +757,63 @@ property :: proc(
 	setter := fmt.ctprintf("set_%s", name)
 	method(c, getter, get)
 	method(c, setter, set, {"value"})
+	info := info_of(intrinsics.type_proc_return_type(G, 0), nil)
+	add_property(&c.name, name, getter, setter, &info, hint, hint_string, usage, -1)
+}
+
+// Registers one property per entry of `names`, all read by `get(self, index)` and written by
+// `set(self, index, value)`, where `index` is the name's position in `names`. The two procs are
+// registered as the methods `get_<base>` and `set_<base>`. The type is `get`'s return type.
+property_indexed :: proc(
+	c: ^Class($T),
+	base: cstring,
+	names: []cstring,
+	$get: $G,
+	$set: $S,
+	hint := PropertyHint.PROPERTY_HINT_NONE,
+	hint_string: cstring = "",
+	usage := PropertyUsageFlags_PROPERTY_USAGE_DEFAULT,
+) where intrinsics.type_proc_parameter_count(G) == 2 && intrinsics.type_proc_parameter_count(S) == 3 {
+	#assert(intrinsics.type_proc_parameter_type(G, 1) == i64, "property_indexed: get takes (self, index: i64)")
+	#assert(intrinsics.type_proc_parameter_type(S, 1) == i64, "property_indexed: set takes (self, index: i64, value)")
+	#assert(intrinsics.type_proc_parameter_type(S, 2) == intrinsics.type_proc_return_type(G, 0), "property_indexed: set's value type differs from get's")
+	assert(len(names) > 0, "property_indexed: no names")
+	getter := fmt.ctprintf("get_%s", base)
+	setter := fmt.ctprintf("set_%s", base)
+	method(c, getter, get, {"index"})
+	method(c, setter, set, {"index", "value"})
+	info := info_of(intrinsics.type_proc_return_type(G, 0), nil)
+	for name, i in names {
+		add_property(&c.name, name, getter, setter, &info, hint, hint_string, usage, i)
+	}
+}
+
+// Registers a property of `class` from its type `info`, through accessor methods already
+// registered. `index` >= 0 makes it indexed: the engine passes it as the accessors' first argument.
+add_property :: proc(
+	class: ^StringName,
+	name, getter, setter: cstring,
+	info: ^gde.PropertyInfo,
+	hint: PropertyHint,
+	hint_string: cstring,
+	usage: PropertyUsageFlags,
+	index: int,
+) {
 	prop_name, get_name, set_name: StringName
 	hint_text: String
 	gde.string_name_new_with_utf8_chars(&prop_name, name)
 	gde.string_name_new_with_utf8_chars(&get_name, getter)
 	gde.string_name_new_with_utf8_chars(&set_name, setter)
 	gde.string_new_with_utf8_chars(&hint_text, hint_string)
-	info := info_of(intrinsics.type_proc_return_type(G, 0), &prop_name)
+	info.name = &prop_name
 	info.hint = u32(hint)
 	info.hint_string = &hint_text
 	info.usage = u32(usage)
-	gde.classdb_register_extension_class_property(library, &c.name, &info, &set_name, &get_name)
+	if index < 0 {
+		gde.classdb_register_extension_class_property(library, class, info, &set_name, &get_name)
+	} else {
+		gde.classdb_register_extension_class_property_indexed(library, class, info, &set_name, &get_name, gde.Int(index))
+	}
 	destroy[.STRING_NAME](&prop_name)
 	destroy[.STRING_NAME](&get_name)
 	destroy[.STRING_NAME](&set_name)

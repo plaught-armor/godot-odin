@@ -51,6 +51,14 @@ singleton :: proc "contextless" (name: cstring) -> gde.ObjectPtr {
 	return obj
 }
 
+// The absolute path of this library's file, such as `/game/bin/libgame.so`, to find data files
+// shipped beside it. You destroy it, or return it.
+library_path :: proc "contextless" () -> (out: String) {
+	assert_contextless(library != nil, "godot_odin: library_path before the library is loaded")
+	gde.get_library_path(library, &out)
+	return
+}
+
 // A String for `s`, which the caller destroys.
 string_of :: proc "contextless" (s: string) -> (out: String) {
 	// ASCII is the same in Latin-1, and the engine copies Latin-1 without decoding it.

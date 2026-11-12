@@ -31,6 +31,8 @@ Bag :: struct {
 	// An object of its own, made with the bag and released with it.
 	box:    godot.RefCounted `godot:"new"`,
 	slots:  [SLOTS]i64 `godot:"-"`,
+	// A tint, read and written as the indexed properties `tint_r`, `tint_g` and `tint_b`.
+	tint:   [3]f64 `godot:"-"`,
 }
 
 slot_names: [SLOTS]godot.StringName
@@ -113,6 +115,9 @@ register_extras :: proc() {
 	godot.method(b, "kinds", bag_kinds, {"label"})
 	godot.method(b, "describe", bag_describe, {"node", "n"})
 	godot.method(b, "text_size", bag_text_size, {"s"})
+	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
+	godot.method(b, "lib_path", bag_lib_path)
+	godot.property(b, "brightness", bag_get_brightness, bag_set_brightness)
 	godot.method(b, "temp_live", bag_temp_live)
 	godot.method(b, "count", bag_count)
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
@@ -514,6 +519,33 @@ bag_text_size :: proc(self: ^Bag, s: godot.String) -> i64 {
 	s := s
 	if godot.string_is_empty(&s) { return -1 }
 	return godot.string_length(&s)
+}
+
+// One channel of the tint, 0 to 2; 0 for any other index.
+bag_get_tint :: proc(self: ^Bag, index: i64) -> f64 {
+	if index < 0 || index >= len(self.tint) { return 0 }
+	return self.tint[index]
+}
+
+// Sets one channel of the tint; ignores any other index.
+bag_set_tint :: proc(self: ^Bag, index: i64, value: f64) {
+	if index < 0 || index >= len(self.tint) { return }
+	self.tint[index] = value
+}
+
+// The tint's mean channel.
+bag_get_brightness :: proc(self: ^Bag) -> f64 {
+	return (self.tint[0] + self.tint[1] + self.tint[2]) / 3
+}
+
+// Sets every channel of the tint to `value`.
+bag_set_brightness :: proc(self: ^Bag, value: f64) {
+	self.tint = value
+}
+
+// This library's path, as the engine reports it.
+bag_lib_path :: proc() -> godot.String {
+	return godot.library_path()
 }
 
 // The live temp_text count between calls: 0.

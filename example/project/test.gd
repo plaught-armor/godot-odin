@@ -274,6 +274,29 @@ func _check_extras() -> int:
 		print("FAIL: Bag.describe(7) set %s, %d texts live after" % [described.editor_description, Bag.temp_live()])
 		failures += 1
 	described.free()
+	b2.tint_g = 0.5
+	b2.set_tint(2, 0.25)
+	if b2.tint_r != 0.0 or b2.tint_g != 0.5 or b2.tint_b != 0.25 or b2.get_tint(1) != 0.5:
+		print("FAIL: Bag tint is %s %s %s" % [b2.tint_r, b2.tint_g, b2.tint_b])
+		failures += 1
+	var tint_props := 0
+	for p in b2.get_property_list():
+		if String(p.name).begins_with("tint_") and p.type == TYPE_FLOAT and p.hint == PROPERTY_HINT_RANGE:
+			tint_props += 1
+	if tint_props != 3:
+		print("FAIL: Bag lists %d tint properties, not 3" % tint_props)
+		failures += 1
+	if b2.brightness != 0.25:
+		print("FAIL: Bag.brightness is %s, not 0.25" % b2.brightness)
+		failures += 1
+	b2.brightness = 1.0
+	if b2.tint_r != 1.0 or b2.tint_b != 1.0 or b2.get_brightness() != 1.0:
+		print("FAIL: Bag.brightness did not set the tint")
+		failures += 1
+	var lib: String = Bag.lib_path()
+	if not lib.ends_with(".so") or not FileAccess.file_exists(lib):
+		print("FAIL: Bag.lib_path is %s" % lib)
+		failures += 1
 	var long_text := "x".repeat(1000)
 	if b2.text_size("") != -1 or b2.text_size("abc") != 3 or b2.text_size("日本語") != 3 or b2.text_size(long_text) != 1000:
 		print("FAIL: Bag.text_size %d %d %d %d" % [b2.text_size(""), b2.text_size("abc"), b2.text_size("日本語"), b2.text_size(long_text)])
