@@ -109,7 +109,7 @@ linux.release.x86_64 = "res://bin/libmy_ext.linux.x86_64.so"
 - **Engine virtual overrides.** `godot.override_node_process(c, process)` makes `process` the
   class's `_process`. There is one generated `override_<class><virtual>` proc per engine virtual,
   so the override's signature is checked at compile time. The engine finds an override once per
-  object, then calls it by ptrcall, about 5 ns over a node with no override. A GDScript `_process`
+  object, then calls it by ptrcall, about 3 ns over a node with no override. A GDScript `_process`
   costs about 41 ns over that node (`bench/`).
 - **Vararg methods** (`godot.callable_call`, `godot.signal_emit`, `godot.object_call` and the
   rest). They take their fixed arguments, then `rest: ..Variant`, which the caller keeps and
@@ -137,7 +137,11 @@ linux.release.x86_64 = "res://bin/libmy_ext.linux.x86_64.so"
 - **Signals** (`godot.signal` and `godot.emit`).
 - **Callables from Odin procs** (`godot.callable`), with bound arguments.
 - **Instances of your own classes as arguments.** A method can take `^OtherClass`, as long as
-  `OtherClass` registers before that method does.
+  `OtherClass` registers before that method does. The core finds the struct behind an object by
+  reading where the engine's Object keeps its extension instance. It proves that layout at the
+  first instance and falls back to an instance binding when it does not match. A binding would
+  cost each object an allocation and a mutex on every reference change: `Bench.new()` from
+  GDScript takes about 190 ns without one and 260 ns with one (`bench/`).
 - **Editor help from comments.** Run `tools/odin_docgen.py path/to/my_ext` to write
   `doc_classes.gen.xml` from the comments on your classes, fields and methods. Embed it, then
   pass it to `godot.entry`'s `docs` parameter.

@@ -40,7 +40,7 @@ callable :: proc(self: ^$T, f: $P, binds: ..Variant) -> (out: Callable) where in
 		filled: [MAX_ARGS]gde.ConstVariantPtr
 		for i in 0 ..< h.args {
 			filled[i] = args[i] if i < want else &h.binds[i - want]
-			if !converts(gde.variant_get_type(filled[i]), h.types[i]) {
+			if !converts(variant_tag(filled[i]), h.types[i]) {
 				err.error = .ERROR_INVALID_ARGUMENT
 				err.argument = i
 				err.expected = i32(h.types[i])

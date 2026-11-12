@@ -38,6 +38,10 @@ Static :: struct {}
 
 // A registered class whose instances carry a `T`. Lives for the process.
 Class :: struct($T: typeid) {
+	// The engine's record of this class, which every instance's Object points to beside the
+	// instance (`instance_slot`). Set by each instance made; first, so `instance_raw` reads it
+	// without knowing `T`.
+	extension:    rawptr,
 	name:         StringName,
 	title:        string,
 	parent:       StringName,
@@ -96,6 +100,14 @@ emit_bind: gde.MethodBindPtr
 // Binding callbacks for an instance: the header is freed with the instance, not the binding.
 @(private)
 no_binding: gde.InstanceBindingCallbacks
+// Bytes into an engine Object where it keeps the instance `object_set_instance` gave it, with its
+// class record in the word before; 0 when `find_instance_slot` could not prove that layout, and
+// every instance then carries an instance binding instead. An instance binding costs the engine an
+// allocation per object and a mutex on every reference change, so the slot is read when it can be.
+@(private)
+instance_slot: uintptr
+@(private)
+slot_checked: bool
 
 // The extension's entry point: loads the interface and calls `register` at the scene level, where
 // every class registers. At unload `unload` runs first, to release what the library holds, then
@@ -184,7 +196,12 @@ class :: proc($T: typeid, name, parent: cstring, notification: proc(self: ^T, wh
 		h.object = Object(object)
 		h.class = c
 		gde.object_set_instance(object, &c.name, h)
-		gde.object_set_instance_binding(object, library, h, &no_binding)
+		if !slot_checked { find_instance_slot(object, h) }
+		if instance_slot == 0 {
+			gde.object_set_instance_binding(object, library, h, &no_binding)
+		} else {
+			c.extension = (^rawptr)(uintptr(object) + instance_slot - size_of(rawptr))^
+		}
 		return h
 	}
 	free :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr) {
@@ -570,7 +587,7 @@ fill_args :: proc "contextless" (m: ^Method, args: [^]gde.ConstVariantPtr, count
 			filled[i] = &m.defaults[i]
 			continue
 		}
-		have := gde.variant_get_type(args[i])
+		have := variant_tag(args[i])
 		if converts(have, m.types[i]) {
 			filled[i] = args[i]
 			continue
@@ -630,4 +647,20 @@ arg :: #force_inline proc($A: typeid, $I: int, $SELF, $PTR: bool, c: ^Call) -> A
 			return from_variant(A, c.variants[K])
 		}
 	}
+}
+
+// Finds `instance_slot` from the first instance made: `instance` must sit in exactly one of the
+// object's first words, after a set class record. The engine keeps the pair at the head of Object.
+@(private)
+find_instance_slot :: proc "contextless" (object: gde.ObjectPtr, instance: rawptr) {
+	SCAN :: 16
+	slot_checked = true
+	words := ([^]rawptr)(object)
+	found := 0
+	for i in 1 ..< SCAN {
+		if words[i] != instance { continue }
+		if found != 0 || words[i - 1] == nil { return }
+		found = i
+	}
+	instance_slot = uintptr(found * size_of(rawptr))
 }

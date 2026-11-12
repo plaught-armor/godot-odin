@@ -104,7 +104,7 @@ same_name :: proc "contextless" (a, b: StringName) -> bool {
 array_name_at :: proc "contextless" (array: ^Array, index: i64) -> (out: StringName) {
 	v := array_get(array, index)
 	defer gde.variant_destroy(&v)
-	if gde.variant_get_type(&v) != .STRING_NAME { return }
+	if variant_tag(&v) != .STRING_NAME { return }
 	to_type[.STRING_NAME](&out, &v)
 	return
 }
@@ -122,7 +122,12 @@ enter :: #force_inline proc(loc := #caller_location) -> runtime.Arena_Temp {
 	when ODIN_DEBUG {
 		assert(on_main_thread, "godot_odin: an engine call off the main thread", loc)
 	}
-	return runtime.arena_temp_begin(temp_arena, loc)
+	// `runtime.arena_temp_begin`, inline: it is a call, on every call from the engine.
+	a := temp_arena
+	temp := runtime.Arena_Temp{arena = a, block = a.curr_block}
+	if a.curr_block != nil { temp.used = a.curr_block.used }
+	a.temp_count += 1
+	return temp
 }
 
 // The arena behind `ctx.temp_allocator`, the main thread's, which `entry` sets. `enter` marks it
@@ -130,15 +135,35 @@ enter :: #force_inline proc(loc := #caller_location) -> runtime.Arena_Temp {
 // call per engine call in a shared library.
 temp_arena: ^runtime.Arena
 
-// Rolls the temp arena back to `temp`, the mark `enter` took.
+// Rolls the temp arena back to `temp`, the mark `enter` took. Most calls take no temp, and then
+// only the mark's count changes: the runtime's rollback, which is a call, runs when there is
+// something to roll back.
 leave :: #force_inline proc(temp: runtime.Arena_Temp) {
+	a := temp.arena
+	if a.curr_block == temp.block && (temp.block == nil || temp.block.used == temp.used) {
+		when ODIN_DEBUG {
+			assert(a.temp_count > 0, "godot_odin: leave without enter")
+		}
+		a.temp_count -= 1
+		return
+	}
 	runtime.default_temp_allocator_temp_end(temp)
 }
 
 // Bytes the temp arena of `ctx`, the context every engine call runs in, holds now. For debug lanes
 // that prove a call frees its temp use.
 temp_used :: proc "contextless" () -> i64 {
-	return i64((^runtime.Default_Temp_Allocator)(ctx.temp_allocator.data).arena.total_used)
+	// The sum over the arena's live blocks. The arena's own `total_used` keeps counting a block it
+	// frees on rollback, so it only grows after a take that needed a new block.
+	MAX_BLOCKS :: 1 << 16
+	n: uint
+	block := (^runtime.Default_Temp_Allocator)(ctx.temp_allocator.data).arena.curr_block
+	for _ in 0 ..< MAX_BLOCKS {
+		if block == nil { break }
+		n += block.used
+		block = block.prev
+	}
+	return i64(n)
 }
 
 // Logs a formatted warning in the engine's log and editor, as `push_warning` does.

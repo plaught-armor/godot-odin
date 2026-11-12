@@ -34,7 +34,75 @@ func _initialize() -> void:
 	if not is_equal_approx(WalkMath.call_float(self, &"twice", 2.0), 4.0):
 		print("FAIL: WalkMath.call_float through Object.call is not 4")
 		failures += 1
+	failures += _check_instances(w)
+	failures += _check_temp()
+	failures += _check_untyped()
 	_failures = failures
+
+
+# A script on top of the extension class: its objects are still Walkers to Odin.
+class ScriptedWalker extends Walker:
+	pass
+
+
+# Odin finds a Walker's struct behind the object, for its own and scripted Walkers only.
+func _check_instances(w: Walker) -> int:
+	var failures: int = 0
+	var scripted: ScriptedWalker = ScriptedWalker.new()
+	scripted.speed = 4.0
+	var ticker: Ticker = Ticker.new()
+	var cases: Array = [[w, true], [scripted, true], [Resource.new(), false], [ticker, false], [null, false]]
+	for c: Array in cases:
+		if WalkMath.is_walker(c[0]) != c[1]:
+			print("FAIL: WalkMath.is_walker(%s) is not %s" % c)
+			failures += 1
+	ticker.free()
+	if not is_equal_approx(WalkMath.speed_of(w), 2.0) or not is_equal_approx(WalkMath.speed_of(scripted), 4.0):
+		print("FAIL: WalkMath.speed_of read %s and %s, not 2 and 4" % [WalkMath.speed_of(w), WalkMath.speed_of(scripted)])
+		failures += 1
+	if not is_equal_approx(WalkMath.speed_of(null), -1.0):
+		print("FAIL: WalkMath.speed_of(null) is not -1")
+		failures += 1
+	return failures
+
+
+# Untyped calls and property writes arrive as Variants, and an int, float or bool converts to the
+# parameter's or field's type as the engine's own would.
+func _check_untyped() -> int:
+	var failures: int = 0
+	var u: Variant = Walker.new()
+	u.speed = 3
+	u.steps = 2.9
+	var moved: Variant = u.walk(Vector3.ZERO, 2)
+	if typeof(moved) != TYPE_FLOAT or not is_equal_approx(moved, 6.0) or typeof(u.speed) != TYPE_FLOAT:
+		print("FAIL: untyped walk answered %s (type %d), not the float 6" % [moved, typeof(moved)])
+		failures += 1
+	if typeof(u.steps) != TYPE_INT or u.steps != 3:
+		print("FAIL: steps set from 2.9 then walked is %s, not the int 3" % u.steps)
+		failures += 1
+	u.steps = true
+	if u.steps != 1:
+		print("FAIL: steps set from true is %s, not 1" % u.steps)
+		failures += 1
+	var t: Variant = Ticker.new()
+	for c: Array in [[1, true], [0.0, false], [2.5, true], [false, false]]:
+		t.readied = c[0]
+		if typeof(t.readied) != TYPE_BOOL or t.readied != c[1]:
+			print("FAIL: readied set from %s is %s, not %s" % [c[0], t.readied, c[1]])
+			failures += 1
+	t.free()
+	return failures
+
+
+# Each call gives back the temp memory it took: a small take, and one past the arena's 4 MiB block.
+func _check_temp() -> int:
+	var before: int = WalkMath.temp_in_use()
+	for bytes: int in [64, 8 << 20, 64]:
+		WalkMath.scratch(bytes)
+		if WalkMath.temp_in_use() != before:
+			print("FAIL: %d bytes of temp held after scratch(%d), not %d" % [WalkMath.temp_in_use(), bytes, before])
+			return 1
+	return 0
 
 
 # Called from Odin through Object.call.

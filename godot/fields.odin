@@ -67,7 +67,15 @@ class_slot :: proc "contextless" ($T: typeid) -> ^rawptr {
 @(private)
 instance_raw :: proc "contextless" (obj: rawptr, c: rawptr) -> rawptr {
 	if obj == nil || c == nil { return nil }
-	h := (^Header)(gde.object_get_instance_binding(gde.ObjectPtr(obj), library, nil))
+	h: ^Header
+	if instance_slot != 0 {
+		// The class record beside the instance is this class's only when the object is one.
+		ext := (^rawptr)(c)^
+		if ext == nil || (^rawptr)(uintptr(obj) + instance_slot - size_of(rawptr))^ != ext { return nil }
+		h = (^^Header)(uintptr(obj) + instance_slot)^
+	} else {
+		h = (^Header)(gde.object_get_instance_binding(gde.ObjectPtr(obj), library, nil))
+	}
 	if h == nil || h.class != c { return nil }
 	return rawptr(uintptr(h) + HEADER)
 }
@@ -607,14 +615,11 @@ field_get_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, ar
 	p := field_at(instance, f)
 	#partial switch f.type {
 	case .BOOL:
-		b := gde.Bool((^u8)(p)^)
-		from_type[.BOOL](ret, &b)
+		variant_into((^Variant)(ret), (^u8)(p)^ != 0)
 	case .INT:
-		i := read_int(p, f.size)
-		from_type[.INT](ret, &i)
+		variant_into((^Variant)(ret), read_int(p, f.size))
 	case .FLOAT:
-		x := read_float(p, f.size)
-		from_type[.FLOAT](ret, &x)
+		variant_into((^Variant)(ret), read_float(p, f.size))
 	case .OBJECT:
 		if (^rawptr)(p)^ == nil { gde.variant_new_nil(ret) } else { from_type[.OBJECT](ret, p) }
 	case:
@@ -684,7 +689,7 @@ field_set_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, ar
 		return
 	}
 	v := args[0]
-	have := gde.variant_get_type(v)
+	have := variant_tag(v)
 	made: Variant
 	reshaped := reshapes(have, f.type) && reshape(v, f.type, &made)
 	defer if reshaped { gde.variant_destroy(&made) }

@@ -188,7 +188,7 @@ from_variant :: proc "contextless" ($A: typeid, v: gde.ConstVariantPtr) -> A {
 	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) { return A(variant_int(v)) }
 	else when intrinsics.type_is_float(A) { return A(variant_float(v)) }
 	else when intrinsics.type_base_type(A) == rawptr || intrinsics.type_is_pointer(A) {
-		if gde.variant_get_type(v) == .NIL { return nil }
+		if variant_tag(v) == .NIL { return nil }
 		out: rawptr
 		to_type[.OBJECT](&out, auto_cast v)
 		when intrinsics.type_base_type(A) == rawptr {
@@ -211,15 +211,41 @@ borrowed :: #force_inline proc "contextless" (type: gde.VariantType, value: ^$A)
 	return
 }
 
-// Stops the load when the engine's Variant layout is not the one `borrowed` builds: an int's type
-// tag first and its value at byte 8, and a Callable's and a Signal's value at byte 8.
+// The type of the Variant at `v`, read from its tag as `gde.variant_get_type` answers it, with no
+// call. `check_borrow_layout` proves the layout at load.
+variant_tag :: #force_inline proc "contextless" (v: gde.ConstVariantPtr) -> gde.VariantType {
+	return gde.VariantType((^u32)(v)^)
+}
+
+// The scalar inside the Variant at `v`, which holds an int (`i64`), a float (`f64`) or a bool (`u8`)
+// as `variant_tag` says. Read at byte 8 with no call; `check_borrow_layout` proves it at load.
+@(private)
+variant_value :: #force_inline proc "contextless" ($A: typeid, v: gde.ConstVariantPtr) -> A {
+	return (^A)(uintptr(v) + 8)^
+}
+
+// Stops the load when the engine's Variant layout is not the one `borrowed`, `variant_tag` and
+// `variant_value` read: the type tag first, an int's, a float's and a bool's value at byte 8, and a
+// Callable's and a Signal's value at byte 8.
 @(private)
 check_borrow_layout :: proc "contextless" () {
 	n := i64(0x0123_4567_89ab_cdef)
 	v: Variant
 	from_type[.INT](&v, &n)
-	if (^u32)(&v._opaque[0])^ != u32(gde.VariantType.INT) || (^i64)(&v._opaque[8])^ != n {
+	if variant_tag(&v) != gde.variant_get_type(&v) || variant_tag(&v) != .INT || variant_value(i64, &v) != n {
 		fail("odin: unexpected Variant layout", "INT")
+	}
+	x := f64(-1.0e300)
+	from_type[.FLOAT](&v, &x)
+	if variant_tag(&v) != .FLOAT || variant_value(f64, &v) != x {
+		fail("odin: unexpected Variant layout", "FLOAT")
+	}
+	for b in ([2]gde.Bool{1, 0}) {
+		b := b
+		from_type[.BOOL](&v, &b)
+		if variant_tag(&v) != .BOOL || variant_value(u8, &v) != u8(b) {
+			fail("odin: unexpected Variant layout", "BOOL")
+		}
 	}
 	for type in ([2]gde.VariantType{.CALLABLE, .SIGNAL}) {
 		e: Variant
@@ -240,15 +266,17 @@ variant :: proc "contextless" (value: $A) -> (out: Variant) {
 // straight into the destination saves a 24-byte copy that would read the engine's narrower stores
 // back as one wide load.
 variant_into :: proc "contextless" (out: ^Variant, value: $A) {
+	// A scalar is written in place, in the layout `check_borrow_layout` proves: it holds nothing to
+	// construct.
 	when A == bool {
-		b := gde.Bool(1 if value else 0)
-		from_type[.BOOL](out, &b)
+		b := u8(1 if value else 0)
+		out^ = borrowed(.BOOL, &b)
 	} else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) {
 		i := i64(value)
-		from_type[.INT](out, &i)
+		out^ = borrowed(.INT, &i)
 	} else when intrinsics.type_is_float(A) {
 		f := f64(value)
-		from_type[.FLOAT](out, &f)
+		out^ = borrowed(.FLOAT, &f)
 	} else when intrinsics.type_is_pointer(A) && intrinsics.type_base_type(A) != rawptr {
 		if value == nil {
 			gde.variant_new_nil(out)
@@ -274,9 +302,9 @@ variant_into :: proc "contextless" (out: ^Variant, value: $A) {
 
 // The Variant `v` read as int64, float64 or bool, converting between the three.
 variant_int :: proc "contextless" (v: gde.ConstVariantPtr) -> (out: i64) {
-	#partial switch gde.variant_get_type(v) {
+	#partial switch variant_tag(v) {
 	case .INT:
-		to_type[.INT](&out, auto_cast v)
+		return variant_value(i64, v)
 	case .FLOAT:
 		return i64(variant_float(v))
 	case .BOOL:
@@ -286,9 +314,9 @@ variant_int :: proc "contextless" (v: gde.ConstVariantPtr) -> (out: i64) {
 }
 
 variant_float :: proc "contextless" (v: gde.ConstVariantPtr) -> (out: f64) {
-	#partial switch gde.variant_get_type(v) {
+	#partial switch variant_tag(v) {
 	case .FLOAT:
-		to_type[.FLOAT](&out, auto_cast v)
+		return variant_value(f64, v)
 	case .INT:
 		return f64(variant_int(v))
 	case .BOOL:
@@ -298,11 +326,9 @@ variant_float :: proc "contextless" (v: gde.ConstVariantPtr) -> (out: f64) {
 }
 
 variant_bool :: proc "contextless" (v: gde.ConstVariantPtr) -> bool {
-	#partial switch gde.variant_get_type(v) {
+	#partial switch variant_tag(v) {
 	case .BOOL:
-		out: gde.Bool
-		to_type[.BOOL](&out, auto_cast v)
-		return out != 0
+		return variant_value(u8, v) != 0
 	case .INT:
 		return variant_int(v) != 0
 	case .FLOAT:

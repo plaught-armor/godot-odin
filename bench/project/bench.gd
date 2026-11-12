@@ -32,6 +32,17 @@ func _initialize() -> void:
 	var bump: Callable = func(x: int) -> int: return x + 1
 	_report("Odin -> Callable.call (GDScript lambda)", func() -> float: return b.callable_call_ns(bump, N))
 	_report("GDScript -> Callable.call (same lambda)", func() -> float: return _callable_calls(bump))
+	_report("Odin emit, 1 arg, no connections", func() -> float: return b.emit_ns(N))
+	_report("GDScript emit (same signal)", func() -> float: return _emits(b))
+	_report("GDScript -> Odin field get, typed", func() -> float: return _field_get(b))
+	_report("GDScript -> Odin field set, typed", func() -> float: return _field_set(b))
+	var timer: Timer = Timer.new()
+	_report("GDScript -> engine property get, typed", func() -> float: return _prop_get(timer))
+	_report("GDScript -> engine property set, typed", func() -> float: return _prop_set(timer))
+	timer.free()
+	_report("GDScript Bench.new() + release", func() -> float: return _new_bench())
+	_report("GDScript RefCounted.new() + release", func() -> float: return _new_refcounted())
+	_report("GDScript -> Callable.call (Odin proc)", func() -> float: return _callable_calls(b.odin_callable()))
 	var plain: Node = Node.new()
 	var odin: Node = BenchTicker.new()
 	var gd: Node = GdTicker.new()
@@ -115,4 +126,55 @@ func _callable_calls(f: Callable) -> float:
 	var t: int = Time.get_ticks_usec()
 	for i in N:
 		f.call(1)
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _emits(b: Bench) -> float:
+	var t: int = Time.get_ticks_usec()
+	for i in N:
+		b.ping.emit(i)
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _field_get(b: Bench) -> float:
+	var t: int = Time.get_ticks_usec()
+	var s: float = 0.0
+	for i in N:
+		s += b.rate
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _field_set(b: Bench) -> float:
+	var t: int = Time.get_ticks_usec()
+	for i in N:
+		b.rate = 1.5
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _prop_get(timer: Timer) -> float:
+	var t: int = Time.get_ticks_usec()
+	var s: float = 0.0
+	for i in N:
+		s += timer.wait_time
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _prop_set(timer: Timer) -> float:
+	var t: int = Time.get_ticks_usec()
+	for i in N:
+		timer.wait_time = 1.5
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _new_bench() -> float:
+	var t: int = Time.get_ticks_usec()
+	for i in N:
+		var x: Bench = Bench.new()
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _new_refcounted() -> float:
+	var t: int = Time.get_ticks_usec()
+	for i in N:
+		var x: RefCounted = RefCounted.new()
 	return float(Time.get_ticks_usec() - t) * 1000.0 / N

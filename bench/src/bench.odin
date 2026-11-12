@@ -14,7 +14,12 @@ bench_init :: proc "c" (gpa: gde.InterfaceGetProcAddress, lib: gde.ClassLibraryP
 // A counter GDScript calls in a loop, typed (ptrcall) and untyped (Variant call).
 Bench :: struct {
 	total: i64,
+	// A float property GDScript reads and writes in a loop.
+	rate:  f64,
 }
+
+// `Bench.ping(x)`, emitted from Odin with no connections.
+ping: ^godot.StringName
 
 // A node whose `_process` override counts calls, for timing the engine's virtual dispatch into Odin.
 Ticker :: struct {
@@ -25,6 +30,10 @@ register :: proc() {
 	t := godot.class(Ticker, "BenchTicker", "Node")
 	godot.override_node_process(t, tick)
 	c := godot.class(Bench, "Bench", "RefCounted")
+	godot.fields(c)
+	ping = godot.signal(c, "ping", godot.Arg{name = "x", type = .INT})
+	godot.method(c, "emit_ns", emit_ns, {"n"})
+	godot.method(c, "odin_callable", odin_callable)
 	godot.method(c, "add", add, {"x"})
 	godot.method(c, "add3", add3, {"a", "b", "c"})
 	godot.method(c, "construct_ns", construct_ns, {"n"})
@@ -85,3 +94,22 @@ callable_call_ns :: proc(self: ^Bench, f: godot.Callable, n: i64) -> f64 {
 }
 
 
+
+// Nanoseconds per `godot.emit` of `ping` with one int argument and no connections, over `n` rounds.
+emit_ns :: proc(self: ^Bench, n: i64) -> f64 {
+	start := time.tick_now()
+	for i in 0 ..< n {
+		godot.emit(self, ping, godot.variant(i))
+	}
+	return f64(time.tick_since(start)) / f64(n)
+}
+
+// A Callable of `bump` on this instance, for GDScript to call in a loop.
+odin_callable :: proc(self: ^Bench) -> godot.Callable {
+	return godot.callable(self, bump)
+}
+
+// Adds `x` to the total.
+bump :: proc(self: ^Bench, x: i64) {
+	self.total += x
+}
