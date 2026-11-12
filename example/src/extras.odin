@@ -119,6 +119,8 @@ register_extras :: proc() {
 	godot.method(b, "lone_byte_matches", bag_lone_byte_matches)
 	godot.method(b, "text_ends", bag_text_ends, {"s", "part"})
 	godot.method(b, "which", bag_which, {"s"})
+	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
+	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -566,6 +568,22 @@ bag_which :: proc(self: ^Bag, s: godot.String) -> i64 {
 	}
 	s := s
 	return i64(godot.string_which(&s, &set))
+}
+
+// Where `part`'s text first appears in `s` at or after `from`, by `string_find_text`.
+bag_find_text :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64) -> i64 {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	return godot.string_find_text(&s, text, from)
+}
+
+// Whether `part`'s text appears in `s`, by `string_contains_text`.
+bag_has_text :: proc(self: ^Bag, s: godot.String, part: godot.String) -> bool {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	return godot.string_contains_text(&s, text)
 }
 
 // One channel of the tint, 0 to 2; 0 for any other index.

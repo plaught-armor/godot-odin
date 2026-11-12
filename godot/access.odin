@@ -167,6 +167,55 @@ string_ends_with_text :: proc "contextless" (s: ^String, text: string) -> bool {
 	return ok
 }
 
+// Where Odin text `text` first appears in `s` at or after character `from`, in characters, or -1:
+// the engine's `find`, compared in place with no String made. As there, a negative `from` counts
+// back from the last place `text` fits, -1 being that place, and empty text gives -1. Finds each
+// place `text`'s first character appears, and compares the rest there.
+string_find_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0) -> i64 {
+	chars := string_read(s)
+	if len(text) == 0 { return -1 }
+	ascii := text_is_ascii(text)
+	k := len(text)
+	first := rune(text[0])
+	if !ascii {
+		k = text_rune_count(text)
+		first, _ = utf8.decode_rune_in_string(text)
+	}
+	last := i64(len(chars) - k)
+	start := from if from >= 0 else last + from + 1
+	if start < 0 || start > last { return -1 }
+	// Four starts per step while none of them holds `first`, then one at a time through a step
+	// that does. Every round moves `i` on, so `len(chars) + 1` rounds cover it.
+	f := u32(first)
+	firsts := #simd[4]u32{f, f, f, f}
+	i := int(start)
+	for _ in 0 ..= len(chars) {
+		if i > int(last) { break }
+		if i + 3 <= int(last) {
+			v := intrinsics.unaligned_load((^#simd[4]u32)(&chars[i]))
+			if intrinsics.simd_reduce_or(intrinsics.simd_lanes_eq(v, firsts)) == 0 {
+				i += 4
+				continue
+			}
+		}
+		if chars[i] == first {
+			window := chars[i:][:k]
+			if ascii {
+				if ascii_matches(window, text) { return i64(i) }
+			} else if _, ok := text_prefix_of(window, text); ok {
+				return i64(i)
+			}
+		}
+		i += 1
+	}
+	return -1
+}
+
+// Whether Odin text `text` appears in `s`, compared in place: `string_find_text` from the start.
+string_contains_text :: proc "contextless" (s: ^String, text: string) -> bool {
+	return string_find_text(s, text) >= 0
+}
+
 // A fixed set of names to match a String against, as `string_which` does. Each name has a key, its
 // length in characters with its first and last characters, so a lookup compares one integer per
 // name, and the characters of only the names whose key matches: names sharing a prefix, as

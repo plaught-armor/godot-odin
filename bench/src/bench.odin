@@ -457,11 +457,16 @@ Ident :: enum i64 {
 	WHICH_ENGINE,      // the engine's String == over 8 cached Strings, the match last
 	WHICH_LOOP,        // string_equal_text over the same 8 names
 	WHICH,             // string_which on a Text_Set of them
+	FIND_ENGINE,       // the generated string_find of a cached String in a 43-character sentence
+	FIND_TEXT,         // string_find_text of the same Odin text
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
 // first character among them.
 WHICH_NAMES :: [8]string{"player_jum", "player_run", "player_walk", "player_dash", "pause", "player_crouch", "player_jumq", "player_jump"}
+
+// The text the find rows search, for "lazy" near its end.
+FIND_HAY :: "the quick brown fox jumps over the lazy dog"
 
 // Nanoseconds per `kind` round on a short identifier, over `n` rounds.
 ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
@@ -605,6 +610,21 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		set := godot.text_set(WHICH_NAMES)
 		for _ in 0 ..< n {
 			sum += i64(godot.string_which(intrinsics.volatile_load(&ref), &set))
+		}
+	case .FIND_ENGINE:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		needle := godot.intern_text("lazy")
+		for _ in 0 ..< n {
+			sum += godot.string_find(intrinsics.volatile_load(&h), needle, 0)
+		}
+	case .FIND_TEXT:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		for _ in 0 ..< n {
+			sum += godot.string_find_text(intrinsics.volatile_load(&h), "lazy")
 		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)

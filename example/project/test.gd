@@ -344,6 +344,24 @@ func _check_extras() -> int:
 		if b2.which(w) != which_cases[w]:
 			print("FAIL: Bag.which(%s) gave %d, not %d" % [w, b2.which(w), which_cases[w]])
 			failures += 1
+	# The engine's find and contains are the reference, from several starts.
+	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
+		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
+		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]
+	# The match after 0 to 9 characters that hold no first character, so the four-wide skip lands
+	# on it from every offset.
+	for pad: int in 10:
+		find_cases.append(["-".repeat(pad) + "ab--", "ab"])
+		find_cases.append(["-".repeat(pad) + "日x", "日x"])
+	for c: Array in find_cases:
+		var s: String = c[0]
+		for from: int in [-1, 0, 1, 2, 4, 20]:
+			if b2.find_text(s, c[1], from) != s.find(c[1], from):
+				print("FAIL: Bag.find_text(%s, %s, %d) gave %d, not %d" % [s, c[1], from, b2.find_text(s, c[1], from), s.find(c[1], from)])
+				failures += 1
+		if b2.has_text(s, c[1]) != s.contains(c[1]):
+			print("FAIL: Bag.has_text(%s, %s) gave %s" % [s, c[1], b2.has_text(s, c[1])])
+			failures += 1
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
