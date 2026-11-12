@@ -201,6 +201,12 @@
 		<method name="text_size">
 			<description>[code]s[/code]'s length, or -1 when it is empty, through the generated [code]string_length[/code] and [code]string_is_empty[/code].</description>
 		</method>
+		<method name="same_text">
+			<description>Whether [code]a[/code] and [code]b[/code] are equal by [code]string_equal[/code], as bit 0, and [code]a[/code] matches [code]b[/code]'s text by [code]string_equal_text[/code], as bit 1.</description>
+		</method>
+		<method name="lone_byte_matches">
+			<description>Whether "é" matches the lone byte 0xE9, its code but invalid UTF-8; it must not. GDScript cannot pass invalid UTF-8, so the text is fixed here.</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

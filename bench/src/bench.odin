@@ -2,6 +2,7 @@
 // and Odin-to-engine calls and construction (driven here, so GDScript's own cost stays out).
 package bench
 
+import "base:intrinsics"
 import "core:mem"
 import "core:time"
 import gde "../../gdextension"
@@ -444,6 +445,12 @@ Ident :: enum i64 {
 	INTERN_TEXT, // intern_text, a cached String
 	TEMP_TEXT,   // temp_text in a nested engine-call scope, dropped at its end
 	LENGTH,      // string_length of a String, read from its header
+	EQUAL_ENGINE, // the engine's String == evaluator, two equal Strings in separate storage
+	EQUAL,        // string_equal on the same pair
+	EQUAL_TEXT,   // string_equal_text against the same Odin text
+	EQUAL_ENGINE_COPY, // the engine's String == on a String and its copy, which share storage
+	EQUAL_COPY,        // string_equal on the same pair
+	EQUAL_ENGINE_TEXT, // string_of the Odin text, the engine's String ==, destroy
 }
 
 // Nanoseconds per `kind` round on a short identifier, over `n` rounds.
@@ -451,6 +458,8 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 	text := "player_jump"
 	str := godot.string_of(text)
 	defer godot.destroy[.STRING](&str)
+	// Read through a volatile load each round, so the compare is not hoisted out of the loop.
+	ref := &str
 	buf: [64]u8
 	arena: mem.Arena
 	mem.arena_init(&arena, buf[:])
@@ -505,6 +514,49 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		t := godot.intern_text("player_jump")
 		for _ in 0 ..< n {
 			sum += godot.string_length(&t)
+		}
+	case .EQUAL_ENGINE:
+		eq := gde.variant_get_ptr_operator_evaluator(.EQUAL, .STRING, .STRING)
+		other := godot.string_of(text)
+		defer godot.destroy[.STRING](&other)
+		for _ in 0 ..< n {
+			r: u8
+			eq(intrinsics.volatile_load(&ref), &other, &r)
+			sum += i64(r)
+		}
+	case .EQUAL:
+		other := godot.string_of(text)
+		defer godot.destroy[.STRING](&other)
+		for _ in 0 ..< n {
+			sum += i64(godot.string_equal(intrinsics.volatile_load(&ref), &other))
+		}
+	case .EQUAL_TEXT:
+		for _ in 0 ..< n {
+			sum += i64(godot.string_equal_text(intrinsics.volatile_load(&ref), text))
+		}
+	case .EQUAL_ENGINE_COPY:
+		eq := gde.variant_get_ptr_operator_evaluator(.EQUAL, .STRING, .STRING)
+		copied := godot.string_new_from_string(str)
+		defer godot.destroy[.STRING](&copied)
+		for _ in 0 ..< n {
+			r: u8
+			eq(intrinsics.volatile_load(&ref), &copied, &r)
+			sum += i64(r)
+		}
+	case .EQUAL_COPY:
+		copied := godot.string_new_from_string(str)
+		defer godot.destroy[.STRING](&copied)
+		for _ in 0 ..< n {
+			sum += i64(godot.string_equal(intrinsics.volatile_load(&ref), &copied))
+		}
+	case .EQUAL_ENGINE_TEXT:
+		eq := gde.variant_get_ptr_operator_evaluator(.EQUAL, .STRING, .STRING)
+		for _ in 0 ..< n {
+			other := godot.string_of(text)
+			r: u8
+			eq(intrinsics.volatile_load(&ref), &other, &r)
+			sum += i64(r)
+			godot.destroy[.STRING](&other)
 		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)

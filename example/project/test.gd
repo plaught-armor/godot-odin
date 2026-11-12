@@ -324,6 +324,17 @@ func _check_extras() -> int:
 	if b2.text_size("") != -1 or b2.text_size("abc") != 3 or b2.text_size("日本語") != 3 or b2.text_size(long_text) != 1000:
 		print("FAIL: Bag.text_size %d %d %d %d" % [b2.text_size(""), b2.text_size("abc"), b2.text_size("日本語"), b2.text_size(long_text)])
 		failures += 1
+	# Equal pairs give 3 (both checks agree), unequal ones 0; "a2" against "ab" fails at the last
+	# character, "abc" against "ab" on length, and a copy of `long_text` shares its storage.
+	var same_cases: Array = [["", "", 3], ["ab", "ab", 3], ["日本語", "日本語", 3], ["é", "e", 0],
+		["a2", "ab", 0], ["abc", "ab", 0], ["", "a", 0], [long_text, long_text, 3], ["日本", "日本語", 0]]
+	if b2.lone_byte_matches():
+		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
+		failures += 1
+	for c: Array in same_cases:
+		if b2.same_text(c[0], c[1]) != c[2]:
+			print("FAIL: Bag.same_text(%s, %s) gave %d, not %d" % [c[0], c[1], b2.same_text(c[0], c[1]), c[2]])
+			failures += 1
 	if b2.kinds("x") != "x:" or b2.kinds("x", 1, 2.0, "s", [3], &"n") != "x:2,3,4,28,21" or b2.callv("kinds", ["y", null]) != "y:0":
 		print("FAIL: Bag.kinds gave %s" % b2.kinds("x", 1, 2.0, "s", [3], &"n"))
 		failures += 1

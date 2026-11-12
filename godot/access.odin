@@ -4,6 +4,7 @@ package godot
 
 import "base:intrinsics"
 import "base:runtime"
+import "core:unicode/utf8"
 import gde "../gdextension"
 
 // The elements of packed array `a` as a slice over its storage, for reading in place. It stays valid
@@ -96,6 +97,69 @@ string_read :: proc "contextless" (s: ^String) -> []rune {
 	n := string_length(s)
 	if n <= 0 { return nil }
 	return gde.string_operator_index_const(s, 0)[:n]
+}
+
+// Whether `a` and `b` hold the same characters. Copies share storage, so they answer without a
+// read, and Strings of different lengths answer from their headers; only Strings of one length
+// compare their characters.
+string_equal :: proc "contextless" (a, b: ^String) -> bool {
+	if string_layout_known {
+		pa, pb := (^rawptr)(a)^, (^rawptr)(b)^
+		if pa == pb { return true }
+		n := string_stored_length(a)
+		if n != string_stored_length(b) { return false }
+		return runes_equal((^[^]rune)(a)^, (^[^]rune)(b)^, int(n))
+	}
+	@(static) eq: gde.PtrOperatorEvaluator
+	if eq == nil { eq = gde.variant_get_ptr_operator_evaluator(.EQUAL, .STRING, .STRING) }
+	r: u8
+	eq(a, b, &r)
+	return r != 0
+}
+
+// Whether the `n` characters at `a` and `b` match, four at a time: inlined, as a short String's
+// compare costs less than a call to a general one.
+@(private)
+runes_equal :: #force_inline proc "contextless" (a, b: [^]rune, n: int) -> bool {
+	i := 0
+	for ; i + 4 <= n; i += 4 {
+		x := intrinsics.unaligned_load((^#simd[4]u32)(&a[i]))
+		y := intrinsics.unaligned_load((^#simd[4]u32)(&b[i]))
+		if intrinsics.simd_reduce_or(intrinsics.simd_lanes_ne(x, y)) != 0 { return false }
+	}
+	for ; i < n; i += 1 {
+		if a[i] != b[i] { return false }
+	}
+	return true
+}
+
+// Whether `s` holds the characters of Odin text `text`, compared in place: no String is made.
+// Every character takes one to four bytes of UTF-8, so a length outside that range answers at once.
+// Invalid UTF-8 in `text` reads as U+FFFD, as it does when made into a String.
+string_equal_text :: proc "contextless" (s: ^String, text: string) -> bool {
+	chars := string_read(s)
+	if len(chars) > len(text) || len(chars) * 4 < len(text) { return false }
+	if len(chars) == len(text) {
+		// One byte per character: only ASCII text can match, compared without decoding. A
+		// character past ASCII fails, so a lone invalid byte cannot match the character it encodes.
+		for c, k in chars {
+			if c != rune(text[k]) || c >= 0x80 { return false }
+		}
+		return true
+	}
+	i := 0
+	for c in chars {
+		if i >= len(text) { return false }
+		if text[i] < 0x80 {
+			if rune(text[i]) != c { return false }
+			i += 1
+			continue
+		}
+		r, w := utf8.decode_rune_in_string(text[i:])
+		if r != c { return false }
+		i += w
+	}
+	return i == len(text)
 }
 
 // Element `i` of `a`, borrowed: valid until `a` changes or is destroyed, and not to be destroyed.

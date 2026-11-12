@@ -115,6 +115,8 @@ register_extras :: proc() {
 	godot.method(b, "kinds", bag_kinds, {"label"})
 	godot.method(b, "describe", bag_describe, {"node", "n"})
 	godot.method(b, "text_size", bag_text_size, {"s"})
+	godot.method(b, "same_text", bag_same_text, {"a", "b"})
+	godot.method(b, "lone_byte_matches", bag_lone_byte_matches)
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -523,6 +525,23 @@ bag_text_size :: proc(self: ^Bag, s: godot.String) -> i64 {
 	s := s
 	if godot.string_is_empty(&s) { return -1 }
 	return godot.string_length(&s)
+}
+
+// Whether `a` and `b` are equal by `string_equal`, as bit 0, and `a` matches `b`'s text by
+// `string_equal_text`, as bit 1.
+bag_same_text :: proc(self: ^Bag, a: godot.String, b: godot.String) -> i64 {
+	a, b := a, b
+	text := godot.utf8(b)
+	defer delete(text)
+	return i64(godot.string_equal(&a, &b)) | i64(godot.string_equal_text(&a, text)) << 1
+}
+
+// Whether "é" matches the lone byte 0xE9, its code but invalid UTF-8; it must not. GDScript cannot
+// pass invalid UTF-8, so the text is fixed here.
+bag_lone_byte_matches :: proc(self: ^Bag) -> bool {
+	s := godot.string_of("é")
+	defer godot.destroy[.STRING](&s)
+	return godot.string_equal_text(&s, "\xE9")
 }
 
 // One channel of the tint, 0 to 2; 0 for any other index.
