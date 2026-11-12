@@ -24,8 +24,8 @@ this guide.
 - **Godot 4.7 or later**, the standard build (single-precision floats, 64-bit). The core uses
   interface functions that 4.7 added, so 4.6 will not load it.
 - **Odin**, a recent `dev-` release.
-- **Linux x86_64** is the tested platform. Nothing in the core is Linux-specific, but Windows
-  and macOS builds have not been tried. Elsewhere, change the library name and the
+- **Linux x86_64** is the tested platform. CI builds on Windows and macOS, but the library has
+  not been loaded in Godot there, so treat them as untested. Elsewhere, change the library name and the
   `[libraries]` keys below to match your platform.
 
 ## Set up a project

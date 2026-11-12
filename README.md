@@ -18,8 +18,9 @@ They were built for, and run in, a shipping-bound Godot game. Its simulation lay
 - **Build configuration:** `float_64`, which means single-precision `real_t` and 64-bit pointers,
   the default engine build. A double-precision build needs a change to `CONFIG` in
   `tools/odin_bindgen.py`.
-- **Platforms:** developed and tested on Linux x86_64. Nothing in the core is Linux-specific,
-  but Windows and macOS have not been built.
+- **Platforms:** developed and tested on Linux x86_64. CI builds the core and the example on
+  Windows and macOS too, but they are untested there: no one has loaded the library in Godot
+  on either.
 - **Coverage:** every class, builtin and utility method in the API is bound. The bindgen lists
   anything it cannot bind in `godot/gen_skipped.txt`, which is empty for 4.7.
 - **Known engine issue:** in Godot 4.7, the first `--import` of a project with no
