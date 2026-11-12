@@ -122,14 +122,14 @@ In every demo: Tab switches Odin/GDScript, R resets, Esc goes back to the menu (
 | Pathfinding swarm | Dijkstra over 37 000 cells with a heap, rebuilt while the target moves | Hold left mouse to drag the target, Up/Down double/halve the units |
 | Procedural terrain | Fractal Perlin noise, normals and colours for up to 262 000 vertices | Right mouse drag orbits, wheel zooms, sliders rebuild, M morphs every frame |
 
-What `demos/build.sh` measured here (`-o:speed`, output identical bit for bit on both sides):
+What `demos/build.sh` measured here (`-o:aggressive`, output identical bit for bit on both sides):
 
 | Demo | Work | Odin | GDScript | Ratio |
 |---|---|---|---|---|
-| Boids | 2000 boids, 60 steps | 16.4 ms | 368 ms | 22x |
-| Falling sand | 120 steps | 24.1 ms | 2896 ms | 120x |
-| Pathfinding | 4000 units, 120 steps | 20.8 ms | 1699 ms | 82x |
-| Terrain | 256 by 256 vertices, 6 octaves | 4.05 ms | 329 ms | 81x |
+| Boids | 2000 boids, 60 steps | 14.8 ms | 381 ms | 26x |
+| Falling sand | 120 steps | 20.6 ms | 2984 ms | 145x |
+| Pathfinding | 4000 units, 120 steps | 18.8 ms | 1699 ms | 90x |
+| Terrain | 256 by 256 vertices, 6 octaves | 4.14 ms | 340 ms | 82x |
 
 ## What the core does
 

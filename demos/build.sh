@@ -5,7 +5,7 @@
 #   demos/build.sh [/path/to/godot]
 set -euo pipefail
 cd "$(dirname "$0")"
-odin build src -build-mode:shared -o:speed -out:project/bin/libdemos.linux.x86_64.so
+odin build src -build-mode:shared -o:aggressive -out:project/bin/libdemos.linux.x86_64.so
 if [ $# -gt 0 ]; then
 	# Godot 4.7 can crash on the first import of a project with extension classes; the import
 	# still lands, so ignore its status.

@@ -71,7 +71,7 @@ colors_of :: proc "contextless" (a: ^godot.PackedColorArray, n: int) -> []godot.
 
 // Writes one 2D transform into a MultiMesh buffer at instance `i`: x axis (`ux`, `uy`), y axis its
 // perpendicular, origin (`x`, `y`). The buffer's layout is the engine's, eight floats per instance.
-put_transform :: #force_inline proc "contextless" (buf: []f32, i: int, ux, uy, x, y: f64) {
+put_transform :: #force_inline proc "contextless" (buf: []f32, i: int, ux, uy, x, y: f64) #no_bounds_check {
 	o := i * 8
 	buf[o + 0] = f32(ux)
 	buf[o + 1] = f32(-uy)
