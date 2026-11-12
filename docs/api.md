@@ -187,7 +187,7 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | Proc | Use |
 |---|---|
 | `string_of(s: string) -> String` | A new engine String. You destroy it, or return it. |
-| `utf8(s: String, allocator) -> string` | An engine String as Odin UTF-8, encoded in Odin from the characters read in place: about 16 ns for a short name. You delete it. |
+| `utf8(s: String / StringName / NodePath, allocator) -> string` | Engine text as Odin UTF-8, encoded in Odin from the String's characters read in place (layout checked at load): about 14 ns for a short String, most of it the allocation. A StringName or NodePath goes through a temporary String first. You delete it. |
 | `intern("literal") -> StringName` | The StringName for a constant, made on the first call and kept for the life of the process. Each later call is one load, about 0.4 ns against 31 ns for `name_of`, so use it inline: `input_is_action_pressed(input, intern("jump"), false)`. Do not destroy it. Safe from any thread. |
 | `intern_path("Body/Sprite") -> NodePath` | The same for a constant NodePath: about 0.2 ns against 110 ns for `path_of`. Pass it to `get_node`. Do not destroy it. |
 | `static_name("literal") -> StringName` | A new StringName the engine keeps for the life of the process, made on each call. `intern` is the cached form. |

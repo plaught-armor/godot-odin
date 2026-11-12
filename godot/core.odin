@@ -136,8 +136,23 @@ path_of :: proc "contextless" (s: string) -> NodePath {
 	return node_path_new_from_string(str)
 }
 
-// `s` as UTF-8 in a new Odin string from `allocator`, which the caller deletes.
-utf8 :: proc(s: String, allocator := context.allocator) -> string {
+// A String, StringName or NodePath as UTF-8 in a new Odin string from `allocator`, which the
+// caller deletes.
+utf8 :: proc{utf8_string, utf8_name, utf8_path}
+
+utf8_name :: proc(s: StringName, allocator := context.allocator) -> string {
+	t := string_new_from_string_name(s)
+	defer destroy[.STRING](&t)
+	return utf8_string(t, allocator)
+}
+
+utf8_path :: proc(s: NodePath, allocator := context.allocator) -> string {
+	t := string_new_from_node_path(s)
+	defer destroy[.STRING](&t)
+	return utf8_string(t, allocator)
+}
+
+utf8_string :: proc(s: String, allocator := context.allocator) -> string {
 	// Encoded here from the characters read in place: the engine's own encoder takes two calls,
 	// one to measure and one to write, about 47 ns for a short name.
 	t := s
@@ -152,8 +167,9 @@ utf8 :: proc(s: String, allocator := context.allocator) -> string {
 		case: n += 4
 		}
 	}
-	buf := make([]u8, n, allocator)
-	if len(buf) < n { return "" }
+	// Every byte is written below, so the buffer need not be zeroed first.
+	buf, err := runtime.mem_alloc_non_zeroed(n, 1, allocator)
+	if err != nil || len(buf) < n { return "" }
 	i := 0
 	for r in chars {
 		c := u32(r)

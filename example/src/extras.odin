@@ -98,6 +98,7 @@ register_extras :: proc() {
 	godot.method(b, "find_ghost", bag_find_ghost, {"root", "path"})
 	godot.method(b, "ghost_seen", bag_ghost_seen, {"root"})
 	godot.method(b, "is_jump", bag_is_jump, {"name"})
+	godot.method(b, "texts", bag_texts, {"name", "path"})
 	godot.method(b, "say", bag_say, {"n"})
 	godot.method(b, "adder", bag_adder, {"n"})
 	godot.method(b, "slot_adder", bag_slot_adder, {"slot"})
@@ -455,6 +456,11 @@ bag_ghost_seen :: proc(self: ^Bag, root: godot.Node) -> i64 {
 	if godot.get_node(root, godot.intern_path("Sprite"), godot.Node2D) == nil { return -2 }
 	g := godot.get_node(root, godot.intern_path("Sprite/Ghost"), ghost_class)
 	return g.seen if g != nil else -1
+}
+
+// `name` and `path` as Odin text, joined by "|".
+bag_texts :: proc(self: ^Bag, name: godot.StringName, path: godot.NodePath) -> string {
+	return fmt.tprintf("%s|%s", godot.utf8(name, context.temp_allocator), godot.utf8(path, context.temp_allocator))
 }
 
 // Whether `name` is "jump", compared against an interned name; and the interned name itself, the

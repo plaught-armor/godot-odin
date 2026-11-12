@@ -25,6 +25,7 @@ load_variants :: proc "contextless" () {
 		internal[type] = gde.variant_get_ptr_internal_getter(type)
 	}
 	check_borrow_layout()
+	check_string_layout()
 }
 
 // The Variant type an Odin type crosses as: bool, any integer, enum or bit_set, any float, a builtin struct,

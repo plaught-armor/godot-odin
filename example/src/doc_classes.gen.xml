@@ -156,6 +156,9 @@
 		<method name="is_jump">
 			<description>Whether [code]name[/code] is "jump", compared against an interned name; and the interned name itself, the same one on every call.</description>
 		</method>
+		<method name="texts">
+			<description>[code]name[/code] and [code]path[/code] as Odin text, joined by "|".</description>
+		</method>
 		<method name="say">
 			<description>Prints "Bag says [code]n[/code]" to the engine's output.</description>
 		</method>

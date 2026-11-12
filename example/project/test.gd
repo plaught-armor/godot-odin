@@ -255,6 +255,9 @@ func _check_extras() -> int:
 	if b2.ghost_seen(root) != 3 or b2.ghost_seen(Node.new()) != -2 or b2.ghost_seen(null) != -2:
 		print("FAIL: Bag.ghost_seen gave %d, not 3" % b2.ghost_seen(root))
 		failures += 1
+	if b2.texts(&"héllo😀", NodePath("a/b:c")) != "héllo😀|a/b:c" or b2.texts(&"", NodePath()) != "|":
+		print("FAIL: Bag.texts gave %s" % b2.texts(&"héllo😀", NodePath("a/b:c")))
+		failures += 1
 	if not b2.is_jump(&"jump") or b2.is_jump(&"jumps") or b2.is_jump(&""):
 		print("FAIL: Bag.is_jump did not match only jump")
 		failures += 1

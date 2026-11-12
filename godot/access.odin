@@ -87,6 +87,14 @@ packed_fill :: #force_inline proc "contextless" (out: ^$A, xs: []$E, resize: pro
 // The characters of `s` as a slice over its storage, read in place. It stays valid until `s` is
 // written or destroyed. Do not write through it: the storage may be shared with copies of `s`.
 string_read :: proc "contextless" (s: ^String) -> []rune {
+	if string_layout_known {
+		// Read from the storage, as `check_string_layout` proved it: no engine call.
+		p := (^[^]rune)(s)^
+		if p == nil { return nil }
+		size := (^i64)(uintptr(p) - STRING_SIZE_OFFSET)^
+		if size <= 1 { return nil }
+		return p[:size - 1]
+	}
 	n := string_length(s)
 	if n <= 0 { return nil }
 	return gde.string_operator_index_const(s, 0)[:n]
@@ -244,6 +252,36 @@ dict_fill :: proc "contextless" (d: ^Dictionary, keys: []$K, values: []$V) {
 	}
 }
 
+
+// True when a String is the engine's copy-on-write storage as `string_read` reads it: one pointer
+// to the characters, null when empty, with the 64-bit size counting the terminator 16 bytes before
+// them (the capacity sits between). `check_string_layout` decides it at load; without it
+// `string_read` asks the engine, two calls more.
+@(private)
+string_layout_known: bool
+
+// Where the size sits before a String's characters.
+@(private)
+STRING_SIZE_OFFSET :: 16
+
+// Sets `string_layout_known` from Strings of known length: one shared by two references, and one
+// grown by an append so its capacity differs from its size.
+check_string_layout :: proc "contextless" () {
+	holds :: proc "contextless" (s: ^String, n: int) -> bool {
+		p := (^rawptr)(s)^
+		return p != nil && p == rawptr(gde.string_operator_index_const(s, 0)) && (^i64)(uintptr(p) - STRING_SIZE_OFFSET)^ == i64(n) + 1
+	}
+	short :: "abc"
+	long :: "a longer String, past any small-size storage"
+	a := string_of(short)
+	b := string_new_from_string(a)
+	c := string_of(long)
+	string_append_rune(&c, '!')
+	string_layout_known = holds(&a, len(short)) && holds(&b, len(short)) && holds(&c, len(long) + 1)
+	destroy[.STRING](&c)
+	destroy[.STRING](&b)
+	destroy[.STRING](&a)
+}
 
 // The characters of `s` as a writable slice. A shared String gets storage of its own first, as any
 // write does; the slice stays valid until `s` is copied, resized or destroyed. `s` must be a String
