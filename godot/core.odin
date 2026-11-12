@@ -158,14 +158,6 @@ array_at :: proc "contextless" (a: ^Array, i: i64) -> ^Variant {
 	return (^Variant)(gde.array_operator_index_const(a, i))
 }
 
-// The value `d` holds for `key`, borrowed: valid until `d` changes or is destroyed, and not to be
-// destroyed. Nil when `d` has no such key.
-dict_at :: proc "contextless" (d: ^Dictionary, key: ^Variant) -> ^Variant {
-	// The engine reports an error for a missing key, so ask first.
-	if !dictionary_has(d, key^) { return nil }
-	return (^Variant)(gde.dictionary_operator_index_const(d, key))
-}
-
 // Drops one reference to the counted object `obj` and frees it when that was the last.
 release :: proc "contextless" (obj: $T) where intrinsics.type_base_type(T) == rawptr {
 	if obj == nil { return }

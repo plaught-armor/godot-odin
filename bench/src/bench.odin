@@ -40,6 +40,9 @@ register :: proc() {
 	godot.method(c, "engine_call_ns", engine_call_ns, {"n"})
 	godot.method(c, "packed_get_ns", packed_get_ns, {"xs", "n"})
 	godot.method(c, "packed_read_ns", packed_read_ns, {"xs", "n"})
+	godot.method(c, "packed_build_ns", packed_build_ns, {"fast", "n"})
+	godot.method(c, "string_scan_ns", string_scan_ns, {"s", "fast", "n"})
+	godot.method(c, "array_read_ns", array_read_ns, {"xs", "fast", "n"})
 	godot.method(c, "callable_call_ns", callable_call_ns, {"f", "n"})
 }
 
@@ -100,6 +103,68 @@ packed_read_ns :: proc(self: ^Bench, xs: godot.PackedInt64Array, n: i64) -> f64 
 		for x in godot.packed_read(&xs) { sum += x }
 	}
 	ns := f64(time.tick_since(start)) / f64(n * godot.packed_int64_array_size(&xs))
+	self.total += sum
+	return ns
+}
+
+// Nanoseconds per element to build a 1000-element PackedInt64Array: from a slice with `packed_of`
+// when `fast`, else by `resize` and one `set` per element. Over `n` rounds.
+packed_build_ns :: proc(self: ^Bench, fast: bool, n: i64) -> f64 {
+	src: [1000]i64
+	for &x, i in src { x = i64(i) }
+	start := time.tick_now()
+	for _ in 0 ..< n {
+		out: godot.PackedInt64Array
+		if fast {
+			out = godot.packed_of(src[:])
+		} else {
+			out = godot.packed_int64_array_new()
+			godot.packed_int64_array_resize(&out, len(src))
+			for x, i in src { godot.packed_int64_array_set(&out, i64(i), x) }
+		}
+		self.total += godot.packed_int64_array_size(&out)
+		godot.packed_int64_array_destroy(&out)
+	}
+	return f64(time.tick_since(start)) / f64(n * len(src))
+}
+
+// Nanoseconds per character to sum the code points of `s`: in place with `string_read` when `fast`,
+// else by one `unicode_at` per character. Over `n` rounds.
+string_scan_ns :: proc(self: ^Bench, s: godot.String, fast: bool, n: i64) -> f64 {
+	s := s
+	sum: i64
+	start := time.tick_now()
+	for _ in 0 ..< n {
+		if fast {
+			for c in godot.string_read(&s) { sum += i64(c) }
+		} else {
+			for i in 0 ..< godot.string_length(&s) { sum += godot.string_unicode_at(&s, i) }
+		}
+	}
+	ns := f64(time.tick_since(start)) / f64(n * godot.string_length(&s))
+	self.total += sum
+	return ns
+}
+
+// Nanoseconds per element to read each element of `xs`: borrowed with `array_at` when `fast`, else
+// as a copy from `array_get`, destroyed after. Over `n` rounds.
+array_read_ns :: proc(self: ^Bench, xs: godot.Array, fast: bool, n: i64) -> f64 {
+	xs := xs
+	count := godot.array_size(&xs)
+	sum: i64
+	start := time.tick_now()
+	for _ in 0 ..< n {
+		for i in 0 ..< count {
+			if fast {
+				sum += i64(godot.variant_tag(godot.array_at(&xs, i)))
+			} else {
+				v := godot.array_get(&xs, i)
+				sum += i64(godot.variant_tag(&v))
+				gde.variant_destroy(&v)
+			}
+		}
+	}
+	ns := f64(time.tick_since(start)) / f64(n * count)
 	self.total += sum
 	return ns
 }

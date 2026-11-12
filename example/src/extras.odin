@@ -72,7 +72,6 @@ register_extras :: proc() {
 	godot.method(b, "colors", bag_colors)
 	godot.method(b, "vowels", bag_vowels, {"s"})
 	godot.method(b, "second", bag_second, {"xs"})
-	godot.method(b, "lookup", bag_lookup, {"d", "key"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -217,14 +216,6 @@ bag_second :: proc(self: ^Bag, xs: godot.Array) -> godot.Variant {
 	xs := xs
 	out: godot.Variant
 	if v := godot.array_at(&xs, 1); v != nil { gde.variant_new_copy(&out, v) }
-	return out
-}
-
-// The value `d` holds for `key`, or null when it has none.
-bag_lookup :: proc(self: ^Bag, d: godot.Dictionary, key: godot.Variant) -> godot.Variant {
-	d, key := d, key
-	out: godot.Variant
-	if v := godot.dict_at(&d, &key); v != nil { gde.variant_new_copy(&out, v) }
 	return out
 }
 

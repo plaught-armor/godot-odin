@@ -33,6 +33,16 @@ func _initialize() -> void:
 	xs.resize(1000)
 	_report("Odin sum PackedInt64Array, get(), per element", func() -> float: return b.packed_get_ns(xs, N / 1000))
 	_report("Odin sum PackedInt64Array, packed_read, per element", func() -> float: return b.packed_read_ns(xs, N / 1000))
+	_report("Odin build PackedInt64Array, set(), per element", func() -> float: return b.packed_build_ns(false, N / 1000))
+	_report("Odin build PackedInt64Array, packed_of, per element", func() -> float: return b.packed_build_ns(true, N / 1000))
+	var text := "the quick brown fox jumps over the lazy dog, ".repeat(20)
+	_report("Odin scan String, unicode_at(), per char", func() -> float: return b.string_scan_ns(text, false, N / 1000))
+	_report("Odin scan String, string_read, per char", func() -> float: return b.string_scan_ns(text, true, N / 1000))
+	var words: Array = []
+	for i in 1000:
+		words.append("word %d" % i)
+	_report("Odin read Array of Strings, get(), per element", func() -> float: return b.array_read_ns(words, false, N / 1000))
+	_report("Odin read Array of Strings, array_at, per element", func() -> float: return b.array_read_ns(words, true, N / 1000))
 	var bump: Callable = func(x: int) -> int: return x + 1
 	_report("Odin -> Callable.call (GDScript lambda)", func() -> float: return b.callable_call_ns(bump, N))
 	_report("GDScript -> Callable.call (same lambda)", func() -> float: return _callable_calls(bump))
@@ -63,7 +73,7 @@ func _report(label: String, run: Callable) -> void:
 	var best: float = INF
 	for i in ROUNDS:
 		best = minf(best, run.call())
-	print("%-40s %8.1f ns" % [label, best])
+	print("%-52s %8.2f ns" % [label, best])
 
 
 func _typed(b: Bench) -> float:

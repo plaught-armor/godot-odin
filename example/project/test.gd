@@ -168,10 +168,6 @@ func _check_extras() -> int:
 	if b2.second([1, "two", 3]) != "two" or b2.second([1]) != null:
 		print("FAIL: Bag.second gave %s and %s, not two and null" % [b2.second([1, "two", 3]), b2.second([1])])
 		failures += 1
-	var d := {"a": [1, 2], 3: "c"}
-	if b2.lookup(d, "a") != [1, 2] or b2.lookup(d, 3) != "c" or b2.lookup(d, "zz") != null or d.size() != 2:
-		print("FAIL: Bag.lookup gave %s, %s and %s, and left %s" % [b2.lookup(d, "a"), b2.lookup(d, 3), b2.lookup(d, "zz"), d])
-		failures += 1
 	var tally: Object = Engine.get_singleton(&"ExampleTally")
 	if tally == null or tally.bump() != 1 or tally.bump() != 2:
 		print("FAIL: the ExampleTally singleton is missing or miscounts")
