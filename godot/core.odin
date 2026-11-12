@@ -124,6 +124,36 @@ node_at :: proc "contextless" (node: rawptr, path: string) -> Node {
 	return node_get_node_or_null(Node(node), p)
 }
 
+// The resource at `path`, such as "res://icon.png", loaded as GDScript's `load` does: from the
+// engine's cache when it is there. Pass an engine class `T` to get it as that class, or a
+// registered class `c` to get its struct; either is nil when the load fails or the resource is not
+// of that class. You own one reference: `release` it, or `release(object_of(r))` for a struct.
+load :: proc{load_as, load_instance}
+
+@(private)
+load_as :: proc(path: string, $T: typeid) -> T where intrinsics.type_base_type(T) == rawptr {
+	res := load_resource(path)
+	out := cast_to(res, T)
+	if out == nil { release(res) }
+	return out
+}
+
+@(private)
+load_instance :: proc "contextless" (path: string, c: ^Class($T)) -> ^T {
+	res := load_resource(path)
+	out := instance_of(res, c)
+	if out == nil { release(res) }
+	return out
+}
+
+@(private)
+load_resource :: proc "contextless" (path: string) -> Resource {
+	p := string_of(path)
+	defer destroy[.STRING](&p)
+	hint: String
+	return resource_loader_load(resource_loader_singleton(), p, hint, .CACHE_MODE_REUSE)
+}
+
 // True while the object with instance id `id` exists.
 is_live :: proc "contextless" (id: u64) -> bool {
 	return id != 0 && gde.object_get_instance_from_id(gde.ObjectInstanceID(id)) != nil

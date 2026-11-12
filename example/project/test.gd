@@ -277,6 +277,20 @@ func _check_extras() -> int:
 	if loose_dict != {1: "x", 2: null} or not loose_dict.is_typed_key() or loose_dict.is_typed_value():
 		print("FAIL: Bag.dict_loose gave %s" % loose_dict)
 		failures += 1
+	var saved: Walker = Walker.new()
+	saved.speed = 6.5
+	if ResourceSaver.save(saved, "user://saved_walker.tres") != OK:
+		print("FAIL: could not save user://saved_walker.tres")
+		failures += 1
+	if b2.load_kinds("user://saved_walker.tres") != 5 or b2.load_kinds("user://missing.tres") != 0:
+		print("FAIL: Bag.load_kinds gave %d, not 5" % b2.load_kinds("user://saved_walker.tres"))
+		failures += 1
+	if not is_equal_approx(b2.load_speed("user://saved_walker.tres"), 6.5) or b2.load_speed("user://missing.tres") != -1.0:
+		print("FAIL: Bag.load_speed gave %s, not 6.5" % b2.load_speed("user://saved_walker.tres"))
+		failures += 1
+	if b2.greet("wörld") != "hi, wörld (6 bytes)" or b2.call(&"greet", "") != "hi,  (0 bytes)":
+		print("FAIL: Bag.greet gave %s" % b2.greet("wörld"))
+		failures += 1
 	_deferred = Bag.new()
 	_deferred_from = Bag.proc_total()
 	_deferred.defer(7)

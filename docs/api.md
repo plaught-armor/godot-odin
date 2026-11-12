@@ -69,6 +69,9 @@ in the source is the full contract. This page tells you which one to reach for. 
 | `property(c, name, get, set, hint = .PROPERTY_HINT_NONE, hint_string = "", usage = DEFAULT)` | A property from a getter and a setter, registered as the methods `get_<name>` and `set_<name>`. Its type is the getter's return type. |
 
 Counted parameters (String, Array...) are borrowed for the call. A return is handed to the caller.
+An Odin `string` parameter is a UTF-8 copy in temp memory, valid until the call returns; keep it
+past that with `strings.clone`. An Odin `string` return is copied into a new String, so temp memory
+(`fmt.tprintf`) is fine to return. Each crossing costs a copy: take `String` on a hot path.
 
 ## Fields
 
@@ -148,6 +151,8 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `construct(T) -> T` | A new engine object of class `T`. RefCounted: `release`. Otherwise `gde.object_destroy`. |
 | `get_node(node, "Path", T) -> T` | The node at the path, as engine class `T`. Nil if there is no node there or it is not a `T`. Pass `object_of(self)` from your own Node class. |
 | `get_node(node, "Path", c) -> ^T` | The same for a registered class `c`: the struct behind the node, or nil. |
+| `load(path, T) -> T` | The resource at `path` (`"res://..."` or `"user://..."`), as engine class `T`, through the resource cache. Nil, and the engine logs an error, if nothing loads there; nil if what loads is not a `T`. RefCounted: `release`. |
+| `load(path, c) -> ^T` | The same for a resource of registered class `c`. Release it with `release(object_of(r))`. |
 | `cast_to(obj, T) -> T` | `obj` as engine class `T` if it is one, else nil. Engine classes only. Use `instance_of` for yours. |
 | `share_object(obj) -> T` | `obj` with one more reference, for returning an engine object you keep. |
 | `release(obj)` | Drops one reference, and frees the object if that was the last. |
@@ -267,10 +272,12 @@ How an Odin type crosses to the engine, for parameters, returns and fields:
 | an enum | `int`, or the enum `enumerate` registered |
 | `bit_set[E]` | `int`, or the bitfield `enumerate_flags` registered |
 | `f32`, `f64` | `float` |
+| `string` | `String`, copied each way (see Methods and properties) |
 | `String`, `StringName`, `NodePath`, `Vector2`...`Projection`, `Color`, `RID`, `Callable`, `Signal`, `Dictionary`, `Array`, packed arrays | the builtin of the same name |
 | an engine class (`Node`...) or any `distinct rawptr` | `Object` |
 | `^T` of a registered class | `Object` of that class |
 | `Variant` | any value |
 
-Anything else, an Odin `string`, a slice or a map, has no engine type and fails to compile with
-`godot_odin: this Odin type has no Variant type`.
+Anything else, such as a slice or a map, has no engine type and fails to compile with
+`godot_odin: this Odin type has no Variant type`. Fields take `String`, not `string`: a field is
+stored in the engine's layout, and an Odin `string` field panics at register time.

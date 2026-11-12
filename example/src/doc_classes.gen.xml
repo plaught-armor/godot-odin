@@ -174,6 +174,15 @@
 		<method name="dict_loose">
 			<description>{1: "x", 2: null} as a Dictionary[int, Variant].</description>
 		</method>
+		<method name="load_kinds">
+			<description>Which of Resource, Texture2D and Walker [code]load[/code] finds at [code]path[/code], as the bits 1, 2 and 4.</description>
+		</method>
+		<method name="load_speed">
+			<description>The speed of the Walker resource at [code]path[/code], or -1 when there is none.</description>
+		</method>
+		<method name="greet">
+			<description>"hi, [code]name[/code]" with its byte count: Odin strings in and out, copied at the call boundary.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

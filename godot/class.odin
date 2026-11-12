@@ -990,6 +990,8 @@ put_return :: #force_inline proc "contextless" (ret: gde.VariantPtr, value: $A) 
 			}
 		} else when intrinsics.type_base_type(A) == rawptr {
 			if rc := counted_engine_object(rawptr(value)); rc != nil { release(rc) }
+		} else when A == string {
+			// variant_into built and dropped its own String: nothing of the caller's to release.
 		} else {
 			if counted(variant_type(A)) {
 				v := value

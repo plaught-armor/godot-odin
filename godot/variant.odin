@@ -29,12 +29,12 @@ load_variants :: proc "contextless" () {
 
 // The Variant type an Odin type crosses as: bool, any integer, enum or bit_set, any float, a builtin struct,
 // an engine class (any `distinct rawptr`) or a pointer to a registered class's struct as OBJECT,
-// and Variant itself as NIL.
+// an Odin `string` as STRING, and Variant itself as NIL.
 variant_type :: proc "contextless" ($A: typeid) -> gde.VariantType {
 	when A == bool { return .BOOL }
 	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) || intrinsics.type_is_bit_set(A) { return .INT }
 	else when intrinsics.type_is_float(A) { return .FLOAT }
-	else when A == String { return .STRING }
+	else when A == String || A == string { return .STRING }
 	else when A == Vector2 { return .VECTOR2 }
 	else when A == Vector2i { return .VECTOR2I }
 	else when A == Rect2 { return .RECT2 }
@@ -113,7 +113,8 @@ set_of :: #force_inline proc "contextless" ($A: typeid, bits: i64) -> A where in
 // A ptrcall argument as Odin type `A`, borrowed for the call when it owns a reference. The engine
 // passes every integer as int64, every float as double, a bool as one byte, an object by pointer.
 // A pointer to a registered class's struct is the object's instance, nil when the object is null
-// or of another class. A null object may arrive as a nil slot rather than a slot holding nil.
+// or of another class. A null object may arrive as a nil slot rather than a slot holding nil. An
+// Odin `string` is a UTF-8 copy in the temp allocator, valid until the engine call returns.
 from_slot :: #force_inline proc "contextless" ($A: typeid, p: gde.ConstTypePtr) -> A {
 	when A == bool { return (^u8)(p)^ != 0 }
 	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) { return A((^i64)(p)^) }
@@ -123,6 +124,10 @@ from_slot :: #force_inline proc "contextless" ($A: typeid, p: gde.ConstTypePtr) 
 	else when intrinsics.type_is_pointer(A) {
 		if p == nil { return nil }
 		return A(instance_raw((^rawptr)(p)^, class_slot(intrinsics.type_elem_type(A))^))
+	}
+	else when A == string {
+		context = ctx
+		return utf8((^String)(p)^, context.temp_allocator)
 	}
 	else { return (^A)(p)^ }
 }
@@ -156,6 +161,9 @@ to_slot :: #force_inline proc "contextless" (p: gde.TypePtr, value: $A) {
 	else when A == Variant {
 		gde.variant_destroy(auto_cast p)
 		(^A)(p)^ = value
+	} else when A == string {
+		destroy[.STRING](auto_cast p)
+		(^String)(p)^ = string_of(value)
 	} else {
 		if counted(variant_type(A)) { destroy[variant_type(A)](auto_cast p) }
 		(^A)(p)^ = value
@@ -195,7 +203,8 @@ reshape :: proc "contextless" (v: gde.ConstVariantPtr, want: gde.VariantType, ou
 }
 
 // A Variant argument as Odin type `A`, converted as `converts` allows and borrowed for the call
-// when it owns a reference. `v` must already have passed `converts`.
+// when it owns a reference, or for an Odin `string` a UTF-8 copy in the temp allocator, valid until
+// the engine call returns. `v` must already have passed `converts`.
 from_variant :: proc "contextless" ($A: typeid, v: gde.ConstVariantPtr) -> A {
 	when A == bool { return variant_bool(v) }
 	else when intrinsics.type_is_integer(A) || intrinsics.type_is_enum(A) { return A(variant_int(v)) }
@@ -211,6 +220,10 @@ from_variant :: proc "contextless" ($A: typeid, v: gde.ConstVariantPtr) -> A {
 			return A(instance_raw(out, class_slot(intrinsics.type_elem_type(A))^))
 		}
 	} else when A == Variant { return (^Variant)(v)^ }
+	else when A == string {
+		context = ctx
+		return utf8((^String)(internal[.STRING](auto_cast v))^, context.temp_allocator)
+	}
 	else { return (^A)(internal[variant_type(A)](auto_cast v))^ }
 }
 
@@ -320,6 +333,10 @@ variant_into :: proc "contextless" (out: ^Variant, value: $A) {
 	} else when A == Variant {
 		v := value
 		gde.variant_new_copy(out, &v)
+	} else when A == string {
+		s := string_of(value)
+		from_type[.STRING](out, &s)
+		destroy[.STRING](&s)
 	} else {
 		v := value
 		from_type[variant_type(A)](out, &v)

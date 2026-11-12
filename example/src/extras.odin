@@ -104,6 +104,9 @@ register_extras :: proc() {
 	godot.method(b, "dict_squares", bag_dict_squares, {"n"})
 	godot.method(b, "dict_words", bag_dict_words)
 	godot.method(b, "dict_loose", bag_dict_loose)
+	godot.method(b, "load_kinds", bag_load_kinds, {"path"})
+	godot.method(b, "load_speed", bag_load_speed, {"path"})
+	godot.method(b, "greet", bag_greet, {"name"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -511,6 +514,37 @@ bag_dict_loose :: proc(self: ^Bag) -> godot.Dictionary {
 	values := [2]godot.Variant{godot.variant(x), {}}
 	defer for &v in values { gde.variant_destroy(&v) }
 	return godot.dict_typed_of(keys[:], values[:])
+}
+
+// Which of Resource, Texture2D and Walker `load` finds at `path`, as the bits 1, 2 and 4.
+bag_load_kinds :: proc(self: ^Bag, path: string) -> i64 {
+	kinds: i64
+	if r := godot.load(path, godot.Resource); r != nil {
+		kinds |= 1
+		godot.release(r)
+	}
+	if t := godot.load(path, godot.Texture2D); t != nil {
+		kinds |= 2
+		godot.release(t)
+	}
+	if w := godot.load(path, walker_class); w != nil {
+		kinds |= 4
+		godot.release(godot.object_of(w))
+	}
+	return kinds
+}
+
+// The speed of the Walker resource at `path`, or -1 when there is none.
+bag_load_speed :: proc(self: ^Bag, path: string) -> f64 {
+	w := godot.load(path, walker_class)
+	if w == nil { return -1 }
+	defer godot.release(godot.object_of(w))
+	return w.speed
+}
+
+// "hi, `name`" with its byte count: Odin strings in and out, copied at the call boundary.
+bag_greet :: proc(self: ^Bag, name: string) -> string {
+	return fmt.tprintf("hi, %s (%d bytes)", name, len(name))
 }
 
 // The sum of key times value over the int entries of `d`.
