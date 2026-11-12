@@ -22,6 +22,11 @@ They were built for, and run in, a shipping-bound Godot game. Its simulation lay
   but Windows and macOS have not been built.
 - **Coverage:** every class, builtin and utility method in the API is bound. The bindgen lists
   anything it cannot bind in `godot/gen_skipped.txt`, which is empty for 4.7.
+- **Known engine issue:** in Godot 4.7, the first `--import` of a project with no
+  `.godot/extension_list.cfg` crashes at the end of the scan if any GDExtension registers an
+  exposed class. A godot-cpp extension crashes at the same place. The import still writes
+  `extension_list.cfg`, and every later run is clean, so `example/build.sh` and `bench/build.sh`
+  run the import once and ignore its exit status.
 
 ## Layout
 
