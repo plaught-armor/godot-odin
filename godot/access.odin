@@ -96,6 +96,42 @@ array_at :: proc "contextless" (a: ^Array, i: i64) -> ^Variant {
 	return (^Variant)(gde.array_operator_index_const(a, i))
 }
 
+// The elements of `a` as a slice over its storage, read in place: valid until `a` changes or is
+// destroyed. Do not write through it or destroy its elements.
+array_read :: proc "contextless" (a: ^Array) -> []Variant {
+	n := array_size(a)
+	if n <= 0 { return nil }
+	return ([^]Variant)(gde.array_operator_index_const(a, 0))[:n]
+}
+
+// The elements of `a` as a writable slice, or nil when `a` is typed or read-only, whose checks a
+// direct write would skip: use `array_set` for those. An Array is shared, not copied on write, so
+// every holder of `a` sees the writes, as with `array_set`. Each element is a Variant `a` owns:
+// destroy the old one before storing a new one. Valid until `a` is resized, duplicated or destroyed.
+array_write :: proc "contextless" (a: ^Array) -> []Variant {
+	n := array_size(a)
+	if n <= 0 || array_is_typed(a) || array_is_read_only(a) { return nil }
+	return ([^]Variant)(gde.array_operator_index(a, 0))[:n]
+}
+
+// A new untyped Array holding `xs`, each element converted as `variant` does, in one resize. You
+// destroy it, or return it.
+array_of :: proc "contextless" (xs: []$T) -> (out: Array) {
+	out = array_new()
+	if len(xs) == 0 { return }
+	array_resize(&out, i64(len(xs)))
+	// The resize fills with nulls, which hold nothing to destroy.
+	slots := ([^]Variant)(gde.array_operator_index(&out, 0))
+	for x, i in xs { variant_into(&slots[i], x) }
+	return
+}
+
+// The keys and the values of `d`, as two new Arrays in matching order: `keys[i]` maps to
+// `values[i]`. Read them in place with `array_read`. You destroy both.
+dict_items :: proc "contextless" (d: ^Dictionary) -> (keys, values: Array) {
+	return dictionary_keys(d), dictionary_values(d)
+}
+
 
 // The characters of `s` as a writable slice. A shared String gets storage of its own first, as any
 // write does; the slice stays valid until `s` is copied, resized or destroyed. `s` must be a String

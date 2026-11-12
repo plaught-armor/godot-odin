@@ -111,6 +111,15 @@
 		<method name="misuse_task">
 			<description>Calls [code]ExampleTally.bump[/code] from a worker task, which tasks must not do. A debug build stops the process there, as example/build.sh checks; it does not return.</description>
 		</method>
+		<method name="bump_all">
+			<description>Adds 1 to every int element of [code]xs[/code] in place, which the caller sees, as with [code]xs[i] += 1[/code] in GDScript. False, with [code]xs[/code] untouched, when it is typed or read-only.</description>
+		</method>
+		<method name="range_of">
+			<description>The ints 0 to [code]n - 1[/code] in a new Array, built in an Odin slice and copied over in one resize.</description>
+		</method>
+		<method name="weighted">
+			<description>The sum of key times value over the int entries of [code]d[/code].</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

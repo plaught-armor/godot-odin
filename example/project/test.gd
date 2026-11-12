@@ -192,6 +192,17 @@ func _check_extras() -> int:
 	if b2.task_text(1234) != 9:
 		print("FAIL: Bag.task_text gave %d, not 9" % b2.task_text(1234))
 		failures += 1
+	var loose: Array = [1, 2, "x"]
+	var typed: Array[int] = [1, 2]
+	if not b2.bump_all(loose) or loose != [2, 3, "x"] or b2.bump_all(typed) or typed != [1, 2] or not b2.bump_all([]):
+		print("FAIL: Bag.bump_all gave %s and %s" % [loose, typed])
+		failures += 1
+	if b2.range_of(4) != [0, 1, 2, 3] or b2.range_of(0) != []:
+		print("FAIL: Bag.range_of(4) gave %s" % b2.range_of(4))
+		failures += 1
+	if b2.weighted({2: 3, 5: 7, "s": 9}) != 41 or b2.weighted({}) != 0:
+		print("FAIL: Bag.weighted gave %d, not 41" % b2.weighted({2: 3, 5: 7, "s": 9}))
+		failures += 1
 	var tally: Object = Engine.get_singleton(&"ExampleTally")
 	if tally == null or tally.bump() != 1 or tally.bump() != 2:
 		print("FAIL: the ExampleTally singleton is missing or miscounts")

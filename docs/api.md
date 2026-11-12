@@ -162,6 +162,10 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `converts(have, want)`, `reshapes(have, want)`, `reshape(&v, want, &out)` | The conversion rules a Variant call follows. |
 | `destroy[type]` | Destructors by Variant type, for builtins: `destroy[.STRING](&s)`. |
 | `array_at(&a, i) -> ^Variant` | Element `i` of an Array, borrowed: no copy, and you do not destroy it. Nil when `i` is out of range. About 2.7 ns for a String element, against 15 ns for `array_get` and its destroy. |
+| `array_read(&a) -> []Variant` | An Array's elements as a slice over its storage, borrowed: valid until `a` changes. Do not write through it or destroy its elements. |
+| `array_write(&a) -> []Variant` | The same, writable: about 1.8 ns per int element, against 10.5 ns for `array_set`. Nil for a typed or read-only Array, whose checks a direct write would skip. Every holder of `a` sees the writes, as with `set`. Destroy an element before storing a new one in its place. |
+| `array_of(xs) -> Array` | A new untyped Array from an Odin slice, each element converted as `variant` does, in one resize: about 0.9 ns per int, against 13 ns for one `push_back` each. You destroy it, or return it. |
+| `dict_items(&d) -> (keys, values)` | A Dictionary's keys and values as two new Arrays in matching order, for reading with `array_read`: about 11 ns per entry to sum the values, against 36 ns for `keys()` and one `get` per key. You destroy both. |
 
 ## Strings and names
 

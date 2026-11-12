@@ -79,6 +79,9 @@ register_extras :: proc() {
 	godot.method(b, "parallel_sum", bag_parallel_sum, {"n"})
 	godot.method(b, "task_text", bag_task_text, {"x"})
 	godot.method(b, "misuse_task", bag_misuse_task)
+	godot.method(b, "bump_all", bag_bump_all, {"xs"})
+	godot.method(b, "range_of", bag_range_of, {"n"})
+	godot.method(b, "weighted", bag_weighted, {"d"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -297,6 +300,44 @@ bag_task_text :: proc(self: ^Bag, x: i64) -> i64 {
 
 text_task :: proc(job: ^Text_Job) {
 	job.len = len(fmt.tprintf("task %d", job.x))
+}
+
+// Adds 1 to every int element of `xs` in place, which the caller sees, as with `xs[i] += 1` in
+// GDScript. False, with `xs` untouched, when it is typed or read-only.
+bag_bump_all :: proc(self: ^Bag, xs: godot.Array) -> bool {
+	xs := xs
+	if godot.array_size(&xs) == 0 { return true }
+	slots := godot.array_write(&xs)
+	if slots == nil { return false }
+	for &v in slots {
+		if godot.variant_tag(&v) != .INT { continue }
+		n := godot.variant_int(&v)
+		// An int holds nothing to destroy, so it is overwritten as is.
+		godot.variant_into(&v, n + 1)
+	}
+	return true
+}
+
+// The ints 0 to `n - 1` in a new Array, built in an Odin slice and copied over in one resize.
+bag_range_of :: proc(self: ^Bag, n: i64) -> godot.Array {
+	xs := make([]i64, max(n, 0), context.temp_allocator)
+	for &x, i in xs { x = i64(i) }
+	return godot.array_of(xs)
+}
+
+// The sum of key times value over the int entries of `d`.
+bag_weighted :: proc(self: ^Bag, d: godot.Dictionary) -> i64 {
+	d := d
+	keys, values := godot.dict_items(&d)
+	defer godot.array_destroy(&keys)
+	defer godot.array_destroy(&values)
+	sum: i64
+	vs := godot.array_read(&values)
+	for &k, i in godot.array_read(&keys) {
+		if godot.variant_tag(&k) != .INT || godot.variant_tag(&vs[i]) != .INT { continue }
+		sum += godot.variant_int(&k) * godot.variant_int(&vs[i])
+	}
+	return sum
 }
 
 // Calls `ExampleTally.bump` from a worker task, which tasks must not do. A debug build stops the

@@ -43,6 +43,15 @@ func _initialize() -> void:
 		words.append("word %d" % i)
 	_report("Odin read Array of Strings, get(), per element", func() -> float: return b.array_read_ns(words, false, N / 1000))
 	_report("Odin read Array of Strings, array_at, per element", func() -> float: return b.array_read_ns(words, true, N / 1000))
+	_report("Odin build Array of ints, push_back(), per element", func() -> float: return b.array_build_ns(false, N / 1000))
+	_report("Odin build Array of ints, array_of, per element", func() -> float: return b.array_build_ns(true, N / 1000))
+	_report("Odin set Array of ints, set(), per element", func() -> float: return b.array_write_ns(false, N / 1000))
+	_report("Odin set Array of ints, array_write, per element", func() -> float: return b.array_write_ns(true, N / 1000))
+	var table: Dictionary = {}
+	for i in 1000:
+		table["key %d" % i] = i
+	_report("Odin sum Dictionary values, keys() + get(), per entry", func() -> float: return b.dict_iter_ns(table, false, N / 1000))
+	_report("Odin sum Dictionary values, dict_items, per entry", func() -> float: return b.dict_iter_ns(table, true, N / 1000))
 	_report("Odin fill Image, set_pixel(), per pixel", func() -> float: return b.image_fill_ns(false, N / 4096))
 	_report("Odin fill Image, image_write, per pixel", func() -> float: return b.image_fill_ns(true, N / 4096))
 	var data := PackedByteArray()
