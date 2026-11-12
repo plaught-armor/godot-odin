@@ -208,7 +208,7 @@
 			<description>Whether "é" matches the lone byte 0xE9, its code but invalid UTF-8; it must not. GDScript cannot pass invalid UTF-8, so the text is fixed here.</description>
 		</method>
 		<method name="text_ends">
-			<description>Whether [code]s[/code] begins with [code]part[/code]'s text, as bit 0, and ends with it, as bit 1: by [code]string_begins_with_text[/code] and [code]string_ends_with_text[/code].</description>
+			<description>Whether [code]s[/code] begins with [code]part[/code]'s text, as bit 0, and ends with it, as bit 1: by [code]string_begins_with_text[/code] and [code]string_ends_with_text[/code]. Bits 2 and 3 are the same ignoring case.</description>
 		</method>
 		<method name="which">
 			<description>The index of [code]s[/code] among a fixed set of names by [code]string_which[/code], or -1. "jump" and "jo-p" share a key, so the full compare picks between them; "rin", "jamp" and "jo本p" match a key and no name.</description>

@@ -331,10 +331,14 @@ func _check_extras() -> int:
 	# The engine's begins_with and ends_with are the reference.
 	var end_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abc", "a"], ["abc", "c"], ["abc", "abc"],
 		["abc", "abcd"], ["日本語", "日"], ["日本語", "語"], ["日本語", "本"], ["aé", "é"], ["éa", "é"],
-		["x日本語x", "x日"], [long_text, "xx"], ["ab", "b"]]
+		["x日本語x", "x日"], [long_text, "xx"], ["ab", "b"], ["Hello World", "hELLO"], ["Hello World", "WORLD"],
+		["\u0130stanbul", "is"], ["xxK\u212A", "kk"], ["\u00C9t\u00E9", "\u00E9T\u00C9"], ["abc", "ABCD"],
+		["@[`{", "`{"], ["\u0131x", "Ix"], ["xi", "\u0130"], ["kx", "\u212A"]]
 	for c: Array in end_cases:
 		var s: String = c[0]
-		var want: int = int(s.begins_with(c[1])) | int(s.ends_with(c[1])) << 1
+		var p: String = c[1]
+		var want: int = int(s.begins_with(p)) | int(s.ends_with(p)) << 1
+		want |= int(s.to_lower().begins_with(p.to_lower())) << 2 | int(s.to_lower().ends_with(p.to_lower())) << 3
 		if b2.text_ends(s, c[1]) != want:
 			print("FAIL: Bag.text_ends(%s, %s) gave %d, not %d" % [s, c[1], b2.text_ends(s, c[1]), want])
 			failures += 1

@@ -553,12 +553,14 @@ bag_lone_byte_matches :: proc(self: ^Bag) -> bool {
 }
 
 // Whether `s` begins with `part`'s text, as bit 0, and ends with it, as bit 1: by
-// `string_begins_with_text` and `string_ends_with_text`.
+// `string_begins_with_text` and `string_ends_with_text`. Bits 2 and 3 are the same ignoring case.
 bag_text_ends :: proc(self: ^Bag, s: godot.String, part: godot.String) -> i64 {
 	s, part := s, part
 	text := godot.utf8(part)
 	defer delete(text)
-	return i64(godot.string_begins_with_text(&s, text)) | i64(godot.string_ends_with_text(&s, text)) << 1
+	r := i64(godot.string_begins_with_text(&s, text)) | i64(godot.string_ends_with_text(&s, text)) << 1
+	r |= i64(godot.string_begins_with_text_nocase(&s, text)) << 2 | i64(godot.string_ends_with_text_nocase(&s, text)) << 3
+	return r
 }
 
 // The index of `s` among a fixed set of names by `string_which`, or -1. "jump" and "jo-p" share a

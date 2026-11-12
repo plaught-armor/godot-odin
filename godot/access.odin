@@ -167,6 +167,35 @@ string_ends_with_text :: proc "contextless" (s: ^String, text: string) -> bool {
 	return ok
 }
 
+// `string_begins_with_text` ignoring case. The engine has no such method; this lowers each
+// character as `findn` does, so it is `s.to_lower().begins_with(text.to_lower())` with no String
+// made.
+string_begins_with_text_nocase :: proc "contextless" (s: ^String, text: string) -> bool {
+	chars := string_read(s)
+	ascii := text_is_ascii(text)
+	k := len(text) if ascii else text_rune_count(text)
+	return k <= len(chars) && window_nocase(chars[:k], text, ascii)
+}
+
+// `string_ends_with_text` ignoring case, lowering as `string_begins_with_text_nocase` does.
+string_ends_with_text_nocase :: proc "contextless" (s: ^String, text: string) -> bool {
+	chars := string_read(s)
+	ascii := text_is_ascii(text)
+	k := len(text) if ascii else text_rune_count(text)
+	return k <= len(chars) && window_nocase(chars[len(chars) - k:], text, ascii)
+}
+
+// Whether `window`, as many characters as `text` holds, is `text` with each character lowered
+// through the engine's case table. `ascii` says `text` is all ASCII.
+@(private)
+window_nocase :: #force_inline proc "contextless" (window: []rune, text: string, ascii: bool) -> bool {
+	if ascii {
+		if equal, plain := ascii_nocase_matches(window, text); plain { return equal }
+	}
+	_, ok := fold_prefix_of(window, text, false)
+	return ok
+}
+
 // Where Odin text `text` first appears in `s` at or after character `from`, in characters, or -1:
 // the engine's `find`, compared in place with no String made. As there, a negative `from` counts
 // back from the last place `text` fits, -1 being that place, and empty text gives -1. Finds each
@@ -360,11 +389,7 @@ needle_at :: #force_inline proc "contextless" (chars: []rune, i: int, n: Needle,
 	window := chars[i:][:n.count]
 	when NOCASE {
 		if rune_lower(chars[i]) != n.first { return false }
-		if n.ascii {
-			if equal, plain := ascii_nocase_matches(window, n.text); plain { return equal }
-		}
-		_, ok := fold_prefix_of(window, n.text, false)
-		return ok
+		return window_nocase(window, n.text, n.ascii)
 	} else {
 		if chars[i] != n.first { return false }
 		if n.ascii { return ascii_matches(window, n.text) }
