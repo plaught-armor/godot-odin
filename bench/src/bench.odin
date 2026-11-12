@@ -477,6 +477,8 @@ Ident :: enum i64 {
 	SPLIT_PARTS,       // string_split_parts of the same, each part read and none made
 	TO_INT_ENGINE,     // the generated string_to_int of a cached "-12345"
 	TO_INT_RUNES,      // runes_to_int of the same String's characters
+	TO_FLOAT_ENGINE,   // the generated string_to_float of a cached "-123.456e-2"
+	TO_FLOAT_RUNES,    // runes_to_float of the same String's characters
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -761,6 +763,16 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		defer godot.destroy[.STRING](&num)
 		p := &num
 		for _ in 0 ..< n { sum += godot.runes_to_int(godot.string_read(intrinsics.volatile_load(&p))) }
+	case .TO_FLOAT_ENGINE:
+		num := godot.string_of("-123.456e-2")
+		defer godot.destroy[.STRING](&num)
+		p := &num
+		for _ in 0 ..< n { sum += i64(godot.string_to_float(intrinsics.volatile_load(&p))) }
+	case .TO_FLOAT_RUNES:
+		num := godot.string_of("-123.456e-2")
+		defer godot.destroy[.STRING](&num)
+		p := &num
+		for _ in 0 ..< n { sum += i64(godot.runes_to_float(godot.string_read(intrinsics.volatile_load(&p)))) }
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)
 		defer godot.destroy[.STRING_NAME](&sn)

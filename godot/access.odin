@@ -394,6 +394,67 @@ runes_to_int :: proc "contextless" (chars: []rune) -> i64 {
 	return i64(integer) if positive else i64(0 - integer)
 }
 
+// The powers 10^(2^k) `runes_to_float` scales by, one per exponent bit up to 511.
+@(private, rodata)
+FLOAT_POWERS := [9]f64{1e1, 1e2, 1e4, 1e8, 1e16, 1e32, 1e64, 1e128, 1e256}
+
+// The number `chars` spell, read as the engine's `to_float` reads a String, to the same bits: space,
+// tab and newline skipped at the front, a sign, digits with at most one '.', and an exponent, with
+// reading stopping at the first character that does not fit. As there, mantissa digits past 18
+// are dropped, an exponent past 511 is taken as 511 (the engine also prints a warning), a lone
+// sign gives zero with that sign, and an 'e' with no digits after it leaves the mantissa unscaled
+// by its '.': "1.5e" reads 15.
+runes_to_float :: proc "contextless" (chars: []rune) -> f64 #no_bounds_check {
+	n := len(chars)
+	p := 0
+	for ; p < n && (chars[p] == ' ' || chars[p] == '\t' || chars[p] == '\n'); p += 1 {}
+	negative := p < n && chars[p] == '-'
+	if p < n && (chars[p] == '-' || chars[p] == '+') { p += 1 }
+	// The mantissa in one pass: its first 18 digits, how many digits, and how many before the '.'.
+	mant: u64
+	digits, dec_pt := 0, -1
+	for ; p < n; p += 1 {
+		c := chars[p]
+		if c >= '0' && c <= '9' {
+			if digits < 18 { mant = 10 * mant + u64(c - '0') }
+			digits += 1
+			continue
+		}
+		if c != '.' || dec_pt >= 0 { break }
+		dec_pt = digits
+	}
+	if dec_pt < 0 { dec_pt = digits }
+	if digits == 0 { return -0.0 if negative else 0.0 }
+	frac_exp := dec_pt - min(digits, 18)
+	// The engine sums two nine-digit halves as doubles; the high half times 1e9 is exact there, so
+	// that sum rounds once, as this conversion does.
+	fraction := f64(mant)
+	// The exponent.
+	exp := 0
+	if p < n && (chars[p] == 'E' || chars[p] == 'e') {
+		q := p + 1
+		exp_negative := q < n && chars[q] == '-'
+		if q < n && (chars[q] == '-' || chars[q] == '+') { q += 1 }
+		if q >= n || chars[q] < '0' || chars[q] > '9' { return -fraction if negative else fraction }
+		for ; q < n && chars[q] >= '0' && chars[q] <= '9'; q += 1 {
+			// The engine's exponent is a 32-bit int: past it, it wraps there too.
+			exp = int(i32(exp) * 10 + i32(chars[q] - '0'))
+		}
+		if exp_negative { exp = -exp }
+	}
+	exp = int(i32(frac_exp + exp))
+	scale_down := exp < 0
+	exp = min(abs(exp), 511)
+	scale := 1.0
+	for power in FLOAT_POWERS {
+		if exp == 0 { break }
+		if exp & 1 != 0 { scale *= power }
+		exp >>= 1
+	}
+	fraction = fraction / scale if scale_down else fraction * scale
+	return -fraction if negative else fraction
+}
+
 // A String holding `chars`, which the caller destroys. They are copied as they are, without the
 // check a String made from outside characters gets, so they should come from a String: a part
 // from `split_next` or `runes_strip_edges`.

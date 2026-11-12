@@ -249,6 +249,9 @@
 		<method name="part_is">
 			<description>For each part of [code]s[/code] split on [code]part[/code]'s text, whether it is [code]word[/code]'s text by [code]runes_equal_text[/code] in bit 0 and by [code]runes_equal_text_nocase[/code] in bit 1.</description>
 		</method>
+		<method name="part_floats">
+			<description>[code]runes_to_float[/code] of each part of [code]s[/code] split on [code]part[/code]'s text.</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

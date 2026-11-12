@@ -437,6 +437,17 @@ func _check_extras() -> int:
 	if b2.part_ints(number_text, ",") != want_ints:
 		print("FAIL: Bag.part_ints gave %s, not %s" % [b2.part_ints(number_text, ","), want_ints])
 		failures += 1
+	var float_text: String = ";0;-;+;-0;1.5;  -1.5;\t\n+2.25;\r3;.5;5.;1e3;1E-3;1.5e;1.5e+;2.5e-x;1e600;1e-600;-1e-400"
+	float_text += ";123456789012345678901234;0.000000000000000000001234567890123456789;1..2;12abc;abc;0e600"
+	float_text += ";1.7976931348623157e308;4.9e-324;3.14159265358979323846;1_000;\u0661;inf;nan;0x10;99999999999999999999e-20"
+	float_text += ";123456789.987654321;.;.5.5;-.e5;5e0005;1e2147483647"
+	var want_floats: PackedFloat64Array = []
+	for part: String in float_text.split(";"):
+		want_floats.append(part.to_float())
+	var got_floats: PackedFloat64Array = b2.part_floats(float_text, ";")
+	if got_floats.to_byte_array() != want_floats.to_byte_array():
+		print("FAIL: Bag.part_floats gave %s, not %s" % [got_floats, want_floats])
+		failures += 1
 	for word: String in ["jump", "JUMP", "\u0130x", "ix", "", "jum", "jumps", "\u65E5"]:
 		var keywords: String = "jump;Jump;;JUMP;jum;jumps;ix;IX;\u0130x;\u65E5;\u65E5\u672C"
 		var want_is: PackedInt64Array = []
