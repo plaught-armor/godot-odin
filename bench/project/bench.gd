@@ -29,6 +29,10 @@ func _initialize() -> void:
 	_report("GDScript -> engine, untyped, 1 arg", func() -> float: return _native_untyped(cu))
 	_report("Odin -> engine ptrcall", func() -> float: return b.engine_call_ns(N))
 	_report("Odin construct + release", func() -> float: return b.construct_ns(N))
+	var xs := PackedInt64Array()
+	xs.resize(1000)
+	_report("Odin sum PackedInt64Array, get(), per element", func() -> float: return b.packed_get_ns(xs, N / 1000))
+	_report("Odin sum PackedInt64Array, packed_read, per element", func() -> float: return b.packed_read_ns(xs, N / 1000))
 	var bump: Callable = func(x: int) -> int: return x + 1
 	_report("Odin -> Callable.call (GDScript lambda)", func() -> float: return b.callable_call_ns(bump, N))
 	_report("GDScript -> Callable.call (same lambda)", func() -> float: return _callable_calls(bump))

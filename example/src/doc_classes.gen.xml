@@ -78,6 +78,9 @@
 		<method name="total">
 			<description>The sum of [code]xs[/code]. An untyped call may pass an Array, which arrives converted.</description>
 		</method>
+		<method name="doubled">
+			<description>A copy of [code]xs[/code] with every element doubled. [code]xs[/code] is borrowed, so the copy is written, not [code]xs[/code].</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

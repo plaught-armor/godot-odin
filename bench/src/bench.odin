@@ -38,6 +38,8 @@ register :: proc() {
 	godot.method(c, "add3", add3, {"a", "b", "c"})
 	godot.method(c, "construct_ns", construct_ns, {"n"})
 	godot.method(c, "engine_call_ns", engine_call_ns, {"n"})
+	godot.method(c, "packed_get_ns", packed_get_ns, {"xs", "n"})
+	godot.method(c, "packed_read_ns", packed_read_ns, {"xs", "n"})
 	godot.method(c, "callable_call_ns", callable_call_ns, {"f", "n"})
 }
 
@@ -72,6 +74,32 @@ engine_call_ns :: proc(self: ^Bench, n: i64) -> f64 {
 		sum += godot.ref_counted_get_reference_count(rc)
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += sum
+	return ns
+}
+
+// Nanoseconds per element to sum `xs` with `packed_int64_array_get`, over `n` rounds.
+packed_get_ns :: proc(self: ^Bench, xs: godot.PackedInt64Array, n: i64) -> f64 {
+	xs := xs
+	sum: i64
+	start := time.tick_now()
+	for _ in 0 ..< n {
+		for i in 0 ..< godot.packed_int64_array_size(&xs) { sum += godot.packed_int64_array_get(&xs, i) }
+	}
+	ns := f64(time.tick_since(start)) / f64(n * godot.packed_int64_array_size(&xs))
+	self.total += sum
+	return ns
+}
+
+// Nanoseconds per element to sum `xs` through `packed_read`, over `n` rounds.
+packed_read_ns :: proc(self: ^Bench, xs: godot.PackedInt64Array, n: i64) -> f64 {
+	xs := xs
+	sum: i64
+	start := time.tick_now()
+	for _ in 0 ..< n {
+		for x in godot.packed_read(&xs) { sum += x }
+	}
+	ns := f64(time.tick_since(start)) / f64(n * godot.packed_int64_array_size(&xs))
 	self.total += sum
 	return ns
 }

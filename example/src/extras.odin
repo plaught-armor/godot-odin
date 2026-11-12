@@ -67,6 +67,7 @@ register_extras :: proc() {
 	godot.method(b, "score", bag_score, {"x"})
 	godot.method(b, "has_marks", bag_has_marks, {"marks"})
 	godot.method(b, "total", bag_total, {"xs"})
+	godot.method(b, "doubled", bag_doubled, {"xs"})
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -169,8 +170,15 @@ bag_has_marks :: proc(self: ^Bag, marks: bit_set[Mark]) -> bool {
 bag_total :: proc(self: ^Bag, xs: godot.PackedInt64Array) -> i64 {
 	xs := xs
 	sum: i64
-	for i in 0 ..< godot.packed_int64_array_size(&xs) { sum += godot.packed_int64_array_get(&xs, i) }
+	for x in godot.packed_read(&xs) { sum += x }
 	return sum
+}
+
+// A copy of `xs` with every element doubled. `xs` is borrowed, so the copy is written, not `xs`.
+bag_doubled :: proc(self: ^Bag, xs: godot.PackedInt64Array) -> godot.PackedInt64Array {
+	out := godot.packed_int64_array_new_from_packed_int64_array(xs)
+	for &x in godot.packed_write(&out) { x *= 2 }
+	return out
 }
 
 // Calls so far, counting this one.

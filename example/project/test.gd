@@ -147,6 +147,15 @@ func _check_extras() -> int:
 	if u.total([1, 2, 3]) != 6 or u.total(PackedInt64Array([4, 5])) != 9:
 		print("FAIL: untyped Bag.total answered %s and %s, not 6 and 9" % [u.total([1, 2, 3]), u.total(PackedInt64Array([4, 5]))])
 		failures += 1
+	var xs := PackedInt64Array([1, 2, 3])
+	var b2: Bag = Bag.new()
+	var twice: PackedInt64Array = b2.doubled(xs)
+	if twice != PackedInt64Array([2, 4, 6]) or xs != PackedInt64Array([1, 2, 3]):
+		print("FAIL: Bag.doubled gave %s and left %s, not [2, 4, 6] and [1, 2, 3]" % [twice, xs])
+		failures += 1
+	if u.total(PackedInt64Array()) != 0:
+		print("FAIL: Bag.total of an empty array is %s, not 0" % u.total(PackedInt64Array()))
+		failures += 1
 	var tally: Object = Engine.get_singleton(&"ExampleTally")
 	if tally == null or tally.bump() != 1 or tally.bump() != 2:
 		print("FAIL: the ExampleTally singleton is missing or miscounts")
