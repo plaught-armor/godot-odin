@@ -153,6 +153,18 @@
 		<method name="say">
 			<description>Prints "Bag says [code]n[/code]" to the engine's output.</description>
 		</method>
+		<method name="adder">
+			<description>A Callable [code]c[/code] whose [code]c.call(x)[/code] adds [code]x * n[/code] to [code]proc_total[/code].</description>
+		</method>
+		<method name="slot_adder">
+			<description>A Callable [code]c[/code] whose [code]c.call(x)[/code] adds [code]x[/code] to this bag's slot [code]slot[/code].</description>
+		</method>
+		<method name="defer">
+			<description>At the end of the frame, adds [code]n[/code] to [code]proc_total[/code] and to slot 2.</description>
+		</method>
+		<method name="proc_total">
+			<description>[code]proc_total[/code], a static method.</description>
+		</method>
 	</methods>
 	<members>
 		<member name="marks" type="">Flags, a checklist in the inspector.</member>

@@ -16,22 +16,64 @@ Hook :: struct {
 	types: [MAX_ARGS]gde.VariantType,
 }
 
-// A Callable that calls `f(self, ...)` with the caller's arguments followed by `binds`, as
-// Callable.bind does. `f`'s first parameter is `^T`; it returns nothing. The binds move in. The
-// engine drops the connection when `self`'s object is freed. Destroy the returned Callable with
-// `destroy[.CALLABLE]` once it is connected.
-callable :: proc(self: ^$T, f: $P, binds: ..Variant) -> (out: Callable) where intrinsics.type_is_proc(P) {
-	N :: intrinsics.type_proc_parameter_count(P)
-	#assert(N >= 1 && intrinsics.type_proc_parameter_type(P, 0) == ^T, "godot_odin: a callable's first parameter is the instance")
+// A Callable for an Odin proc, for `connect`, tweens and timers. It calls `f` with the caller's
+// arguments followed by `binds`, as Callable.bind does; `f` returns nothing. The binds move in.
+// Destroy the returned Callable with `destroy[.CALLABLE]` once it is connected.
+//
+// `callable(self, f, binds..)`: `f`'s first parameter is `^T` and gets `self`. The engine drops
+// the connection when `self`'s object is freed.
+// `callable(f, binds..)`: a plain proc with no instance, which lives as long as the Callable.
+callable :: proc{callable_method, callable_proc}
+
+@(private)
+callable_method :: proc(self: ^$T, f: $P, binds: ..Variant) -> Callable where intrinsics.type_is_proc(P) {
+	#assert(intrinsics.type_proc_parameter_count(P) >= 1 && intrinsics.type_proc_parameter_type(P, 0) == ^T, "godot_odin: a callable's first parameter is the instance")
+	id := u64(gde.object_get_instance_id(gde.ConstObjectPtr(object_of(self))))
+	return make_hook(f, true, self, id, binds)
+}
+
+@(private)
+callable_proc :: proc(f: $P, binds: ..Variant) -> Callable where intrinsics.type_is_proc(P) {
+	return make_hook(f, false, nil, 0, binds)
+}
+
+// Calls `f` once on the main thread at the end of this frame, as GDScript's `call_deferred` does,
+// with `binds` as its arguments, which move in. The forms are `callable`'s: `call_deferred(self,
+// f, binds..)` for an instance method, which the engine skips if `self`'s object is freed first,
+// and `call_deferred(f, binds..)` for a plain proc.
+call_deferred :: proc{call_deferred_method, call_deferred_proc}
+
+@(private)
+call_deferred_method :: proc(self: ^$T, f: $P, binds: ..Variant) where intrinsics.type_is_proc(P) {
+	assert(len(binds) == intrinsics.type_proc_parameter_count(P) - 1, "godot_odin: call_deferred takes one bind per parameter after self")
+	c := callable_method(self, f, ..binds)
+	callable_call_deferred(&c)
+	destroy[.CALLABLE](&c)
+}
+
+@(private)
+call_deferred_proc :: proc(f: $P, binds: ..Variant) where intrinsics.type_is_proc(P) {
+	assert(len(binds) == intrinsics.type_proc_parameter_count(P), "godot_odin: call_deferred takes one bind per parameter")
+	c := callable_proc(f, ..binds)
+	callable_call_deferred(&c)
+	destroy[.CALLABLE](&c)
+}
+
+// The custom Callable both forms of `callable` make. `SELF` says `f`'s first parameter is the
+// instance `self`, whose object has instance id `id`; else `self` is nil and `id` 0.
+@(private)
+make_hook :: proc(f: $P, $SELF: bool, self: rawptr, id: u64, binds: []Variant) -> (out: Callable) {
+	FIRST :: 1 when SELF else 0
+	N :: intrinsics.type_proc_parameter_count(P) - FIRST
 	#assert(intrinsics.type_proc_return_count(P) == 0, "godot_odin: a callable returns nothing")
-	#assert(N - 1 <= MAX_ARGS, "godot_odin: too many parameters")
-	assert(len(binds) <= N - 1, "godot_odin: more binds than parameters")
+	#assert(N <= MAX_ARGS, "godot_odin: too many parameters")
+	assert(len(binds) <= N, "godot_odin: more binds than parameters")
 
 	call :: proc "c" (userdata: rawptr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 		context = ctx
 		enter()
 		h := (^Hook)(userdata)
-		want := i32(N - 1) - h.n
+		want := i32(N) - h.n
 		if i32(count) != want {
 			err.error = .ERROR_TOO_MANY_ARGUMENTS if i32(count) > want else .ERROR_TOO_FEW_ARGUMENTS
 			err.expected = want
@@ -48,7 +90,7 @@ callable :: proc(self: ^$T, f: $P, binds: ..Variant) -> (out: Callable) where in
 			}
 		}
 		c := Call{self = h.self, variants = &filled[0]}
-		invoke_void(P(h.f), true, false, &c)
+		invoke_void(P(h.f), SELF, false, &c)
 		err.error = .OK
 	}
 
@@ -56,15 +98,15 @@ callable :: proc(self: ^$T, f: $P, binds: ..Variant) -> (out: Callable) where in
 	h.f = rawptr(f)
 	h.self = self
 	h.n = i32(len(binds))
-	h.args = i32(N - 1)
+	h.args = i32(N)
 	for b, i in binds { h.binds[i] = b }
 	d: Params
-	describe_params(P, 1, &d)
+	describe_params(P, FIRST, &d)
 	h.types = d.types
 	info := gde.CallableCustomInfo2 {
 		callable_userdata       = h,
 		token                   = library,
-		object_id               = gde.ObjectInstanceID(gde.object_get_instance_id(gde.ConstObjectPtr(object_of(self)))),
+		object_id               = gde.ObjectInstanceID(id),
 		call_func               = call,
 		free_func               = hook_free,
 		hash_func               = hook_hash,

@@ -97,6 +97,10 @@ register_extras :: proc() {
 	godot.method(b, "find_2d", bag_find_2d, {"root", "path"})
 	godot.method(b, "find_ghost", bag_find_ghost, {"root", "path"})
 	godot.method(b, "say", bag_say, {"n"})
+	godot.method(b, "adder", bag_adder, {"n"})
+	godot.method(b, "slot_adder", bag_slot_adder, {"slot"})
+	godot.method(b, "defer", bag_defer, {"n"})
+	godot.method(b, "proc_total", bag_proc_total)
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
@@ -440,6 +444,41 @@ bag_find_ghost :: proc(self: ^Bag, root: godot.Node, path: godot.String) -> i64 
 // Prints "Bag says `n`" to the engine's output.
 bag_say :: proc(self: ^Bag, n: i64) {
 	godot.print("Bag says %d", n)
+}
+
+// What `add_scaled` has added up, for the plain-proc Callables to show they ran.
+proc_total: i64
+
+// Adds `x * n` to `proc_total`: a plain proc with no instance, for `callable(f, binds..)`.
+add_scaled :: proc(x, n: i64) {
+	proc_total += x * n
+}
+
+// Adds `x` to slot `slot`, ignoring a slot out of range.
+bag_add_to_slot :: proc(self: ^Bag, x, slot: i64) {
+	if slot < 0 || slot >= SLOTS { return }
+	self.slots[slot] += x
+}
+
+// A Callable `c` whose `c.call(x)` adds `x * n` to `proc_total`.
+bag_adder :: proc(self: ^Bag, n: i64) -> godot.Callable {
+	return godot.callable(add_scaled, godot.variant(n))
+}
+
+// A Callable `c` whose `c.call(x)` adds `x` to this bag's slot `slot`.
+bag_slot_adder :: proc(self: ^Bag, slot: i64) -> godot.Callable {
+	return godot.callable(self, bag_add_to_slot, godot.variant(slot))
+}
+
+// At the end of the frame, adds `n` to `proc_total` and to slot 2.
+bag_defer :: proc(self: ^Bag, n: i64) {
+	godot.call_deferred(add_scaled, godot.variant(n), godot.variant(i64(1)))
+	godot.call_deferred(self, bag_add_to_slot, godot.variant(n), godot.variant(i64(2)))
+}
+
+// `proc_total`, a static method.
+bag_proc_total :: proc() -> i64 {
+	return proc_total
 }
 
 // The sum of key times value over the int entries of `d`.

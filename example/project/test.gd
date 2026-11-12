@@ -7,6 +7,9 @@ var _arrived: int = -1
 var _ticker: Ticker
 var _failures: int = 0
 var _frames: int = 0
+# A Bag whose `defer` calls run at the end of the first frame, and `proc_total` before them.
+var _deferred: Bag
+var _deferred_from: int = 0
 
 
 func _initialize() -> void:
@@ -253,6 +256,21 @@ func _check_extras() -> int:
 		print("FAIL: Bag.find_ghost gave %d, not 3" % b2.find_ghost(root, "Sprite/Ghost"))
 		failures += 1
 	b2.say(42)
+	var before: int = Bag.proc_total()
+	var add: Callable = b2.adder(10)
+	add.call(2)
+	var to_slot: Callable = b2.slot_adder(1)
+	to_slot.call(5)
+	to_slot.call(6)
+	if Bag.proc_total() - before != 20 or b2.get(&"slot_1") != 11 or add.get_argument_count() != 1:
+		print("FAIL: Bag Callables gave %d and %s, not 20 and 11" % [Bag.proc_total() - before, b2.get(&"slot_1")])
+		failures += 1
+	_deferred = Bag.new()
+	_deferred_from = Bag.proc_total()
+	_deferred.defer(7)
+	if Bag.proc_total() != _deferred_from or _deferred.get(&"slot_2") != 0:
+		print("FAIL: Bag.defer ran before the frame ended")
+		failures += 1
 	root.free()
 	return failures
 
@@ -309,6 +327,9 @@ func _process(_delta: float) -> bool:
 		_add_ticker()
 	if _frames < 4:
 		return false
+	if Bag.proc_total() - _deferred_from != 7 or _deferred.get(&"slot_2") != 7:
+		print("FAIL: Bag.defer's calls gave %d and %s, not 7 and 7" % [Bag.proc_total() - _deferred_from, _deferred.get(&"slot_2")])
+		_failures += 1
 	if _ticker.ticks < 2:
 		print("FAIL: Ticker._process ran %d times in %d frames" % [_ticker.ticks, _frames])
 		_failures += 1

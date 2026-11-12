@@ -112,6 +112,8 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 | `signal(c, name, ..Arg) -> ^StringName` | Registers a signal. Keep the returned name for `emit`. |
 | `emit(self, signal, ..Variant)` | Emits from `self`'s object. It destroys the args. |
 | `callable(self, f, binds: ..Variant) -> Callable` | A Callable that calls `f(self, args..., binds...)`, for `connect`. The binds move in. The engine drops the connection when `self`'s object is freed. Destroy the Callable once it is connected. |
+| `callable(f, binds: ..Variant) -> Callable` | The same for a plain proc with no instance. It lives as long as the Callable. |
+| `call_deferred(self, f, binds: ..Variant)`, `call_deferred(f, binds: ..Variant)` | Calls `f` once at the end of the frame with `binds` as all its arguments, as GDScript's `call_deferred` does. The binds move in. The instance form is skipped if `self`'s object is freed first. |
 
 ## Engine virtuals
 
