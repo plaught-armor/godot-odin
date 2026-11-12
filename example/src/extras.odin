@@ -129,6 +129,8 @@ register_extras :: proc() {
 	godot.method(b, "split_text", bag_split_text, {"s", "part", "allow_empty", "maxsplit"})
 	godot.method(b, "split_lengths", bag_split_lengths, {"s", "part"})
 	godot.method(b, "split_strip", bag_split_strip, {"s", "part", "left", "right"})
+	godot.method(b, "part_ints", bag_part_ints, {"s", "part"})
+	godot.method(b, "part_is", bag_part_is, {"s", "part", "word"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -643,6 +645,34 @@ bag_split_strip :: proc(self: ^Bag, s: godot.String, part: godot.String, left: b
 		t := godot.string_of_runes(godot.runes_strip_edges(p, left, right))
 		godot.packed_string_array_append(&out, t)
 		godot.destroy[.STRING](&t)
+	}
+	return out
+}
+
+// `runes_to_int` of each part of `s` split on `part`'s text.
+bag_part_ints :: proc(self: ^Bag, s: godot.String, part: godot.String) -> godot.PackedInt64Array {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	out := godot.packed_int64_array_new()
+	parts := godot.string_split_parts(&s, text)
+	for p in godot.split_next(&parts) {
+		godot.packed_int64_array_append(&out, godot.runes_to_int(p))
+	}
+	return out
+}
+
+// For each part of `s` split on `part`'s text, whether it is `word`'s text by `runes_equal_text` in
+// bit 0 and by `runes_equal_text_nocase` in bit 1.
+bag_part_is :: proc(self: ^Bag, s: godot.String, part: godot.String, word: godot.String) -> godot.PackedInt64Array {
+	s, part, word := s, part, word
+	text, w := godot.utf8(part), godot.utf8(word)
+	defer delete(text)
+	defer delete(w)
+	out := godot.packed_int64_array_new()
+	parts := godot.string_split_parts(&s, text)
+	for p in godot.split_next(&parts) {
+		godot.packed_int64_array_append(&out, i64(godot.runes_equal_text(p, w)) | i64(godot.runes_equal_text_nocase(p, w)) << 1)
 	}
 	return out
 }

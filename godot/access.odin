@@ -137,7 +137,11 @@ runes_equal :: #force_inline proc "contextless" (a, b: [^]rune, n: int) -> bool 
 // Every character takes one to four bytes of UTF-8, so a length outside that range answers at once.
 // Invalid UTF-8 in `text` reads as U+FFFD, as it does when made into a String.
 string_equal_text :: proc "contextless" (s: ^String, text: string) -> bool {
-	chars := string_read(s)
+	return runes_equal_text(string_read(s), text)
+}
+
+// `string_equal_text` on characters already read, such as a part from `split_next`.
+runes_equal_text :: proc "contextless" (chars: []rune, text: string) -> bool {
 	if len(chars) > len(text) || len(chars) * 4 < len(text) { return false }
 	// One byte per character: only ASCII text can match.
 	if len(chars) == len(text) { return ascii_matches(chars, text) }
@@ -247,7 +251,11 @@ string_containsn_text :: proc "contextless" (s: ^String, text: string) -> bool {
 // raises each character of both through the engine's Unicode case table before comparing. All
 // ASCII on both sides compares with no branch per character.
 string_equal_text_nocase :: proc "contextless" (s: ^String, text: string) -> bool {
-	chars := string_read(s)
+	return runes_equal_text_nocase(string_read(s), text)
+}
+
+// `string_equal_text_nocase` on characters already read, such as a part from `split_next`.
+runes_equal_text_nocase :: proc "contextless" (chars: []rune, text: string) -> bool {
 	if len(chars) > len(text) || len(chars) * 4 < len(text) { return false }
 	if len(chars) == len(text) {
 		if equal, plain := ascii_nocase_matches(chars, text); plain { return equal }
@@ -355,6 +363,35 @@ runes_strip_edges :: proc "contextless" (chars: []rune, left := true, right := t
 		end -= 1
 	}
 	return chars[beg:end]
+}
+
+// The integer `chars` spell, read as the engine's `to_int` reads a String: up to the first '.',
+// taking every ASCII digit and skipping anything else, with each '-' before the first nonzero digit
+// flipping the sign. A value past the 64-bit range gives the nearest end of it, where the engine
+// also prints an error.
+runes_to_int :: proc "contextless" (chars: []rune) -> i64 {
+	integer: u64
+	// The engine counts digits in a byte, which wraps after 255 and skips the range check again
+	// for the next 19 digits; counting the same way gives the same value then.
+	digits: u8
+	positive := true
+	for c in chars {
+		if c == '.' { break }
+		if c >= '0' && c <= '9' {
+			if digits > 18 {
+				top := u64(max(i64) / 10)
+				// The engine lets a negative value end in '8'; that is `min(i64)`, which the clamp gives.
+				if integer > top || (integer == top && c > '7') {
+					return max(i64) if positive else min(i64)
+				}
+			}
+			integer = integer * 10 + u64(c - '0')
+			digits += 1
+		} else if integer == 0 && c == '-' {
+			positive = !positive
+		}
+	}
+	return i64(integer) if positive else i64(0 - integer)
 }
 
 // A String holding `chars`, which the caller destroys. They are copied as they are, without the

@@ -428,6 +428,23 @@ func _check_extras() -> int:
 			if b2.split_strip(s, c[1], left, right) != want:
 				print("FAIL: Bag.split_strip(%s, %s, %s, %s) gave %s, not %s" % [s, c[1], left, right, b2.split_strip(s, c[1], left, right), want])
 				failures += 1
+	var number_text: String = ",12,-3,--4,5-6,a7b,1.5,.5,-,  42 ,-0-7,\u0663,9223372036854775807,-9223372036854775808"
+	number_text += ",9223372036854775808,-9223372036854775809,99999999999999999999,0000000000000000000000012"
+	number_text += ",-" + "0".repeat(256) + "9999999999999999999," + "0".repeat(250) + "92233720368547758079"
+	var want_ints: PackedInt64Array = []
+	for part: String in number_text.split(","):
+		want_ints.append(part.to_int())
+	if b2.part_ints(number_text, ",") != want_ints:
+		print("FAIL: Bag.part_ints gave %s, not %s" % [b2.part_ints(number_text, ","), want_ints])
+		failures += 1
+	for word: String in ["jump", "JUMP", "\u0130x", "ix", "", "jum", "jumps", "\u65E5"]:
+		var keywords: String = "jump;Jump;;JUMP;jum;jumps;ix;IX;\u0130x;\u65E5;\u65E5\u672C"
+		var want_is: PackedInt64Array = []
+		for part: String in keywords.split(";"):
+			want_is.append(int(part == word) | int(part.nocasecmp_to(word) == 0) << 1)
+		if b2.part_is(keywords, ";", word) != want_is:
+			print("FAIL: Bag.part_is(%s) gave %s, not %s" % [word, b2.part_is(keywords, ";", word), want_is])
+			failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
 		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]

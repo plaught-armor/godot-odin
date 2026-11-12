@@ -475,6 +475,8 @@ Ident :: enum i64 {
 	SPLIT_ENGINE,      // the generated string_split of the sentence on a cached " "
 	SPLIT_TEXT,        // string_split_text of the sentence on Odin " "
 	SPLIT_PARTS,       // string_split_parts of the same, each part read and none made
+	TO_INT_ENGINE,     // the generated string_to_int of a cached "-12345"
+	TO_INT_RUNES,      // runes_to_int of the same String's characters
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -749,6 +751,16 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			parts := godot.string_split_parts(intrinsics.volatile_load(&h), " ")
 			for p in godot.split_next(&parts) { sum += i64(len(p)) }
 		}
+	case .TO_INT_ENGINE:
+		num := godot.string_of("-12345")
+		defer godot.destroy[.STRING](&num)
+		p := &num
+		for _ in 0 ..< n { sum += godot.string_to_int(intrinsics.volatile_load(&p)) }
+	case .TO_INT_RUNES:
+		num := godot.string_of("-12345")
+		defer godot.destroy[.STRING](&num)
+		p := &num
+		for _ in 0 ..< n { sum += godot.runes_to_int(godot.string_read(intrinsics.volatile_load(&p))) }
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)
 		defer godot.destroy[.STRING_NAME](&sn)
