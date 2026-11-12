@@ -23,6 +23,8 @@ import gde "../gdextension"
 // INT or FLOAT field reads and writes its own width. Lives for the process.
 @(private)
 Field :: struct {
+	// The property name, which the class's get and set hooks match by pointer.
+	name:     ^StringName,
 	offset:   uintptr,
 	size:     int,
 	type:     gde.VariantType,
@@ -343,6 +345,7 @@ register_field :: proc(class: ^StringName, sf: reflect.Struct_Field, f: ^Field) 
 	prop_sn := new(StringName)
 	prop_sn^ = name_of(sf.name)
 	append(&owned, prop_sn)
+	f.name = prop_sn
 	info := gde.PropertyInfo {
 		type_       = f.type,
 		name        = prop_sn,
@@ -784,10 +787,38 @@ MOST_VALUE :: 64
 
 @(private)
 field_set_call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
-	context = ctx
-	enter()
 	variant_calls += 1
 	f := (^Field)(userdata)
+	// A bool, int or float of the field's own type needs no conversion, context or temp memory.
+	if count == 1 && variant_tag(args[0]) == f.type && field_set_scalar(f, field_at(instance, f), args[0]) {
+		err.error = .OK
+		return
+	}
+	field_set_slow(f, instance, args, count, err)
+}
+
+// Writes `v`, a Variant of `f`'s own type, to the field at `p` when that type is a bool, int or
+// float. Reports whether it did.
+@(private = "file")
+field_set_scalar :: #force_inline proc "contextless" (f: ^Field, p: rawptr, v: gde.ConstVariantPtr) -> bool {
+	#partial switch f.type {
+	case .BOOL:
+		(^u8)(p)^ = 1 if variant_value(u8, v) != 0 else 0
+	case .INT:
+		write_int(p, f.size, variant_value(i64, v))
+	case .FLOAT:
+		write_float(p, f.size, variant_value(f64, v))
+	case:
+		return false
+	}
+	return true
+}
+
+// Every other set: converts the argument, checks object classes and copies builtins.
+@(private = "file")
+field_set_slow :: proc "contextless" (f: ^Field, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, err: ^gde.CallError) {
+	context = ctx
+	enter()
 	if count != 1 {
 		err.error = .ERROR_TOO_MANY_ARGUMENTS if count > 1 else .ERROR_TOO_FEW_ARGUMENTS
 		err.expected = 1

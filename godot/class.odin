@@ -42,6 +42,10 @@ Class :: struct($T: typeid) {
 	// instance (`instance_slot`). Set by each instance made; first, so `instance_raw` reads it
 	// without knowing `T`.
 	extension:    rawptr,
+	// The engine's type record for this class, read from its first instance; nil until then, or
+	// when `gdtype_slot` is 0. With it set, `attach` writes the three words `object_set_instance`
+	// would, without its class lookup and lock.
+	gdtype:       rawptr,
 	name:         StringName,
 	title:        string,
 	parent:       StringName,
@@ -161,6 +165,12 @@ no_binding: gde.InstanceBindingCallbacks
 instance_slot: uintptr
 @(private)
 slot_checked: bool
+// Bytes into an engine Object where it keeps its type record, which `object_set_instance` also
+// sets; 0 when `find_instance_slot` could not prove it, or in an editor build, whose
+// `object_set_instance` also tracks each instance for hot reload, and every instance then takes
+// the engine's call.
+@(private)
+gdtype_slot: uintptr
 
 // The extension's entry point: loads the interface and calls `register` at the scene level, where
 // every game class registers. `editor` runs at the editor level, only in the editor, for classes the
@@ -285,13 +295,19 @@ class_options :: proc($T: typeid, name, parent: cstring, notification: proc(self
 		fields_init(&c.layout, rawptr(uintptr(h) + HEADER), size_of(T))
 		h.object = Object(object)
 		h.class = c
+		if c.gdtype != nil {
+			put_instance(object, c.extension, h, c.gdtype)
+			return h
+		}
+		before := ([^][SCAN_WORDS]rawptr)(object)[0]
 		gde.object_set_instance(object, &c.name, h)
-		if !slot_checked { find_instance_slot(object, h) }
+		if !slot_checked { find_instance_slot(object, h, &before) }
 		if instance_slot == 0 {
 			gde.object_set_instance_binding(object, library, h, &no_binding)
-		} else {
-			c.extension = (^rawptr)(uintptr(object) + instance_slot - size_of(rawptr))^
+			return h
 		}
+		c.extension = (^rawptr)(uintptr(object) + instance_slot - size_of(rawptr))^
+		if gdtype_slot != 0 { c.gdtype = (^rawptr)(uintptr(object) + gdtype_slot)^ }
 		return h
 	}
 	free :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr) {
@@ -351,19 +367,42 @@ options_of :: #force_inline proc "contextless" ($T: typeid, instance: gde.ClassI
 // `property_list`); the engine skips the ones left nil.
 @(private)
 hook_properties :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
+	// A field answers here, before the engine's own lookup: the class table search and the method
+	// wrapper behind a property's getter and setter cost more than the field read itself.
 	get :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr, ret: gde.VariantPtr) -> gde.Bool {
+		want := (^StringName)(name)^
+		for f in (^Class(T))((^Header)(instance).class).layout.fields {
+			if !same_name(f.name^, want) { continue }
+			err: gde.CallError
+			field_get_call(f, instance, nil, 0, ret, &err)
+			return 1
+		}
+		o := options_of(T, instance)
+		if o.get == nil { return 0 }
 		context = ctx
 		enter()
-		v, ok := options_of(T, instance).get(self_of(T, instance), (^StringName)(name)^)
+		v, ok := o.get(self_of(T, instance), want)
 		if !ok { return 0 }
 		// The engine's `ret` holds null, which needs no destroy.
 		(^Variant)(ret)^ = v
 		return 1
 	}
 	set :: proc "c" (instance: gde.ClassInstancePtr, name: gde.ConstStringNamePtr, value: gde.ConstVariantPtr) -> gde.Bool {
+		want := (^StringName)(name)^
+		for f in (^Class(T))((^Header)(instance).class).layout.fields {
+			if !same_name(f.name^, want) { continue }
+			// A value the field cannot take falls through to the engine's setter, which fails the
+			// same way and reports it.
+			args := [1]gde.ConstVariantPtr{value}
+			err: gde.CallError
+			field_set_call(f, instance, &args[0], 1, nil, &err)
+			return gde.Bool(err.error == .OK)
+		}
+		o := options_of(T, instance)
+		if o.set == nil { return 0 }
 		context = ctx
 		enter()
-		return gde.Bool(options_of(T, instance).set(self_of(T, instance), (^StringName)(name)^, (^Variant)(value)))
+		return gde.Bool(o.set(self_of(T, instance), want, (^Variant)(value)))
 	}
 	list :: proc "c" (instance: gde.ClassInstancePtr, count: [^]u32) -> ^gde.PropertyInfo {
 		context = ctx
@@ -377,8 +416,10 @@ hook_properties :: proc(info: ^gde.ClassCreationInfo6, options: Options($T)) {
 		context = ctx
 		free_property_infos(list, int(count))
 	}
-	if options.get != nil { info.get_func = get }
-	if options.set != nil { info.set_func = set }
+	// The fields are not known yet (`fields` comes after `class`), so every class takes the hooks;
+	// one with no fields pays a pointer compare loop of length zero on each engine property.
+	info.get_func = get
+	info.set_func = set
 	if options.property_list != nil {
 		info.get_property_list_func = list
 		info.free_property_list_func = free_list
@@ -954,18 +995,46 @@ arg :: #force_inline proc($A: typeid, $I: int, $SELF, $PTR: bool, c: ^Call) -> A
 	}
 }
 
+// Words of an Object that `find_instance_slot` compares before and after `object_set_instance`:
+// 256 bytes, the size of a 4.7 release Object (an editor build's is larger), so the scan never
+// reads past it. The type record sits at byte 184.
+@(private)
+SCAN_WORDS :: 32
+
 // Finds `instance_slot` from the first instance made: `instance` must sit in exactly one of the
 // object's first words, after a set class record. The engine keeps the pair at the head of Object.
+// Then `gdtype_slot`: `object_set_instance` must have changed exactly one word of `before` (the
+// object's words before the call) besides that pair, the type record, or `gdtype_slot` stays 0.
 @(private)
-find_instance_slot :: proc "contextless" (object: gde.ObjectPtr, instance: rawptr) {
-	SCAN :: 16
+find_instance_slot :: proc(object: gde.ObjectPtr, instance: rawptr, before: ^[SCAN_WORDS]rawptr) {
 	slot_checked = true
 	words := ([^]rawptr)(object)
 	found := 0
-	for i in 1 ..< SCAN {
+	for i in 1 ..< 16 {
 		if words[i] != instance { continue }
 		if found != 0 || words[i - 1] == nil { return }
 		found = i
 	}
 	instance_slot = uintptr(found * size_of(rawptr))
+	if found == 0 { return }
+	other := 0
+	for i in 0 ..< SCAN_WORDS {
+		if i == found || i == found - 1 || words[i] == before[i] { continue }
+		if other != 0 { return }
+		other = i
+	}
+	if other == 0 || words[other] == nil { return }
+	editor := string_of("editor")
+	defer destroy[.STRING](&editor)
+	if os_has_feature(os_singleton(), editor) { return }
+	gdtype_slot = uintptr(other * size_of(rawptr))
+}
+
+// Does what `object_set_instance` does to `object` once its class is known: points it at the class
+// record `extension`, the instance and the type record `gdtype`.
+@(private)
+put_instance :: #force_inline proc "contextless" (object: gde.ObjectPtr, extension, instance, gdtype: rawptr) {
+	(^rawptr)(uintptr(object) + instance_slot - size_of(rawptr))^ = extension
+	(^rawptr)(uintptr(object) + instance_slot)^ = instance
+	(^rawptr)(uintptr(object) + gdtype_slot)^ = gdtype
 }

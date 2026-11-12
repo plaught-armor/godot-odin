@@ -37,11 +37,18 @@ calls back into `core.odin` only to look up its engine pointers.
 
 A property read or write from GDScript, such as `b.rate` or `b.rate = x`, takes a slower path
 than either. In Godot 4.7 the GDScript compiler has no fast path for properties of engine or
-extension objects: every access looks the property up by name and then makes a Variant call to
-its getter or setter. A property of an engine class costs the same, about 30 ns on the machine
-that measured these numbers. In a hot loop, call the accessor instead: `b.get_rate()` and
-`b.set_rate(x)` are typed calls and take the ptrcall path, about 23 ns and 20 ns against 31 ns
-and 27 ns for the property.
+extension objects. Every access goes through `Object::get` or `Object::set`, which by default
+looks the property up by name in the class table and then makes a Variant call to its getter or
+setter. An engine class's own property costs about 30 ns read and 24 ns written on the machine
+that measured these numbers.
+
+The engine asks an extension class's `get_func` and `set_func` hooks before that lookup, so the
+core registers them for every class. They compare the asked name with each field's property name
+by pointer, since equal StringNames share their data, and read or write the field directly. A
+field read costs about 23 ns and a write about 16 ns, the same as or less than the typed
+`get_rate()` and `set_rate(x)` calls. Any other name falls through to the engine's lookup, after
+the class's own `get` and `set` hooks if it has them. A value the field cannot take also falls
+through, so the engine's setter reports the error as before.
 
 ## Virtual overrides
 
@@ -62,6 +69,14 @@ engine supports officially.
 The fallback works but costs more: a binding allocates per object and takes a mutex on every
 reference change. `Bench.new()` from GDScript takes about 190 ns without a binding and 260 ns with
 one.
+
+The same first instance also finds the object's type record. The core compares the object's first
+32 words from before and after `object_set_instance`. If exactly one word changed besides the
+pair, that word is the type record. Every later instance of the class then gets the three words
+written directly, which skips `object_set_instance`'s class table lookup, its lock and its
+StringName copy. On a 4.7 release export template that takes `Bench.new()` from about 160 ns to
+150 ns, against about 108 ns for `RefCounted.new()`. An editor build always makes the engine's
+call, because there `object_set_instance` also records each instance for hot reload.
 
 ## Variants
 
