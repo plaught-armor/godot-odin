@@ -21,7 +21,13 @@ run_task :: proc($f: $P, data: ^$D, high_priority := false, description := "") -
 		context.temp_allocator.data = t
 		temp := runtime.arena_temp_begin(&t.arena)
 		defer runtime.arena_temp_end(temp)
+		// Saved and restored: a worker waiting on another task may run it on this thread.
+		when ODIN_DEBUG {
+			was := in_task
+			in_task = true
+		}
 		f((^D)(userdata))
+		when ODIN_DEBUG { in_task = was }
 	}
 	return add_task(run, data, high_priority, description)
 }
@@ -39,7 +45,13 @@ run_group :: proc($f: $P, data: ^$D, count: int, tasks := -1, high_priority := f
 		context.temp_allocator.data = t
 		temp := runtime.arena_temp_begin(&t.arena)
 		defer runtime.arena_temp_end(temp)
+		// Saved and restored: a worker waiting on another task may run it on this thread.
+		when ODIN_DEBUG {
+			was := in_task
+			in_task = true
+		}
 		f((^D)(userdata), int(i))
+		when ODIN_DEBUG { in_task = was }
 	}
 	assert(count >= 0 && count <= int(max(i32)), "godot_odin: run_group count out of range")
 	return add_group(run, data, count, tasks, high_priority, description)

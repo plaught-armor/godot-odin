@@ -204,7 +204,9 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 Each worker call runs with the core's allocator and that worker thread's own temp allocator, rolled
 back when `f` returns. It does not run `enter`: Odin class callbacks and engine calls the engine
 does not allow off the main thread must not be made from `f`, and `f` must not touch what the main
-thread is changing. Queueing and waiting cost the same as the engine's own `add_task` with a
+thread is changing. A debug build stops with `godot_odin: a run_task or run_group proc called into
+an Odin class` when a task does, directly or through an engine call that reaches one; a release
+build does not check, and the call races the main thread's temp memory. Queueing and waiting cost the same as the engine's own `add_task` with a
 Callable, about 4 µs for one task and 23 ns per group call; `f` itself runs as plain Odin, with no
 Variant or Callable in between.
 

@@ -10,6 +10,10 @@ odin build src -build-mode:shared -debug -out:project/bin/libexample.linux.x86_6
 if [ $# -gt 0 ]; then
 	"$1" --headless --path project --import >/dev/null 2>&1 || true
 	"$1" --headless --path project -s test.gd
+	# A worker task that calls into an Odin class stops the debug build with its own message.
+	guard=$("$1" --headless --path project -s task_guard_test.gd 2>&1 || true)
+	if ! grep -q 'a run_task or run_group proc called into an Odin class' <<<"$guard"; then echo "task guard: FAIL"; exit 1; fi
+	echo "task guard: PASS"
 	# The editor takes ExamplePlugin, which logs a line from its _enter_tree, and loads the help XML.
 	editor=$("$1" --headless -e --path project --quit-after 300 2>&1)
 	if ! grep -qx 'ExamplePlugin: in the editor' <<<"$editor"; then echo "editor: FAIL no plugin"; exit 1; fi

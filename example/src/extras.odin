@@ -36,6 +36,7 @@ slot_names: [SLOTS]godot.StringName
 note_name: godot.StringName
 score_virtual: ^godot.StringName
 tally: gde.ObjectPtr
+bump_name: godot.StringName
 
 // An Object the extension makes once and gives the engine as the singleton `ExampleTally`.
 Tally :: struct {
@@ -77,10 +78,12 @@ register_extras :: proc() {
 	godot.method(b, "shout", bag_shout, {"s"})
 	godot.method(b, "parallel_sum", bag_parallel_sum, {"n"})
 	godot.method(b, "task_text", bag_task_text, {"x"})
+	godot.method(b, "misuse_task", bag_misuse_task)
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
 
 	t := godot.class(Tally, "Tally", "Object")
 	godot.method(t, "bump", tally_bump)
+	bump_name = godot.static_name("bump")
 	tally_name := godot.static_name("Tally")
 	tally = gde.classdb_construct_object3(&tally_name)
 	godot.object_notification(godot.Object(tally), 0, false)
@@ -294,6 +297,17 @@ bag_task_text :: proc(self: ^Bag, x: i64) -> i64 {
 
 text_task :: proc(job: ^Text_Job) {
 	job.len = len(fmt.tprintf("task %d", job.x))
+}
+
+// Calls `ExampleTally.bump` from a worker task, which tasks must not do. A debug build stops the
+// process there, as example/build.sh checks; it does not return.
+bag_misuse_task :: proc(self: ^Bag) {
+	godot.wait_task(godot.run_task(bump_from_task, &tally))
+}
+
+bump_from_task :: proc(t: ^gde.ObjectPtr) {
+	v := godot.object_call(godot.Object(t^), bump_name)
+	gde.variant_destroy(&v)
 }
 
 // Calls so far, counting this one.

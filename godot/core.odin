@@ -114,12 +114,18 @@ array_name_at :: proc "contextless" (array: ^Array, index: i64) -> (out: StringN
 @(thread_local)
 on_main_thread: bool
 
+// True while this thread runs a `run_task` or `run_group` proc. Set in debug builds only, where
+// `enter` stops on it: a worker task must not call into an Odin class.
+@(thread_local)
+in_task: bool
+
 // Opens a call from the engine, after `context = ctx`. Marks this library's temp arena, `temp_arena`; the deferred
 // `leave` rolls it back at scope exit, so the call frees the temp it took and nothing older. Debug
 // builds assert the call is on the main thread.
 @(deferred_out = leave)
 enter :: #force_inline proc(loc := #caller_location) -> runtime.Arena_Temp {
 	when ODIN_DEBUG {
+		assert(!in_task, "godot_odin: a run_task or run_group proc called into an Odin class, which worker tasks must not do", loc)
 		assert(on_main_thread, "godot_odin: an engine call off the main thread", loc)
 	}
 	// `runtime.arena_temp_begin`, inline: it is a call, on every call from the engine.
