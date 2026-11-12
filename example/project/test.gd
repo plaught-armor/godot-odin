@@ -358,11 +358,15 @@ func _check_extras() -> int:
 	for pad: int in 10:
 		find_cases.append(["-".repeat(pad) + "ab--", "ab"])
 		find_cases.append(["-".repeat(pad) + "日x", "日x"])
+		find_cases.append(["--ab" + "-".repeat(pad), "ab"])
 	for c: Array in find_cases:
 		var s: String = c[0]
-		for from: int in [-1, 0, 1, 2, 4, 20]:
+		for from: int in [-20, -3, -2, -1, 0, 1, 2, 4, 9, 20]:
 			if b2.find_text(s, c[1], from) != s.find(c[1], from):
 				print("FAIL: Bag.find_text(%s, %s, %d) gave %d, not %d" % [s, c[1], from, b2.find_text(s, c[1], from), s.find(c[1], from)])
+				failures += 1
+			if b2.rfind_text(s, c[1], from) != s.rfind(c[1], from):
+				print("FAIL: Bag.rfind_text(%s, %s, %d) gave %d, not %d" % [s, c[1], from, b2.rfind_text(s, c[1], from), s.rfind(c[1], from)])
 				failures += 1
 		if b2.has_text(s, c[1]) != s.contains(c[1]):
 			print("FAIL: Bag.has_text(%s, %s) gave %s" % [s, c[1], b2.has_text(s, c[1])])

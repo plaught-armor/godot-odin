@@ -222,6 +222,9 @@
 		<method name="has_text">
 			<description>Whether [code]part[/code]'s text appears in [code]s[/code], by [code]string_contains_text[/code].</description>
 		</method>
+		<method name="rfind_text">
+			<description>Where [code]part[/code]'s text last appears in [code]s[/code] at or before [code]from[/code], by [code]string_rfind_text[/code].</description>
+		</method>
 		<method name="lib_path">
 			<description>This library's path, as the engine reports it.</description>
 		</method>

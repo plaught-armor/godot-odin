@@ -461,6 +461,8 @@ Ident :: enum i64 {
 	FIND_TEXT,         // string_find_text of the same Odin text
 	NAME_CHAIN,        // same_name against intern of each of the 8 names in turn, the match last
 	NAME_WHICH,        // name_which on a Name_Set of them
+	RFIND_ENGINE,      // the generated string_rfind of a cached String near the start of the sentence
+	RFIND_TEXT,        // string_rfind_text of the same Odin text
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -627,6 +629,21 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		h := &hay
 		for _ in 0 ..< n {
 			sum += godot.string_find_text(intrinsics.volatile_load(&h), "lazy")
+		}
+	case .RFIND_ENGINE:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		needle := godot.intern_text("quick")
+		for _ in 0 ..< n {
+			sum += godot.string_rfind(intrinsics.volatile_load(&h), needle, -1)
+		}
+	case .RFIND_TEXT:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		for _ in 0 ..< n {
+			sum += godot.string_rfind_text(intrinsics.volatile_load(&h), "quick")
 		}
 	case .NAME_CHAIN:
 		sn := godot.name_of(text)

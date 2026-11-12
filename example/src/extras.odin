@@ -122,6 +122,7 @@ register_extras :: proc() {
 	godot.method(b, "which_name", bag_which_name, {"name"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
+	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
 	godot.property_indexed(b, "tint", {"tint_r", "tint_g", "tint_b"}, bag_get_tint, bag_set_tint, .PROPERTY_HINT_RANGE, "0,1")
 	godot.method(b, "lib_path", bag_lib_path)
 	godot.method(b, "lookup", bag_lookup, {"d", "key"})
@@ -584,6 +585,14 @@ bag_find_text :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64
 	text := godot.utf8(part)
 	defer delete(text)
 	return godot.string_find_text(&s, text, from)
+}
+
+// Where `part`'s text last appears in `s` at or before `from`, by `string_rfind_text`.
+bag_rfind_text :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64) -> i64 {
+	s, part := s, part
+	text := godot.utf8(part)
+	defer delete(text)
+	return godot.string_rfind_text(&s, text, from)
 }
 
 // Whether `part`'s text appears in `s`, by `string_contains_text`.

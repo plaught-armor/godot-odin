@@ -173,42 +173,100 @@ string_ends_with_text :: proc "contextless" (s: ^String, text: string) -> bool {
 // place `text`'s first character appears, and compares the rest there.
 string_find_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0) -> i64 {
 	chars := string_read(s)
-	if len(text) == 0 { return -1 }
-	ascii := text_is_ascii(text)
-	k := len(text)
-	first := rune(text[0])
-	if !ascii {
-		k = text_rune_count(text)
-		first, _ = utf8.decode_rune_in_string(text)
-	}
-	last := i64(len(chars) - k)
-	start := from if from >= 0 else last + from + 1
-	if start < 0 || start > last { return -1 }
+	n := needle_of(text)
+	start, last, ok := find_start(len(chars), n, from)
+	if !ok { return -1 }
 	// Four starts per step while none of them holds `first`, then one at a time through a step
 	// that does. Every round moves `i` on, so `len(chars) + 1` rounds cover it.
-	f := u32(first)
+	f := u32(n.first)
 	firsts := #simd[4]u32{f, f, f, f}
-	i := int(start)
+	i := start
 	for _ in 0 ..= len(chars) {
-		if i > int(last) { break }
-		if i + 3 <= int(last) {
+		if i > last { break }
+		if i + 3 <= last {
 			v := intrinsics.unaligned_load((^#simd[4]u32)(&chars[i]))
 			if intrinsics.simd_reduce_or(intrinsics.simd_lanes_eq(v, firsts)) == 0 {
 				i += 4
 				continue
 			}
 		}
-		if chars[i] == first {
-			window := chars[i:][:k]
-			if ascii {
-				if ascii_matches(window, text) { return i64(i) }
-			} else if _, ok := text_prefix_of(window, text); ok {
-				return i64(i)
-			}
-		}
+		if needle_at(chars, i, n) { return i64(i) }
 		i += 1
 	}
 	return -1
+}
+
+// Where Odin text `text` last appears in `s` at or before character `from`, in characters, or -1:
+// the engine's `rfind`, compared in place. `from` reads as in `string_find_text`, so the default
+// -1 searches from the last place `text` fits, and a `from` past that place gives -1.
+string_rfind_text :: proc "contextless" (s: ^String, text: string, from: i64 = -1) -> i64 {
+	chars := string_read(s)
+	n := needle_of(text)
+	start, _, ok := find_start(len(chars), n, from)
+	if !ok { return -1 }
+	// As in `string_find_text`, walking down: four starts ending at `i` per step while none holds
+	// `first`.
+	f := u32(n.first)
+	firsts := #simd[4]u32{f, f, f, f}
+	i := start
+	for _ in 0 ..= len(chars) {
+		if i < 0 { break }
+		if i >= 3 {
+			v := intrinsics.unaligned_load((^#simd[4]u32)(&chars[i - 3]))
+			if intrinsics.simd_reduce_or(intrinsics.simd_lanes_eq(v, firsts)) == 0 {
+				i -= 4
+				continue
+			}
+		}
+		if needle_at(chars, i, n) { return i64(i) }
+		i -= 1
+	}
+	return -1
+}
+
+// Text searched for by `string_find_text` and `string_rfind_text`, with its length in characters
+// and its first character.
+@(private)
+Needle :: struct {
+	text:  string,
+	ascii: bool,
+	count: int,
+	first: rune,
+}
+
+@(private)
+needle_of :: #force_inline proc "contextless" (text: string) -> (n: Needle) {
+	n.text = text
+	if len(text) == 0 { return }
+	n.ascii = text_is_ascii(text)
+	if n.ascii {
+		n.count, n.first = len(text), rune(text[0])
+	} else {
+		n.count = text_rune_count(text)
+		n.first, _ = utf8.decode_rune_in_string(text)
+	}
+	return
+}
+
+// The first place a search from `from` looks, and the last place `n` fits in `length` characters,
+// by the engine's rules; not `ok` when `from` is out of range or `n` is empty.
+@(private)
+find_start :: #force_inline proc "contextless" (length: int, n: Needle, from: i64) -> (start, last: int, ok: bool) {
+	if n.count == 0 { return }
+	l := i64(length - n.count)
+	f := from if from >= 0 else l + from + 1
+	if f < 0 || f > l { return }
+	return int(f), int(l), true
+}
+
+// Whether `n` appears at character `i` of `chars`, which it fits in.
+@(private)
+needle_at :: #force_inline proc "contextless" (chars: []rune, i: int, n: Needle) -> bool {
+	if chars[i] != n.first { return false }
+	window := chars[i:][:n.count]
+	if n.ascii { return ascii_matches(window, n.text) }
+	_, ok := text_prefix_of(window, n.text)
+	return ok
 }
 
 // Whether Odin text `text` appears in `s`, compared in place: `string_find_text` from the start.
