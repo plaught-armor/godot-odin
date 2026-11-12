@@ -45,6 +45,13 @@ def gde_name(name):
     return name
 
 
+# Builtin methods answered from the String's storage when check_string_layout (godot/access.odin)
+# proved its header at load: a load against a builtin call. The engine call stays as the fallback.
+STRING_IN_PLACE = {
+    ("String", "length"): "\tif string_layout_known { return string_stored_length(self) }\n",
+    ("String", "is_empty"): "\tif string_layout_known { return string_stored_length(self) == 0 }\n",
+}
+
 class Interface:
     """The C interface: types, then one proc variable per interface function and a loader."""
 
@@ -393,7 +400,7 @@ class Api:
         vt = VARIANT_TYPE[bname]
         head = (f"\t@(static) __fn: gde.PtrBuiltInMethod\n"
                 f"\tif __fn == nil {{ __fn = builtin_method(.{vt}, \"{m['name']}\", {m['hash']}) }}\n")
-        return f"{sig} {{\n{head}{body}}}\n"
+        return f"{sig} {{\n{STRING_IN_PLACE.get((bname, m['name']), '')}{head}{body}}}\n"
 
     def emit_builtin_lifetime(self, bname, b):
         """Constructors by index and the destructor of a builtin with one."""

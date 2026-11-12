@@ -94,6 +94,7 @@ string_filenocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64
 	return __ret
 }
 string_length :: proc "contextless" (self: ^String) -> i64 {
+	if string_layout_known { return string_stored_length(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "length", 3173160232) }
 	__ret: i64
@@ -616,6 +617,7 @@ string_sha256_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
 	return __ret
 }
 string_is_empty :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return string_stored_length(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_empty", 3918633141) }
 	__ret: u8

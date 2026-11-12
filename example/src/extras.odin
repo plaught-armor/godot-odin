@@ -112,6 +112,7 @@ register_extras :: proc() {
 	godot.method(b, "greet", bag_greet, {"name"})
 	godot.method(b, "kinds", bag_kinds, {"label"})
 	godot.method(b, "describe", bag_describe, {"node", "n"})
+	godot.method(b, "text_size", bag_text_size, {"s"})
 	godot.method(b, "temp_live", bag_temp_live)
 	godot.method(b, "count", bag_count)
 	score_virtual = godot.script_virtual(b, "_score", proc(self: ^Bag, x: i64) -> i64, {"x"})
@@ -506,6 +507,13 @@ bag_describe :: proc(self: ^Bag, node: godot.Node, n: i64) -> i64 {
 		inner = godot.temp_texts_live()
 	}
 	return i64(inner * 10 + godot.temp_texts_live())
+}
+
+// `s`'s length, or -1 when it is empty, through the generated `string_length` and `string_is_empty`.
+bag_text_size :: proc(self: ^Bag, s: godot.String) -> i64 {
+	s := s
+	if godot.string_is_empty(&s) { return -1 }
+	return godot.string_length(&s)
 }
 
 // The live temp_text count between calls: 0.

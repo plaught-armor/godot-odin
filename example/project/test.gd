@@ -274,6 +274,10 @@ func _check_extras() -> int:
 		print("FAIL: Bag.describe(7) set %s, %d texts live after" % [described.editor_description, Bag.temp_live()])
 		failures += 1
 	described.free()
+	var long_text := "x".repeat(1000)
+	if b2.text_size("") != -1 or b2.text_size("abc") != 3 or b2.text_size("日本語") != 3 or b2.text_size(long_text) != 1000:
+		print("FAIL: Bag.text_size %d %d %d %d" % [b2.text_size(""), b2.text_size("abc"), b2.text_size("日本語"), b2.text_size(long_text)])
+		failures += 1
 	if b2.kinds("x") != "x:" or b2.kinds("x", 1, 2.0, "s", [3], &"n") != "x:2,3,4,28,21" or b2.callv("kinds", ["y", null]) != "y:0":
 		print("FAIL: Bag.kinds gave %s" % b2.kinds("x", 1, 2.0, "s", [3], &"n"))
 		failures += 1

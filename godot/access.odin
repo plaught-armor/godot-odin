@@ -89,11 +89,9 @@ packed_fill :: #force_inline proc "contextless" (out: ^$A, xs: []$E, resize: pro
 string_read :: proc "contextless" (s: ^String) -> []rune {
 	if string_layout_known {
 		// Read from the storage, as `check_string_layout` proved it: no engine call.
-		p := (^[^]rune)(s)^
-		if p == nil { return nil }
-		size := (^i64)(uintptr(p) - STRING_SIZE_OFFSET)^
-		if size <= 1 { return nil }
-		return p[:size - 1]
+		n := string_stored_length(s)
+		if n <= 0 { return nil }
+		return (^[^]rune)(s)^[:n]
 	}
 	n := string_length(s)
 	if n <= 0 { return nil }
@@ -269,6 +267,14 @@ string_layout_known: bool
 // Where the size sits before a String's characters.
 @(private)
 STRING_SIZE_OFFSET :: 16
+
+// The length of `s` in characters, read from its storage's header. Only when `string_layout_known`;
+// the generated `string_length` and `string_is_empty` use it then, and ask the engine otherwise.
+string_stored_length :: #force_inline proc "contextless" (s: ^String) -> i64 {
+	p := (^rawptr)(s)^
+	if p == nil { return 0 }
+	return (^i64)(uintptr(p) - STRING_SIZE_OFFSET)^ - 1
+}
 
 // Sets `string_layout_known` from Strings of known length: one shared by two references, and one
 // grown by an append so its capacity differs from its size.

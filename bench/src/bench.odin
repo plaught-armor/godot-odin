@@ -413,6 +413,7 @@ Ident :: enum i64 {
 	INTERN_PATH, // intern_path, a cached NodePath
 	INTERN_TEXT, // intern_text, a cached String
 	TEMP_TEXT,   // temp_text in a nested engine-call scope, dropped at its end
+	LENGTH,      // string_length of a String, read from its header
 }
 
 // Nanoseconds per `kind` round on a short identifier, over `n` rounds.
@@ -469,6 +470,11 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			godot.enter()
 			t := godot.temp_text(text)
 			sum += i64(t._opaque[0])
+		}
+	case .LENGTH:
+		t := godot.intern_text("player_jump")
+		for _ in 0 ..< n {
+			sum += godot.string_length(&t)
 		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
