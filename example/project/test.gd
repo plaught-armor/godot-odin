@@ -7,6 +7,13 @@ var _arrived: int = -1
 var _ticker: Ticker
 var _failures: int = 0
 var _frames: int = 0
+# Checks that reached their end. A GDScript runtime error returns from the function it hits and
+# lets its caller go on, so a check cut short by one would otherwise pass on what it never checked.
+var _checks_ended: int = 0
+const CHECKS: int = 5
+# Frames before the run gives up: a runtime error in `_process` aborts it before `quit`, every
+# frame, so without a cap a broken check would hang the run instead of failing it.
+const MAX_FRAMES: int = 60
 # A Bag whose `defer` calls run at the end of the first frame, and `proc_total` before them.
 var _deferred: Bag
 var _deferred_from: int = 0
@@ -68,6 +75,7 @@ func _check_instances(w: Walker) -> int:
 	if not is_equal_approx(WalkMath.speed_of(null), -1.0):
 		print("FAIL: WalkMath.speed_of(null) is not -1")
 		failures += 1
+	_checks_ended += 1
 	return failures
 
 
@@ -116,6 +124,7 @@ func _check_bag() -> int:
 	if b.score(2) != -1 or ScriptedBag.new().score(2) != 6:
 		print("FAIL: Bag.score answered %d and %d, not -1 and 6" % [b.score(2), ScriptedBag.new().score(2)])
 		failures += 1
+	_checks_ended += 1
 	return failures
 
 
@@ -376,6 +385,7 @@ func _check_extras() -> int:
 		print("FAIL: Bag.defer ran before the frame ended")
 		failures += 1
 	root.free()
+	_checks_ended += 1
 	return failures
 
 
@@ -404,6 +414,7 @@ func _check_untyped() -> int:
 			print("FAIL: readied set from %s is %s, not %s" % [c[0], t.readied, c[1]])
 			failures += 1
 	t.free()
+	_checks_ended += 1
 	return failures
 
 
@@ -415,6 +426,7 @@ func _check_temp() -> int:
 		if WalkMath.temp_in_use() != before:
 			print("FAIL: %d bytes of temp held after scratch(%d), not %d" % [WalkMath.temp_in_use(), bytes, before])
 			return 1
+	_checks_ended += 1
 	return 0
 
 
@@ -427,6 +439,10 @@ func twice(x: float) -> float:
 # its `_ready` and `_input`, the fourth that its `_process` ran on the frames between.
 func _process(_delta: float) -> bool:
 	_frames += 1
+	if _checks_ended != CHECKS or _frames > MAX_FRAMES:
+		print("FAIL: a script error above stopped the checks (%d frames)" % _frames)
+		quit(1)
+		return true
 	if _frames == 1:
 		_add_ticker()
 	if _frames < 4:
