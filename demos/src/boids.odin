@@ -94,9 +94,34 @@ boids_set_pointer :: proc(self: ^Boids, x, y, strength: f64) {
 // Advances the flock `delta` seconds and writes `buffer`.
 boids_step :: proc(self: ^Boids, delta: f64) {
 	boids_bin(self)
-	for i in 0 ..< self.count { boids_steer(self, i, delta) }
+	job := Steer_Job{self, delta}
+	chunks := (self.count + STEER_CHUNK - 1) / STEER_CHUNK
+	if chunks > 1 {
+		godot.wait_group(godot.run_group(steer_chunk, &job, chunks))
+	} else if chunks == 1 {
+		steer_chunk(&job, 0)
+	}
 	boids_move(self, delta)
 	boids_write(self)
+}
+
+// Boids per worker task. Each task steers its own range: `boids_steer` reads only the positions
+// and velocities from before the step and writes only its boid's new velocity, so the ranges run
+// in parallel and give the same result as a loop.
+STEER_CHUNK :: 256
+
+@(private = "file")
+Steer_Job :: struct {
+	self:  ^Boids,
+	delta: f64,
+}
+
+// Steers chunk `k`'s boids. Runs on a worker thread, so it must not call into the engine.
+@(private = "file")
+steer_chunk :: proc(job: ^Steer_Job, k: int) {
+	lo := k * STEER_CHUNK
+	hi := min(lo + STEER_CHUNK, job.self.count)
+	for i in lo ..< hi { boids_steer(job.self, i, job.delta) }
 }
 
 // Sorts the boids into cells: a count per cell, its prefix sum, then each boid in index order.

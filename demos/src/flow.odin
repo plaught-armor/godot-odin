@@ -25,6 +25,8 @@ Flow :: struct {
 	count:      int `godot:"-"`,
 	px, py:     []f64 `godot:"-"`,
 	vx, vy:     []f64 `godot:"-"`,
+	// 1 for a unit that started the step on the target, which `flow_step` respawns after the walk.
+	held:       []u8 `godot:"-"`,
 	rng:        u32 `godot:"-"`,
 	rebuilt:    i64 `godot:"-"`,
 }
@@ -55,6 +57,7 @@ flow_notification :: proc(self: ^Flow, what: i64) {
 flow_free :: proc(self: ^Flow) {
 	delete(self.walls); delete(self.cost); delete(self.heap)
 	delete(self.px); delete(self.py); delete(self.vx); delete(self.vy)
+	delete(self.held)
 	self.heap = nil
 	self.count, self.cols, self.rows = 0, 0, 0
 }
@@ -88,6 +91,7 @@ flow_setup :: proc(self: ^Flow, cols, rows: i64, cell: f64, units, seed: i64) {
 	self.count = int(units)
 	self.px = make([]f64, self.count); self.py = make([]f64, self.count)
 	self.vx = make([]f64, self.count); self.vy = make([]f64, self.count)
+	self.held = make([]u8, self.count)
 	for u in 0 ..< self.count { flow_respawn(self, u) }
 	flow_write(self)
 }
@@ -117,8 +121,37 @@ flow_rebuilds :: proc(self: ^Flow) -> i64 {
 // Rebuilds the field if the target moved, then moves every unit `delta` seconds.
 flow_step :: proc(self: ^Flow, delta: f64) {
 	flow_rebuild(self)
-	for u in 0 ..< self.count { flow_walk(self, u, delta) }
+	job := Walk_Job{self, delta}
+	chunks := (self.count + WALK_CHUNK - 1) / WALK_CHUNK
+	if chunks > 1 {
+		godot.wait_group(godot.run_group(walk_chunk, &job, chunks))
+	} else if chunks == 1 {
+		walk_chunk(&job, 0)
+	}
+	// Respawns draw from the shared generator, so they run here, in unit order, as the loop the
+	// GDScript version runs would draw them.
+	for u in 0 ..< self.count {
+		if self.held[u] != 0 { flow_respawn(self, u) }
+	}
 	flow_write(self)
+}
+
+// Units per worker task. A unit's walk reads only the field and writes only that unit, so the
+// ranges run in parallel; a unit on the target is only marked, for `flow_step` to respawn.
+WALK_CHUNK :: 512
+
+@(private = "file")
+Walk_Job :: struct {
+	self:  ^Flow,
+	delta: f64,
+}
+
+// Walks chunk `k`'s units. Runs on a worker thread, so it must not call into the engine.
+@(private = "file")
+walk_chunk :: proc(job: ^Walk_Job, k: int) {
+	lo := k * WALK_CHUNK
+	hi := min(lo + WALK_CHUNK, job.self.count)
+	for u in lo ..< hi { flow_walk(job.self, u, job.delta) }
 }
 
 // Dijkstra from the target. Heap entries are cost << 32 | cell, so the smallest entry is the
@@ -207,16 +240,15 @@ flow_respawn :: proc(self: ^Flow, u: int) {
 	}
 }
 
-// Steers unit `u` toward its cell's cheapest neighbour and moves it, sliding along walls.
+// Steers unit `u` toward its cell's cheapest neighbour and moves it, sliding along walls. A unit
+// on the target stays put and is marked in `held` instead.
 @(private = "file")
 flow_walk :: proc(self: ^Flow, u: int, delta: f64) #no_bounds_check {
 	x, y := self.px[u], self.py[u]
 	cx, cy := int(x / self.cell), int(y / self.cell)
 	c := cy * self.cols + cx
-	if c == self.target {
-		flow_respawn(self, u)
-		return
-	}
+	self.held[u] = u8(c == self.target)
+	if c == self.target { return }
 	best, best_cost := -1, self.cost[c]
 	for k in 0 ..< 8 {
 		n := flow_neighbour(self, cx, cy, k)
