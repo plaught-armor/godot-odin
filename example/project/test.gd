@@ -484,7 +484,8 @@ func _check_extras() -> int:
 			failures += 1
 	var find_cases: Array = [["", ""], ["abc", ""], ["", "a"], ["abcabc", "bc"], ["abcabc", "abcd"],
 		["aaab", "aab"], ["日本語日本", "本"], ["日本語日本", "語日"], ["xéyé", "é"], ["abc", "c"],
-		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"]]
+		["abc", "abc"], [long_text + "y", "xy"], ["ab", "ba"], ["ab", "AB"], ["ab", "abc"], ["b", "a"],
+		["éa", "Éa"], ["-a--b-", "-"], ["日-日", "日"], ["a", "_"], ["_", "A"], ["-".repeat(63), "-"], ["x-".repeat(64) + "x", "-"], ["x".repeat(70), ""]]
 	# The match after 0 to 9 characters that hold no first character, so the four-wide skip lands
 	# on it from every offset.
 	for pad: int in 10:
@@ -502,6 +503,10 @@ func _check_extras() -> int:
 			if b2.rfind_text(s, c[1], from) != s.rfind(c[1], from):
 				print("FAIL: Bag.rfind_text(%s, %s, %d) gave %d, not %d" % [s, c[1], from, b2.rfind_text(s, c[1], from), s.rfind(c[1], from)])
 				failures += 1
+		for with: String in ["", "X", "日é"]:
+			for allow_empty: bool in [true, false]:
+				for maxsplit: int in [-1, 0, 1, 2, (1 << 32) + 1]:
+					failures += _check_replaced_strs(b2, s, c[1], with, allow_empty, maxsplit)
 		if b2.has_text(s, c[1]) != s.contains(c[1]):
 			print("FAIL: Bag.has_text(%s, %s) gave %s" % [s, c[1], b2.has_text(s, c[1])])
 			failures += 1
@@ -585,10 +590,23 @@ func _check_extras() -> int:
 func _check_replaced_ops(b2: Bag, s: String, part: String, from: int, to: int) -> int:
 	var want := PackedInt64Array([s.find(part, from), s.rfind(part, from), s.findn(part, from),
 		s.rfindn(part, from), int(s.contains(part)), int(s.containsn(part)), s.count(part, from, to),
-		s.countn(part, from, to), int(s.begins_with(part)), int(s.ends_with(part))])
+		s.countn(part, from, to), int(s.begins_with(part)), int(s.ends_with(part)), s.casecmp_to(part),
+		s.nocasecmp_to(part)])
 	var got: PackedInt64Array = b2.replaced_ops(s, part, from, to)
 	if got != want:
 		print("FAIL: Bag.replaced_ops(%s, %s, %d, %d) gave %s, not %s" % [s, part, from, to, got, want])
+		return 1
+	return 0
+
+
+# The String procs that replace engine methods and make Strings, from Bag.replaced_strs: replace and
+# replacen of `part` by `with`, then the parts of split on `part`. Returns 1 on a mismatch.
+func _check_replaced_strs(b2: Bag, s: String, part: String, with: String, allow_empty: bool, maxsplit: int) -> int:
+	var want := PackedStringArray([s.replace(part, with), s.replacen(part, with)])
+	want.append_array(s.split(part, allow_empty, maxsplit))
+	var got: PackedStringArray = b2.replaced_strs(s, part, with, allow_empty, maxsplit)
+	if got != want:
+		print("FAIL: Bag.replaced_strs(%s, %s, %s, %s, %d) gave %s, not %s" % [s, part, with, allow_empty, maxsplit, got, want])
 		return 1
 	return 0
 
@@ -614,6 +632,8 @@ func _check_replaced_random(b2: Bag) -> int:
 		var from := rng.randi_range(-45, 45)
 		var to := rng.randi_range(-5, 45)
 		failures += _check_replaced_ops(b2, hay, needle, from, to)
+		var with: String = ["", "x", "日é", "AbA"][rng.randi_range(0, 3)]
+		failures += _check_replaced_strs(b2, hay, needle, with, rng.randi() % 2 == 0, rng.randi_range(-1, 3))
 	return failures
 
 

@@ -217,7 +217,10 @@
 			<description>The index of [code]name[/code] among a fixed set of names by [code]name_which[/code], or -1.</description>
 		</method>
 		<method name="replaced_ops">
-			<description>The String procs that replace engine methods, on [code]s[/code] and [code]part[/code]: find, rfind, findn and rfindn from [code]from[/code], then contains, containsn, count and countn from [code]from[/code] to [code]to[/code], begins_with and ends_with, booleans as 0 or 1. test.gd builds the same array from the engine's methods.</description>
+			<description>The String procs that replace engine methods, on [code]s[/code] and [code]part[/code]: find, rfind, findn and rfindn from [code]from[/code], then contains, containsn, count and countn from [code]from[/code] to [code]to[/code], begins_with and ends_with, booleans as 0 or 1, then casecmp_to and nocasecmp_to. test.gd builds the same array from the engine's methods.</description>
+		</method>
+		<method name="replaced_strs">
+			<description>The String procs that replace engine methods and make Strings: replace and replacen of [code]part[/code] by [code]with[/code] in [code]s[/code], then the parts of split on [code]part[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>

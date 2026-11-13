@@ -465,14 +465,14 @@ Ident :: enum i64 {
 	RFIND_TEXT,        // string_rfind_text of the same Odin text
 	FINDN_ENGINE,      // the generated string_findn of a cached String, in other case, in the sentence
 	FINDN_TEXT,        // string_findn_text of the same Odin text
-	NOCASE_ENGINE,     // the generated string_nocasecmp_to against a cached String in other case
+	NOCASE_ENGINE,     // string_nocasecmp_to against a cached String in other case
 	EQUAL_NOCASE,      // string_equal_text_nocase of the same Odin text
 	COUNT_ENGINE,      // the generated string_count of a cached String in the sentence
 	COUNT_TEXT,        // string_count_text of the same Odin text
 	BEGINS_NOCASE,     // string_begins_with_text_nocase of "PLAYER_" on the identifier
-	REPLACE_ENGINE,    // the generated string_replace of cached Strings in the sentence
+	REPLACE_ENGINE,    // string_replace of cached Strings in the sentence
 	REPLACE_TEXT,      // string_replace_text of the same Odin text
-	SPLIT_ENGINE,      // the generated string_split of the sentence on a cached " "
+	SPLIT_ENGINE,      // string_split of the sentence on a cached " "
 	SPLIT_TEXT,        // string_split_text of the sentence on Odin " "
 	SPLIT_PARTS,       // string_split_parts of the same, each part read and none made
 	TO_INT_ENGINE,     // the generated string_to_int of a cached "-12345"
@@ -486,6 +486,9 @@ Ident :: enum i64 {
 	FIND_CALL,         // the engine's String.find, called as the bindings did before string_find replaced it
 	RFIND_CALL,        // the engine's String.rfind the same way
 	FINDN_CALL,        // the engine's String.findn the same way
+	NOCASE_CALL,       // the engine's String.nocasecmp_to the same way
+	REPLACE_CALL,      // the engine's String.replace the same way
+	SPLIT_CALL,        // the engine's String.split the same way
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -671,6 +674,45 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		sum += call_find_method("rfind", "quick", -1, n)
 	case .FINDN_CALL:
 		sum += call_find_method("findn", "LAZY", 0, n)
+	case .NOCASE_CALL:
+		other := godot.intern_text("PLAYER_JUMP")
+		fn := godot.builtin_method(.STRING, "nocasecmp_to", 2920860731)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&other}
+			r: i64
+			fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += r
+		}
+	case .REPLACE_CALL:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		what, with := godot.string_of("the"), godot.string_of("a")
+		defer godot.destroy[.STRING](&what)
+		defer godot.destroy[.STRING](&with)
+		fn := godot.builtin_method(.STRING, "replace", 1340436205)
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&what, &with}
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 2)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .SPLIT_CALL:
+		hay := godot.string_of(FIND_HAY)
+		defer godot.destroy[.STRING](&hay)
+		h := &hay
+		space := godot.string_of(" ")
+		defer godot.destroy[.STRING](&space)
+		allow_empty, maxsplit := u8(1), i64(0)
+		fn := godot.builtin_method(.STRING, "split", 1252735785)
+		for _ in 0 ..< n {
+			args := [3]gde.ConstTypePtr{&space, &allow_empty, &maxsplit}
+			r: godot.PackedStringArray
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 3)
+			sum += godot.packed_string_array_size(&r)
+			godot.destroy[.PACKED_STRING_ARRAY](&r)
+		}
 	case .FIND_TEXT:
 		hay := godot.string_of(FIND_HAY)
 		defer godot.destroy[.STRING](&hay)

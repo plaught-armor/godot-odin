@@ -66,6 +66,11 @@ REPLACED = {
     ("String", "countn"),
     ("String", "begins_with"),
     ("String", "ends_with"),
+    ("String", "casecmp_to"),
+    ("String", "nocasecmp_to"),
+    ("String", "replace"),
+    ("String", "replacen"),
+    ("String", "split"),
 }
 
 class Interface:

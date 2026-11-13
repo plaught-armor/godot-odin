@@ -39,24 +39,6 @@ string_destroy :: proc "contextless" (self: ^String) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.STRING) }
 	__fn(self)
 }
-string_casecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "casecmp_to", 2920860731) }
-	__a_to := to
-	__args := [1]gde.ConstTypePtr{&__a_to}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_nocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "nocasecmp_to", 2920860731) }
-	__a_to := to
-	__args := [1]gde.ConstTypePtr{&__a_to}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_naturalcasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "naturalcasecmp_to", 2920860731) }
@@ -202,26 +184,6 @@ string_format :: proc "contextless" (self: ^String, values: Variant, placeholder
 	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
-string_replace :: proc "contextless" (self: ^String, what: String, forwhat: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "replace", 1340436205) }
-	__a_what := what
-	__a_forwhat := forwhat
-	__args := [2]gde.ConstTypePtr{&__a_what, &__a_forwhat}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_replacen :: proc "contextless" (self: ^String, what: String, forwhat: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "replacen", 1340436205) }
-	__a_what := what
-	__a_forwhat := forwhat
-	__args := [2]gde.ConstTypePtr{&__a_what, &__a_forwhat}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 string_replace_char :: proc "contextless" (self: ^String, key: i64, with: i64) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "replace_char", 787537301) }
@@ -329,17 +291,6 @@ string_to_kebab_case :: proc "contextless" (self: ^String) -> String {
 	if __fn == nil { __fn = builtin_method(.STRING, "to_kebab_case", 3942272618) }
 	__ret: String
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_split :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "split", 1252735785) }
-	__a_delimiter := delimiter
-	__a_allow_empty := u8(allow_empty)
-	__a_maxsplit := maxsplit
-	__args := [3]gde.ConstTypePtr{&__a_delimiter, &__a_allow_empty, &__a_maxsplit}
-	__ret: PackedStringArray
-	__fn(self, &__args[0], &__ret, 3)
 	return __ret
 }
 string_rsplit :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {

@@ -121,6 +121,7 @@ register_extras :: proc() {
 	godot.method(b, "which", bag_which, {"s"})
 	godot.method(b, "which_name", bag_which_name, {"name"})
 	godot.method(b, "replaced_ops", bag_replaced_ops, {"s", "part", "from", "to"})
+	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -596,10 +597,10 @@ bag_which_name :: proc(self: ^Bag, name: godot.StringName) -> i64 {
 
 // The String procs that replace engine methods, on `s` and `part`: find, rfind, findn and rfindn
 // from `from`, then contains, containsn, count and countn from `from` to `to`, begins_with and
-// ends_with, booleans as 0 or 1. test.gd builds the same array from the engine's methods.
+// ends_with, booleans as 0 or 1, then casecmp_to and nocasecmp_to. test.gd builds the same array from the engine's methods.
 bag_replaced_ops :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64, to: i64) -> godot.PackedInt64Array {
 	s := s
-	r := [10]i64{
+	r := [12]i64{
 		godot.string_find(&s, part, from),
 		godot.string_rfind(&s, part, from),
 		godot.string_findn(&s, part, from),
@@ -610,9 +611,28 @@ bag_replaced_ops :: proc(self: ^Bag, s: godot.String, part: godot.String, from: 
 		godot.string_countn(&s, part, from, to),
 		i64(godot.string_begins_with(&s, part)),
 		i64(godot.string_ends_with(&s, part)),
+		godot.string_casecmp_to(&s, part),
+		godot.string_nocasecmp_to(&s, part),
 	}
 	out := godot.packed_int64_array_new()
 	for v in r { godot.packed_int64_array_append(&out, v) }
+	return out
+}
+
+// The String procs that replace engine methods and make Strings: replace and replacen of `part` by
+// `with` in `s`, then the parts of split on `part`. test.gd builds the same array from the engine's.
+bag_replaced_strs :: proc(self: ^Bag, s: godot.String, part: godot.String, with: godot.String, allow_empty: bool, maxsplit: i64) -> godot.PackedStringArray {
+	s := s
+	out := godot.packed_string_array_new()
+	r := godot.string_replace(&s, part, with)
+	godot.packed_string_array_append(&out, r)
+	godot.destroy[.STRING](&r)
+	r = godot.string_replacen(&s, part, with)
+	godot.packed_string_array_append(&out, r)
+	godot.destroy[.STRING](&r)
+	parts := godot.string_split(&s, part, allow_empty, maxsplit)
+	godot.packed_string_array_append_array(&out, parts)
+	godot.destroy[.PACKED_STRING_ARRAY](&parts)
 	return out
 }
 

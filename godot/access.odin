@@ -279,6 +279,55 @@ string_ends_with :: proc "contextless" (self: ^String, text: String) -> bool {
 	return len(t) <= len(chars) && runes_equal(raw_data(chars[len(chars) - len(t):]), raw_data(t), len(t))
 }
 
+// The engine's `casecmp_to`: -1, 0 or 1 as `self` sorts before, with or after `to`, character by
+// character by code point, a shorter String first.
+string_casecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
+	to := to
+	return compare_runes(string_read(self), string_read(&to), false)
+}
+
+// `string_casecmp_to` with both characters uppercased first: the engine's `nocasecmp_to`.
+string_nocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
+	to := to
+	return compare_runes(string_read(self), string_read(&to), true)
+}
+
+// A copy of `self` with every `what` replaced by `forwhat`: the engine's `replace`, made as
+// `string_replace_text` makes it. The caller destroys the result.
+string_replace :: proc "contextless" (self: ^String, what: String, forwhat: String) -> String {
+	what, forwhat := what, forwhat
+	return replace_in(self, rune_needle_of(string_read(&what), false), string_read(&forwhat), false)
+}
+
+// `string_replace` ignoring case: the engine's `replacen`.
+string_replacen :: proc "contextless" (self: ^String, what: String, forwhat: String) -> String {
+	what, forwhat := what, forwhat
+	return replace_in(self, rune_needle_of(string_read(&what), true), string_read(&forwhat), true)
+}
+
+// The parts of `self` between each `delimiter`: the engine's `split`, made as `string_split_text`
+// makes it. The caller destroys the result.
+string_split :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> (out: PackedStringArray) {
+	delimiter := delimiter
+	return split_make(string_read(self), rune_needle_of(string_read(&delimiter), false), allow_empty, maxsplit)
+}
+
+// Walks `a` and `b` as the engine's `casecmp_to` and `nocasecmp_to` do: an empty String sorts
+// first, and either ends at its first zero character, so one embedded ends the comparison there.
+@(private)
+compare_runes :: #force_inline proc "contextless" (a, b: []rune, $NOCASE: bool) -> i64 {
+	if len(a) == 0 { return 0 if len(b) == 0 else -1 }
+	if len(b) == 0 { return 1 }
+	for k in 0 ..= min(len(a), len(b)) {
+		x := a[k] if k < len(a) else 0
+		y := b[k] if k < len(b) else 0
+		if x == 0 || y == 0 { return i64(x != 0) - i64(y != 0) }
+		when NOCASE { x, y = rune_upper(x), rune_upper(y) }
+		if x != y { return -1 if u32(x) < u32(y) else 1 }
+	}
+	return 0
+}
+
 @(private)
 find_string :: #force_inline proc "contextless" (self: ^String, what: String, from: i64, $NOCASE: bool) -> i64 {
 	what := what
@@ -379,12 +428,19 @@ string_replacen_text :: proc "contextless" (s: ^String, what, forwhat: string) -
 // Counts the matches first, so the result is sized once, then finds them again to fill it: the
 // same search from the same places, so it meets the same `hits` matches.
 @(private)
-replace_in :: proc "contextless" (s: ^String, n: Needle, with: string, $NOCASE: bool) -> (out: String) {
+replace_in :: proc "contextless" (s: ^String, n: $N, with: $W, $NOCASE: bool) -> (out: String) {
 	chars := string_read(s)
 	hits := int(count_in(chars, n, 0, 0, NOCASE))
 	if hits == 0 { return string_new_from_string(s^) }
-	with_ascii := text_is_ascii(with)
-	with_count := len(with) if with_ascii else text_rune_count(with)
+	// `with` is Odin text, decoded as it is written, or characters read from a String.
+	with_ascii: bool
+	with_count: int
+	when W == string {
+		with_ascii = text_is_ascii(with)
+		with_count = len(with) if with_ascii else text_rune_count(with)
+	} else {
+		with_count = len(with)
+	}
 	total := len(chars) + hits * (with_count - n.count)
 	// A zeroed String is the engine's empty one: its storage pointer is null.
 	if total == 0 { return }
@@ -395,7 +451,7 @@ replace_in :: proc "contextless" (s: ^String, n: Needle, with: string, $NOCASE: 
 	for _ in 0 ..< hits {
 		at := int(find_forward(chars, start, last, n, NOCASE))
 		j += copy(w[j:], chars[start:at])
-		j += text_put(w[j:], with, with_ascii)
+		when W == string { j += text_put(w[j:], with, with_ascii) } else { j += copy(w[j:], with) }
 		start = at + n.count
 	}
 	j += copy(w[j:], chars[start:])
@@ -425,15 +481,20 @@ string_split_parts :: proc "contextless" (s: ^String, delimiter: string) -> Spli
 // `parts.chars[parts.from:]`.
 split_next :: #force_inline proc "contextless" (parts: ^Split_Parts) -> (part: []rune, ok: bool) {
 	if parts.done { return }
-	chars, n := parts.chars, parts.needle
-	end := min(parts.from + 1, len(chars))
-	if n.count > 0 {
-		end = int(find_forward(chars, parts.from, len(chars) - n.count, n, false))
-		if end < 0 { end = len(chars) }
-	}
+	chars := parts.chars
+	end := split_end(chars, parts.from, parts.needle)
 	part, ok = chars[parts.from:end], true
-	if end == len(chars) { parts.done = true } else { parts.from = end + n.count }
+	if end == len(chars) { parts.done = true } else { parts.from = end + parts.needle.count }
 	return
+}
+
+// Where the part of `chars` starting at `from` ends, as the engine's `split` finds it: at the next
+// `n`, at the end when there is none, or one character on for an empty `n`.
+@(private)
+split_end :: #force_inline proc "contextless" (chars: []rune, from: int, n: $N) -> int {
+	if n.count == 0 { return min(from + 1, len(chars)) }
+	end := int(find_forward(chars, from, len(chars) - n.count, n, false))
+	return end if end >= 0 else len(chars)
 }
 
 // `chars` without the whitespace at its left and right ends, as the engine's `strip_edges` trims a
@@ -744,33 +805,54 @@ ascii_fill :: proc "contextless" (s: ^String, text: []byte) {
 // that many parts and adds the rest of `s` as one more. The parts are counted first so the array is
 // sized once, then each is made straight from its characters, with no String made for `delimiter`.
 // The caller destroys the result.
-string_split_text :: proc "contextless" (s: ^String, delimiter: string, allow_empty := true, maxsplit: i64 = 0) -> (out: PackedStringArray) {
-	chars := string_read(s)
-	n := needle_of(delimiter, false)
+string_split_text :: proc "contextless" (s: ^String, delimiter: string, allow_empty := true, maxsplit: i64 = 0) -> PackedStringArray {
+	return split_make(string_read(s), needle_of(delimiter, false), allow_empty, maxsplit)
+}
+
+// How many parts `split_make` keeps the bounds of while counting, so it need not search again.
+@(private)
+SPLIT_BOUNDS :: 64
+
+// The array of the parts of `chars` between each `n`, for `string_split` and `string_split_text`.
+// The parts are counted first so the array is sized once. Up to `SPLIT_BOUNDS` parts are made from
+// the bounds kept while counting; more are found again by a second walk.
+@(private)
+split_make :: proc "contextless" (chars: []rune, n: $N, allow_empty: bool, maxsplit: i64) -> (out: PackedStringArray) {
 	out = packed_string_array_new()
-	k := split_in(chars, n, allow_empty, maxsplit, nil)
+	bounds: [SPLIT_BOUNDS][2]int = ---
+	k := split_in(chars, n, allow_empty, maxsplit, bounds[:], nil)
 	if k == 0 { return }
 	packed_string_array_resize(&out, i64(k))
-	split_in(chars, n, allow_empty, maxsplit, packed_write_string(&out))
+	slots := packed_write_string(&out)
+	if k > SPLIT_BOUNDS {
+		split_in(chars, n, allow_empty, maxsplit, nil, slots)
+		return
+	}
+	for b, i in bounds[:k] { part_put(slots, i, chars[b[0]:b[1]]) }
 	return
 }
 
-// Walks the parts of `chars` as the engine's `split` does and returns how many there are. With
-// `out`, it also makes part `k` in `out[k]`, which must hold an empty String: the array's slots
-// after a resize. There are at most `len(chars) + 1` parts, so as many rounds cover them.
+// Walks the parts of `chars` as the engine's `split` does and returns how many there are. The
+// bounds of the first `len(bounds)` parts go in `bounds`. With `out`, it also makes part `k` in
+// `out[k]`, which must hold an empty String: the array's slots after a resize. There are at most
+// `len(chars) + 1` parts, so as many rounds cover them.
 @(private)
-split_in :: proc "contextless" (chars: []rune, n: Needle, allow_empty: bool, maxsplit: i64, out: []String) -> (k: int) {
-	parts := Split_Parts{chars = chars, needle = n}
+split_in :: proc "contextless" (chars: []rune, n: $N, allow_empty: bool, maxsplit: i64, bounds: [][2]int, out: []String) -> (k: int) {
+	// The engine's `maxsplit` is a 32-bit int: keep the low 32 bits, sign-extended.
+	maxsplit := i64(i32(maxsplit))
+	from := 0
 	for _ in 0 ..= len(chars) {
-		from := parts.from
-		part := split_next(&parts) or_break
-		if !allow_empty && len(part) == 0 { continue }
-		if maxsplit > 0 && i64(k) == maxsplit {
-			part_put(out, k, chars[from:])
-			return k + 1
+		end := split_end(chars, from, n)
+		if allow_empty || end > from {
+			// Past `maxsplit` parts, the rest of `chars` is the last, and the walk ends after it.
+			last := maxsplit > 0 && i64(k) == maxsplit
+			if last { end = len(chars) }
+			if k < len(bounds) { bounds[k] = {from, end} }
+			part_put(out, k, chars[from:end])
+			k += 1
 		}
-		part_put(out, k, part)
-		k += 1
+		if end == len(chars) { break }
+		from = end + n.count
 	}
 	return
 }
