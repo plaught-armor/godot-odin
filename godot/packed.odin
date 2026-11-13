@@ -142,9 +142,7 @@ elem_eq :: #force_inline proc "contextless" (a, b: ^$E) -> bool {
 		return n == string_stored_length(b) && runes_equal(([^]rune)(pa), ([^]rune)(pb), int(n))
 	} else when E == Vector4 || E == Color {
 		// Four floats compared as one vector: the same `==` per component, in one instruction.
-		x := intrinsics.unaligned_load((^#simd[4]f32)(a))
-		y := intrinsics.unaligned_load((^#simd[4]f32)(b))
-		return intrinsics.simd_reduce_and(intrinsics.simd_lanes_eq(x, y)) != 0
+		return intrinsics.simd_reduce_and(intrinsics.simd_lanes_eq(elem_lanes(a), elem_lanes(b))) != 0
 	} else when intrinsics.type_is_array(E) {
 		// Every component compared and the answers combined, so a search has no branch per component.
 		eq := true
@@ -152,6 +150,19 @@ elem_eq :: #force_inline proc "contextless" (a, b: ^$E) -> bool {
 		return eq
 	} else {
 		return a^ == b^
+	}
+}
+
+// The components of a float vector element as four lanes, the ones it lacks zero.
+@(private)
+elem_lanes :: #force_inline proc "contextless" (a: ^$E) -> #simd[4]f32 {
+	when size_of(E) == size_of([4]f32) {
+		return intrinsics.unaligned_load((^#simd[4]f32)(a))
+	} else {
+		// Copied out, so no read goes past the last element of an array.
+		wide: [4]f32
+		#unroll for i in 0 ..< len(E) { wide[i] = a[i] }
+		return intrinsics.unaligned_load((^#simd[4]f32)(&wide))
 	}
 }
 
@@ -163,14 +174,18 @@ elem_less :: #force_inline proc "contextless" (a, b: ^$E) -> bool {
 	when E == String {
 		return string_less(a, b)
 	} else when intrinsics.type_is_array(E) {
-		when len(E) == 2 {
-			// Two components with no branch: the first is less, or equal with the second less. A
-			// NaN is neither, so it ends the comparison as false. Slower than branches from three
-			// components up.
-			return (a[0] < b[0]) | ((a[0] == b[0]) & (a[1] < b[1]))
+		when len(E) > 2 {
+			// All components compared at once: the first that differs decides, and it is the lowest
+			// set bit of `differ`. A NaN differs and is not less, so it decides false, as the
+			// engine's chain of `==` and `<` does.
+			x, y := elem_lanes(a), elem_lanes(b)
+			differ := transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_ne(x, y))
+			less := transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_lt(x, y))
+			return (less & differ & (0 - differ)) != 0
 		} else {
-			#unroll for i in 0 ..< len(E) - 1 { if a[i] != b[i] { return a[i] < b[i] } }
-			return a[len(E) - 1] < b[len(E) - 1]
+			// Two components with no branch: the first is less, or equal with the second less. A
+			// NaN is neither, so it ends the comparison as false.
+			return (a[0] < b[0]) | ((a[0] == b[0]) & (a[1] < b[1]))
 		}
 	} else {
 		return a^ < b^

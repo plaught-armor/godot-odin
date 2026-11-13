@@ -7,6 +7,7 @@ package godot
 
 import "core:c/libc"
 import "core:math"
+import "core:simd/x86"
 
 // The engine's integer helpers (core/math/math_funcs.h and typedefs.h), kept to their exact
 // expressions. abs of the lowest int32 wraps to itself.
@@ -21,8 +22,17 @@ import "core:math"
 // lowest int32 for NaN, infinities and anything out of range. Odin's own conversion leaves those
 // cases to the backend, which saturates or wraps them. Exactly 2^31 converts to the lowest int32
 // on this backend either way, so `<` and `<=` on the upper bound behave the same.
-@(private) i_of_double :: #force_inline proc "contextless" (d: f64) -> i32 {
-	return i32(d) if d > -2147483649 && d < 2147483648 else min(i32)
+when ODIN_ARCH == .amd64 {
+	// The instruction the engine's conversion compiles to, with no range test in front of it. Not
+	// #force_inline: that would ask every caller to name the instruction set too.
+	@(private, enable_target_feature="sse2")
+	i_of_double :: proc "contextless" (d: f64) -> i32 {
+		return x86._mm_cvttsd_si32(x86.__m128d{d, 0})
+	}
+} else {
+	@(private) i_of_double :: #force_inline proc "contextless" (d: f64) -> i32 {
+		return i32(d) if d > -2147483649 && d < 2147483648 else min(i32)
+	}
 }
 
 // Math::snapped takes doubles: both ints widen exactly, and the result truncates back to int32.
