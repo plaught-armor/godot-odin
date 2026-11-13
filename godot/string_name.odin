@@ -34,8 +34,9 @@ name_ref :: #force_inline proc "contextless" (n: ^StringName) -> StringName {
 
 // Sets `name_layout_known` from a StringName of known reference count: one engine copy and one
 // `name_ref` must each add one reference at byte 0 of its data, and each destroy take one away.
-// A STRING_NAME Variant made from it must hold the same data at `VARIANT_DATA_OFFSET`, and the empty
-// StringName must have no data.
+// A STRING_NAME Variant made from it must hold the same data at `VARIANT_DATA_OFFSET`, one built by
+// `counted_into` must read the same to the engine and give its reference back when the engine
+// destroys it, and the empty StringName must have no data.
 check_name_layout :: proc "contextless" () {
 	name_layout_known = false
 	n := name_of("check_name_layout")
@@ -57,8 +58,14 @@ check_name_layout :: proc "contextless" () {
 	in_variant := internal[.STRING_NAME](&v) == rawptr(&v._opaque[VARIANT_DATA_OFFSET]) &&
 		(^rawptr)(&v._opaque[VARIANT_DATA_OFFSET])^ == data && count^ == held + 1
 	gde.variant_destroy(&v)
+	// A Variant built by `counted_into` must read as the engine's, and its destroy free its reference.
+	b := name_ref(&n)
+	counted_into(&v, .STRING_NAME, &b)
+	built := gde.variant_get_type(&v) == .STRING_NAME && (^rawptr)(internal[.STRING_NAME](&v))^ == data &&
+		count^ == held + 1
+	gde.variant_destroy(&v)
 	empty: StringName
 	empty_copy := name_ref(&empty)
 	name_layout_known = held >= 1 && engine_copy == held + 1 && engine_gone == held && copied == held + 1 &&
-		same && count^ == held && in_variant && (^rawptr)(&empty_copy)^ == nil
+		same && count^ == held && in_variant && built && (^rawptr)(&empty_copy)^ == nil
 }

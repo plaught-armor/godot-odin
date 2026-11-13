@@ -270,6 +270,16 @@ scalar_into :: #force_inline proc "contextless" (out: ^Variant, type: gde.Varian
 	w[2] = 0
 }
 
+// Writes a STRING or STRING_NAME Variant of type `type` to `out` that holds `value^`, a String or
+// StringName whose reference the Variant takes over, as the engine's Variant constructor stores it
+// (core/variant/variant.cpp in Godot 4.7-stable): the type tag in the first 4 bytes, the pointer to
+// the String's characters or the StringName's interned data at `VARIANT_DATA_OFFSET`, the rest
+// zero. `check_string_layout` and `check_name_layout` prove it.
+@(private)
+counted_into :: #force_inline proc "contextless" (out: ^Variant, type: gde.VariantType, value: ^$A) where size_of(A) == 8 {
+	scalar_into(out, type, (^u64)(value)^)
+}
+
 // The Variant the engine's Plane and AABB intersection binds return: a Vector3 when `found`, else
 // nil. A Vector3 needs no construction, so it is written in place in the layout
 // `check_borrow_layout` proves: the type tag in the first 4 bytes, the value at byte 8, the rest
@@ -360,7 +370,8 @@ variant :: proc "contextless" (value: $A) -> (out: Variant) {
 
 // Constructs `out`, which holds nothing that needs destroying, as `variant(value)` would. Writing
 // straight into the destination saves a 24-byte copy that would read the engine's narrower stores
-// back as one wide load.
+// back as one wide load. A String or StringName takes its new reference in place once its layout is
+// proven, as the engine's constructor does, and a `string` moves the String made from it in.
 variant_into :: proc "contextless" (out: ^Variant, value: $A) {
 	// A scalar is written in place, in the layout `check_borrow_layout` proves: it holds nothing to
 	// construct.
@@ -391,8 +402,29 @@ variant_into :: proc "contextless" (out: ^Variant, value: $A) {
 		gde.variant_new_copy(out, &v)
 	} else when A == string {
 		s := string_of(value)
-		from_type[.STRING](out, &s)
-		destroy[.STRING](&s)
+		if string_layout_known {
+			// The new String's one reference becomes the Variant's: nothing to copy or destroy.
+			counted_into(out, .STRING, &s)
+		} else {
+			from_type[.STRING](out, &s)
+			destroy[.STRING](&s)
+		}
+	} else when A == String {
+		s := value
+		if string_layout_known {
+			c := string_ref(&s)
+			counted_into(out, .STRING, &c)
+		} else {
+			from_type[.STRING](out, &s)
+		}
+	} else when A == StringName {
+		n := value
+		if name_layout_known {
+			c := name_ref(&n)
+			counted_into(out, .STRING_NAME, &c)
+		} else {
+			from_type[.STRING_NAME](out, &n)
+		}
 	} else {
 		v := value
 		from_type[variant_type(A)](out, &v)

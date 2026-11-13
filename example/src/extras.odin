@@ -128,6 +128,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "name_copies_counted", bag_name_copies_counted, {"texts"})
 	godot.method(b, "string_copies_counted", bag_string_copies_counted, {"texts"})
+	godot.method(b, "variants_counted", bag_variants_counted, {"texts"})
 	godot.method(b, "replaced_name_strs", bag_replaced_name_strs, {"n", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
@@ -1060,6 +1061,53 @@ bag_name_copies_counted :: proc(self: ^Bag, texts: godot.PackedStringArray) -> b
 		gde.variant_destroy(&nv)
 		godot.destroy[.DICTIONARY](&d)
 		godot.destroy[.ARRAY](&a)
+	}
+	return ok
+}
+
+// Whether `variant` builds the Variant the engine's constructor does, for each of `texts` as a
+// String, a StringName and an Odin string: the same type and the same data, one reference more than
+// before for a String or StringName, which the engine's destroy takes away again, and a String made
+// from an Odin string holding its only reference. Each is also compared with the engine's Variant
+// of the same value.
+bag_variants_counted :: proc(self: ^Bag, texts: godot.PackedStringArray) -> bool {
+	texts := texts
+	data_of :: proc(v: ^godot.Variant) -> rawptr { return (^rawptr)(&v._opaque[8])^ }
+	string_count :: proc(data: rawptr) -> u64 { return 0 if data == nil else (^u64)(uintptr(data) - 32)^ }
+	name_count :: proc(data: rawptr) -> u64 { return 0 if data == nil else u64((^u32)(data)^) }
+	// `v` holds the engine's Variant `e`'s type and data and equals it.
+	same :: proc(v, e: ^godot.Variant, type: gde.VariantType) -> bool {
+		return gde.variant_get_type(v) == type && data_of(v) == data_of(e) && gde.variant_hash_compare(v, e) != 0
+	}
+	ok := true
+	for &text in godot.packed_read_string(&texts) {
+		s := godot.string_new_from_string(text)
+		defer godot.destroy[.STRING](&s)
+		e: godot.Variant
+		godot.from_type[.STRING](&e, &s)
+		held := string_count((^rawptr)(&s)^)
+		v := godot.variant(s)
+		ok = ok && same(&v, &e, .STRING) && (data_of(&v) == nil || string_count(data_of(&v)) == held + 1)
+		gde.variant_destroy(&v)
+		ok = ok && string_count((^rawptr)(&s)^) == held
+		gde.variant_destroy(&e)
+
+		n := godot.string_name_new_from_string(s)
+		defer godot.destroy[.STRING_NAME](&n)
+		godot.from_type[.STRING_NAME](&e, &n)
+		held = name_count((^rawptr)(&n)^)
+		v = godot.variant(n)
+		ok = ok && same(&v, &e, .STRING_NAME) && (data_of(&v) == nil || name_count(data_of(&v)) == held + 1)
+		gde.variant_destroy(&v)
+		ok = ok && name_count((^rawptr)(&n)^) == held
+		gde.variant_destroy(&e)
+
+		godot.from_type[.STRING](&e, &s)
+		v = godot.variant(godot.utf8(text, context.temp_allocator))
+		ok = ok && gde.variant_get_type(&v) == .STRING && gde.variant_hash_compare(&v, &e) != 0 &&
+			(data_of(&v) == nil) == (data_of(&e) == nil) && (data_of(&v) == nil || string_count(data_of(&v)) == 1)
+		gde.variant_destroy(&v)
+		gde.variant_destroy(&e)
 	}
 	return ok
 }

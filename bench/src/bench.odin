@@ -594,6 +594,12 @@ Ident :: enum i64 {
 	STRING_GET,        // the generated array_get(0) of the same, the String copied in place
 	STRING_COPY_CALL,  // the engine's String copy constructor, string_new_from_string, the copy destroyed
 	STRING_COPY,       // string_copy of the same String
+	NAME_VARIANT_CALL, // the engine's STRING_NAME Variant constructor, from_type, the Variant destroyed
+	NAME_VARIANT,      // variant() of the same StringName, its reference taken in place
+	STRING_VARIANT_CALL, // the engine's STRING Variant constructor, from_type, the Variant destroyed
+	STRING_VARIANT,    // variant() of the same String, its reference taken in place
+	TEXT_VARIANT_CALL, // an Odin string made a String and then a STRING Variant, as variant() did before
+	TEXT_VARIANT,      // variant() of the same Odin string, its new String moved into the Variant
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1099,6 +1105,49 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			v := godot.string_new_from_string(intrinsics.volatile_load(&r)^)
 			sum += i64(uintptr((^rawptr)(&v)^) & 1)
 			godot.destroy[.STRING](&v)
+		}
+	case .NAME_VARIANT_CALL, .NAME_VARIANT:
+		name := godot.name_of("player_jump")
+		defer godot.destroy[.STRING_NAME](&name)
+		r := &name
+		for _ in 0 ..< n {
+			v: godot.Variant
+			if kind == .NAME_VARIANT_CALL {
+				godot.from_type[.STRING_NAME](&v, intrinsics.volatile_load(&r))
+			} else {
+				v = godot.variant(intrinsics.volatile_load(&r)^)
+			}
+			sum += i64(v._opaque[8] & 1)
+			gde.variant_destroy(&v)
+		}
+	case .STRING_VARIANT_CALL, .STRING_VARIANT:
+		text := godot.string_of("player_jump")
+		defer godot.destroy[.STRING](&text)
+		r := &text
+		for _ in 0 ..< n {
+			v: godot.Variant
+			if kind == .STRING_VARIANT_CALL {
+				godot.from_type[.STRING](&v, intrinsics.volatile_load(&r))
+			} else {
+				v = godot.variant(intrinsics.volatile_load(&r)^)
+			}
+			sum += i64(v._opaque[8] & 1)
+			gde.variant_destroy(&v)
+		}
+	case .TEXT_VARIANT_CALL, .TEXT_VARIANT:
+		text := "player_jump"
+		r := &text
+		for _ in 0 ..< n {
+			v: godot.Variant
+			if kind == .TEXT_VARIANT_CALL {
+				s := godot.string_of(intrinsics.volatile_load(&r)^)
+				godot.from_type[.STRING](&v, &s)
+				godot.destroy[.STRING](&s)
+			} else {
+				v = godot.variant(intrinsics.volatile_load(&r)^)
+			}
+			sum += i64(v._opaque[8] & 1)
+			gde.variant_destroy(&v)
 		}
 	case .STRING_COPY:
 		text := godot.string_of("player_jump")

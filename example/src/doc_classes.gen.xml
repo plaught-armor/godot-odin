@@ -237,6 +237,9 @@
 		<method name="string_copies_counted">
 			<description>Whether every String copy the bindings make holds one reference of its own on the copy-on-write storage, as the engine's copy constructor does, for each of [code]texts[/code]: [code]string_copy[/code], a [code]string_replace[/code] that replaces nothing, [code]packed_string_array_get[/code], [code]packed_of_string[/code], and the copies Array get, front and back and Dictionary get, find_key, keys and values return. The 64-bit count at the start of the storage rises by one per live copy and falls back when it is destroyed; each copy must also hold the same storage. The empty String has no storage, so its copies must have none either.</description>
 		</method>
+		<method name="variants_counted">
+			<description>Whether [code]variant[/code] builds the Variant the engine's constructor does, for each of [code]texts[/code] as a String, a StringName and an Odin string: the same type and the same data, one reference more than before for a String or StringName, which the engine's destroy takes away again, and a String made from an Odin string holding its only reference. Each is also compared with the engine's Variant of the same value.</description>
+		</method>
 		<method name="replaced_name_strs">
 			<description>bag_replaced_strs through the StringName methods on [code]n[/code].</description>
 		</method>

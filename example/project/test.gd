@@ -462,6 +462,9 @@ func _check_extras() -> int:
 	if not b2.string_copies_counted(PackedStringArray(["", "a", "check_string_layout", "\u00f1\u00fc", "a longer String, past any small-size storage"])):
 		print("FAIL: String copies did not each hold one reference")
 		failures += 1
+	if not b2.variants_counted(PackedStringArray(["", "a", "check_string_layout", "\u00f1\u00fc", "a longer String, past any small-size storage"])):
+		print("FAIL: String and StringName Variants did not match the engine's")
+		failures += 1
 	var int_values: PackedInt64Array = [0, 1, -1, 9, 10, -10, 35, 36, 255, -256, 123456789, -987654321, 9223372036854775807, -9223372036854775807 - 1]
 	for base: int in [10, 2, 7, 16, 36]:
 		for caps: bool in [false, true]:

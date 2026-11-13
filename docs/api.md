@@ -166,7 +166,7 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 
 | Proc | Use |
 |---|---|
-| `variant(value) -> Variant` | A new Variant. Counted values are copied. An instance goes in as its object. Destroy it with `gde.variant_destroy`. |
+| `variant(value) -> Variant` | A new Variant. Counted values are copied. An instance goes in as its object. A String or StringName takes its reference in place and an Odin `string` moves its new String in (see [replaced.md](replaced.md)): 3.0 ns against 5.0 for the engine's constructor for a String. Destroy it with `gde.variant_destroy`. |
 | `variant_into(&out, value)` | The same, written in place. |
 | `variant_int(&v)`, `variant_float(&v)`, `variant_bool(&v)` | Reads a Variant, converting between int, float and bool. |
 | `from_variant(A, &v) -> A` | Reads any mapped type. |

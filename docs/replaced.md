@@ -671,3 +671,29 @@ and Dictionary reads above.
 
 Timings are from `bench/build.sh` on "player_jump", each copy destroyed: the copy alone, and `get`
 of the one element of an Array holding it.
+
+## String and StringName Variants
+
+`variant` and `variant_into` in `godot/variant.odin` build a STRING or STRING_NAME Variant as the
+engine's Variant constructor does (`core/variant/variant.cpp` of Godot 4.7-stable): the type tag in
+the first 4 bytes and the String or StringName at byte 8, holding one more reference, taken by
+`string_ref` or `name_ref`. An Odin `string` becomes a String whose only reference moves into the
+Variant, where it was copied into the Variant and then destroyed. The generated vararg calls, such as
+`emit_signal` and `call`, build their arguments this way. `check_string_layout` and
+`check_name_layout`, run at load, also prove that a Variant built in place reads to the engine as
+its own, the same type and data, and that the engine's destroy gives its reference back; when either
+fails, the engine builds the Variant.
+
+Checked against Godot 4.7-stable by `Bag.variants_counted`, which compares each Variant with the
+engine's for the empty, short, long and non-ASCII texts as a String, a StringName and an Odin
+string: the same type, data and hash, one reference more that the destroy takes away, and the only
+reference for the String made from an Odin string.
+
+| Variant from | Engine call | Replacement |
+|---|---|---|
+| StringName | 4.5 ns | 3.5 ns |
+| String | 5.0 ns | 3.0 ns |
+| Odin `string` | 23.0 ns | 19.0 ns |
+
+Timings are from `bench/build.sh` on "player_jump", each Variant destroyed; the Odin `string` row
+includes making the String.

@@ -1654,7 +1654,9 @@ string_ref :: #force_inline proc "contextless" (s: ^String) -> String {
 // Sets `string_layout_known` from Strings of known length: one shared by two references, and one
 // grown by an append so its capacity differs from its size. A `string_ref` copy must add one
 // reference and its destroy take it away, a STRING Variant made from a String must hold the same
-// storage at `VARIANT_DATA_OFFSET` with one reference more, and the empty String must copy as empty.
+// storage at `VARIANT_DATA_OFFSET` with one reference more, one built by `counted_into` must read
+// the same to the engine and give its reference back when the engine destroys it, and the empty
+// String must copy as empty.
 check_string_layout :: proc "contextless" () {
 	// The header before the characters: the reference count, the capacity, then the size.
 	holds :: proc "contextless" (s: ^String, n: int, refs: i64) -> bool {
@@ -1679,9 +1681,16 @@ check_string_layout :: proc "contextless" () {
 	in_variant := internal[.STRING](&v) == rawptr(&v._opaque[VARIANT_DATA_OFFSET]) &&
 		(^rawptr)(&v._opaque[VARIANT_DATA_OFFSET])^ == (^rawptr)(&c)^ && layout && holds(&c, len(long) + 1, 2)
 	gde.variant_destroy(&v)
+	// A Variant built by `counted_into` must read as the engine's, and its destroy free its reference.
+	r = string_ref(&c)
+	counted_into(&v, .STRING, &r)
+	built := gde.variant_get_type(&v) == .STRING && (^rawptr)(internal[.STRING](&v))^ == (^rawptr)(&c)^ &&
+		holds(&c, len(long) + 1, 2)
+	gde.variant_destroy(&v)
 	empty: String
 	empty_copy := string_ref(&empty)
-	string_layout_known = layout && copied && in_variant && holds(&c, len(long) + 1, 1) && (^rawptr)(&empty_copy)^ == nil
+	string_layout_known = layout && copied && in_variant && built && holds(&c, len(long) + 1, 1) &&
+		(^rawptr)(&empty_copy)^ == nil
 	destroy[.STRING](&c)
 	destroy[.STRING](&b)
 	destroy[.STRING](&a)
