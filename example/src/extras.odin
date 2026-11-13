@@ -137,6 +137,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_rect2is", bag_replaced_rect2is, {"a", "b", "v", "w", "n", "m"})
 	godot.method(b, "replaced_projections", bag_replaced_projections, {"a", "t", "r", "box", "w", "q", "x", "y", "z", "u", "n", "m", "flip"})
 	godot.method(b, "replaced_packed", bag_replaced_packed, {"arrays", "values", "index", "from", "before"})
+	godot.method(b, "replaced_array", bag_replaced_array, {"arrays", "values", "index", "from"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1368,6 +1369,31 @@ bag_replaced_packed :: proc(self: ^Bag, arrays: godot.Array, values: godot.Array
 	put_packed_reads(&o, godot.PackedColorArray, godot.Color, &as[8], &vs[8], index, from, before, godot.packed_color_array_size, godot.packed_color_array_is_empty, godot.packed_color_array_get, godot.packed_color_array_has, godot.packed_color_array_find, godot.packed_color_array_rfind, godot.packed_color_array_count, godot.packed_color_array_bsearch)
 	put_packed_reads(&o, godot.PackedVector4Array, godot.Vector4, &as[9], &vs[9], index, from, before, godot.packed_vector4_array_size, godot.packed_vector4_array_is_empty, godot.packed_vector4_array_get, godot.packed_vector4_array_has, godot.packed_vector4_array_find, godot.packed_vector4_array_rfind, godot.packed_vector4_array_count, godot.packed_vector4_array_bsearch)
 	return godot.packed_of(o.v[:o.n])
+}
+
+// The Array reads of godot/array.odin through the generated procs that try them first, in the order
+// _array_read_results in test.gd calls the engine's: per array, size, is_empty, get(index), front
+// and back, then per value find(value, from), rfind(value, from), count and has.
+bag_replaced_array :: proc(self: ^Bag, arrays: godot.Array, values: godot.Array, index, from: i64) -> godot.Array {
+	arrays, values := arrays, values
+	out := godot.array_new()
+	for &e in godot.array_read(&arrays) {
+		a := godot.from_variant(godot.Array, &e)
+		godot.array_push_back(&out, godot.variant(godot.array_size(&a)))
+		godot.array_push_back(&out, godot.variant(godot.array_is_empty(&a)))
+		got := [3]godot.Variant{godot.array_get(&a, index), godot.array_front(&a), godot.array_back(&a)}
+		for &g in got {
+			godot.array_push_back(&out, g)
+			gde.variant_destroy(&g)
+		}
+		for &v in godot.array_read(&values) {
+			godot.array_push_back(&out, godot.variant(godot.array_find(&a, v, from)))
+			godot.array_push_back(&out, godot.variant(godot.array_rfind(&a, v, from)))
+			godot.array_push_back(&out, godot.variant(godot.array_count(&a, v)))
+			godot.array_push_back(&out, godot.variant(godot.array_has(&a, v)))
+		}
+	}
+	return out
 }
 
 // Appends the eight reads of `bag_replaced_packed` on the array `a` holds, with the value `v` holds.

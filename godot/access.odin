@@ -1312,6 +1312,7 @@ array_at :: proc "contextless" (a: ^Array, i: i64) -> ^Variant {
 // The elements of `a` as a slice over its storage, read in place: valid until `a` changes or is
 // destroyed. Do not write through it or destroy its elements.
 array_read :: proc "contextless" (a: ^Array) -> []Variant {
+	if array_layout_known { return array_stored(a) }
 	n := array_size(a)
 	if n <= 0 { return nil }
 	return ([^]Variant)(gde.array_operator_index_const(a, 0))[:n]

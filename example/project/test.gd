@@ -526,6 +526,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_rect2is(b2)
 	failures += _check_replaced_projections(b2)
 	failures += _check_replaced_packed(b2)
+	failures += _check_replaced_array(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -2033,6 +2034,94 @@ func _check_replaced_packed(b2: Bag) -> int:
 					a[rng.randi() % a.size()] = outside[k]
 			arrays[k] = a
 		failures += _check_packed_case(b2, arrays, outside, rng.randi_range(-2, 41), rng.randi_range(-42, 42), rng.randi() % 2 == 0)
+	return failures
+
+
+# The engine's Array reads in the order Bag.replaced_array calls the Odin procs: per array, size,
+# is_empty, get(index), front and back, then per value find(value, from), rfind(value, from), count
+# and has.
+func _array_read_results(arrays: Array, values: Array, index: int, from: int) -> Array:
+	var out: Array = []
+	for a: Array in arrays:
+		out.append_array([a.size(), a.is_empty(), a.get(index), a.front(), a.back()])
+		for v: Variant in values:
+			out.append_array([a.find(v, from), a.rfind(v, from), a.count(v), a.has(v)])
+	return out
+
+
+# 1 and a message when Bag.replaced_array differs from the engine on the case, compared by their
+# encoding, so a NaN matches a NaN, -0 differs from 0 and a StringName from a String.
+func _check_array_case(b2: Bag, arrays: Array, values: Array, index: int, from: int) -> int:
+	var want: Array = _array_read_results(arrays, values, index, from)
+	var got: Array = b2.replaced_array(arrays, values, index, from)
+	if var_to_bytes(got) == var_to_bytes(want):
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and var_to_bytes(got[at]) == var_to_bytes(want[at]):
+		at += 1
+	print("FAIL: Bag.replaced_array(%s, %s, %d, %d) differs at %d of %d: %s, not %s" % [arrays, values, index, from, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# Up to `most` elements drawn from `pool`, as an untyped Array, or one typed as its first element's
+# type when `typed` and the elements all share that type.
+func _random_array(rng: RandomNumberGenerator, pool: Array, most: int, typed: bool) -> Array:
+	var a: Array = []
+	for i: int in rng.randi_range(0, most):
+		a.append(pool[rng.randi() % pool.size()])
+	if not typed or a.is_empty():
+		return a
+	var t: int = typeof(a[0])
+	if t == TYPE_NIL or t == TYPE_OBJECT:
+		return a
+	var same: Array = a.filter(func(x: Variant) -> bool: return typeof(x) == t)
+	return Array(same, t, &"", null)
+
+
+# The Array reads of godot/array.odin (get, front, back, find, rfind, count, has, and the generated
+# size and is_empty reading the stored size) against the engine's. Elements and values of every type
+# the in-place search compares (nil, bools, ints, floats with NaN and -0, Strings and StringNames of
+# the same texts, which compare equal across the two, the float and int vectors, rectangles, planes,
+# quaternions, colors and RIDs) and of types the engine compares (transforms, bases, AABBs, node
+# paths, arrays, dictionaries, packed arrays, objects, callables). Arrays: empty, mixed, ones of only
+# Strings and StringNames, and typed ones, whose values the engine converts (an int into a float
+# array, a StringName into a String array) or rejects with its error. Indices and starts: either side
+# of 0, of each end, beyond a 32-bit int (the engine keeps the low bits of a start), and the int64
+# extremes. Values that differ from a pool value only in their last component, and RIDs of two ids.
+# Then seeded random arrays, typed and not.
+func _check_replaced_array(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var lowest: int = -9223372036854775807 - 1
+	var pool: Array = [null, true, false, 0, 1, 3, -1, lowest, 0.0, nz, 1.0, 3.0, NAN, INF, "", "a", "ab", "A",
+		&"", &"a", &"ab", Vector2(0, 1), Vector2(nz, 1), Vector2(NAN, 0), Vector2i(0, 1), Rect2(0, 0, 1, 1),
+		Rect2(nz, 0, 1, NAN), Rect2i(0, 0, 1, 1), Vector3(0, 1, 2), Vector3(0, NAN, 2), Vector3i(0, 1, 2),
+		Vector4(0, 0, 0, nz), Vector4(0, 0, 0, 0), Vector4i(1, 2, 3, 4), Plane(0, 1, 0, NAN), Plane(0, 1, 0, 0),
+		Quaternion(0, 0, 0, 1), Color(1, 0, 0, 1), Color(nz, 0, 0, NAN), Color(0, 0, 0, NAN), RID(),
+		Transform2D(), AABB(), Basis(), Transform3D(), ^"a", [1], {1: 2}, PackedInt32Array([1]), b2,
+		Callable(b2, &"count"), Rect2i(0, 0, 1, 2), Vector3(0, 1, 3), Vector3i(0, 1, 3), Vector4(0, 0, 0, 1),
+		Vector4i(1, 2, 3, 5), Quaternion(0, 0, 0, 2), Color(1, 0, 0, 0.5), rid_from_int64(5), rid_from_int64(7)]
+	var mixed: Array = pool.duplicate()
+	mixed.append_array([3, nz, NAN, "ab", &"ab", Vector2(NAN, 0), Color(0, 0, 0, NAN), [1], b2])
+	var arrays: Array = [[], mixed, ["a", &"a", "ab", &"ab", ""], [&"ab", "ab", &"a"],
+		Array([1, 3, 1, -1], TYPE_INT, &"", null), Array([1.0, NAN, nz, 3.0], TYPE_FLOAT, &"", null),
+		Array(["a", "ab", "a"], TYPE_STRING, &"", null), Array([&"a", &"ab"], TYPE_STRING_NAME, &"", null),
+		Array([Vector2(0, 1), Vector2(NAN, 0)], TYPE_VECTOR2, &"", null), Array([], TYPE_INT, &"", null)]
+	var indices: Array[int] = [-1, 0, 1, 4, 5, 9, 100, lowest, 9223372036854775807]
+	var froms: Array[int] = [-100, -61, -60, -5, -1, 0, 1, 3, 5, 59, 60, 100, lowest, 9223372036854775807,
+		4294967298, -4294967295]
+	for fi: int in froms.size():
+		failures += _check_array_case(b2, arrays, pool, indices[fi % indices.size()], froms[fi])
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261113
+	for i: int in 300:
+		var some: Array = []
+		for k: int in 4:
+			some.append(_random_array(rng, pool, 12 if k < 3 else 40, k % 2 == 1))
+		var values: Array = []
+		for k: int in 8:
+			values.append(pool[rng.randi() % pool.size()])
+		failures += _check_array_case(b2, some, values, rng.randi_range(-2, 41), rng.randi_range(-42, 42))
 	return failures
 
 

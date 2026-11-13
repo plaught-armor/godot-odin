@@ -49,14 +49,25 @@ PACKED_TYPES = ["PackedByteArray", "PackedInt32Array", "PackedInt64Array", "Pack
                 "PackedFloat64Array", "PackedStringArray", "PackedVector2Array", "PackedVector3Array",
                 "PackedVector4Array", "PackedColorArray"]
 
-# Builtin methods answered from the storage when check_string_layout (godot/access.odin) or
-# check_packed_layout (godot/packed.odin) proved its header at load: a load against a builtin
+# Builtin methods answered from the storage when check_string_layout (godot/access.odin),
+# check_packed_layout (godot/packed.odin) or check_array_layout (godot/array.odin) proved its
+# layout at load: a load against a builtin
 # call. The engine call stays as the fallback.
 IN_PLACE = {
     ("String", "length"): "\tif string_layout_known { return string_stored_length(self) }\n",
     ("String", "is_empty"): "\tif string_layout_known { return string_stored_length(self) == 0 }\n",
     **{(t, "size"): "\tif packed_layout_known { return packed_stored_size(self) }\n" for t in PACKED_TYPES},
     **{(t, "is_empty"): "\tif packed_layout_known { return packed_stored_size(self) == 0 }\n" for t in PACKED_TYPES},
+    # godot/array.odin: each returns false when the engine answers.
+    ("Array", "size"): "\tif array_layout_known { return array_stored_size(self) }\n",
+    ("Array", "is_empty"): "\tif array_layout_known { return array_stored_size(self) == 0 }\n",
+    ("Array", "get"): "\tif v, ok := array_stored_get(self, index); ok { return v }\n",
+    ("Array", "front"): "\tif v, ok := array_stored_front(self); ok { return v }\n",
+    ("Array", "back"): "\tif v, ok := array_stored_back(self); ok { return v }\n",
+    ("Array", "find"): "\tif r, ok := array_stored_find(self, what, from); ok { return r }\n",
+    ("Array", "rfind"): "\tif r, ok := array_stored_rfind(self, what, from); ok { return r }\n",
+    ("Array", "count"): "\tif r, ok := array_stored_count(self, value); ok { return r }\n",
+    ("Array", "has"): "\tif r, ok := array_stored_has(self, value); ok { return r }\n",
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the

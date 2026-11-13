@@ -443,3 +443,42 @@ seeded random sets, half of them of up to 40 elements with a value set at random
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an array of 0 to 63,
 and `find` of "12" in a PackedStringArray of "0" to "15".
+
+## Array
+
+The Array reads `get`, `front`, `back`, `find`, `rfind`, `count` and `has` are defined in
+`godot/array.odin` under the same names and signatures, and the generated `size` and `is_empty` read
+the element count from the storage. They read the `Vector<Variant>` of the engine's `ArrayPrivate`
+in place, following `core/variant/array.cpp` of Godot 4.7-stable. `check_array_layout`, run at
+load, proves where the storage and the type of a typed Array lie, on a shared Array, a pushed one,
+an emptied one, and Arrays typed to int and StringName; when it fails, every read falls back to the
+engine call.
+
+`find`, `rfind`, `count` and `has` compare as the engine's `StringLikeVariantComparator` does: a
+value equals an element of the same type only, with ints, bools and RIDs by value, floats and the
+float vectors, rectangles, planes, quaternions and colors per component with NaN equal to NaN and
+-0 to 0, the int vectors and Rect2i per component, Strings by character code, and StringNames by
+identity. A String and a StringName of the same text are equal, and the engine answers whenever the
+search meets one of the other kind, as it does for values of any other type, which it compares with
+its own `==`. A typed Array whose type differs from the value's goes to the engine too, which
+converts the value or prints its error. As in the engine, the start of `find` and `rfind` is a
+32-bit int, so only the low 32 bits of `from` count; `find` from a negative start finds nothing, and
+`rfind` counts a negative start back from the end and clamps one still outside the array to the
+last element. `get`, `front` and `back` copy the element, a new reference for a String, a StringName
+or any type the engine owns, and out of range return nil after the engine prints its error.
+
+Checked against Godot 4.7-stable by `_check_replaced_array`, which compares every read from
+GDScript and from `Bag.replaced_array`, the errors included, on empty, mixed and typed Arrays of
+every type, with NaN, -0, Strings and StringNames of the same texts, values that differ only in
+their last component, and two RIDs; on indices and starts either side of 0, of each end, beyond 32
+bits and the `int64` extremes; and on 300 seeded random sets of four Arrays, half of them typed.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Array.size` | 2.3 ns | 1.5 ns |
+| `Array.get` | 7.1 ns | 2.6 ns |
+| `Array.find` on ints | 109 ns | 24 ns |
+| `Array.find` on Strings | 66 ns | 17 ns |
+
+Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an Array of the ints 0
+to 63, and `find` of "12" in an Array of the Strings "0" to "15".

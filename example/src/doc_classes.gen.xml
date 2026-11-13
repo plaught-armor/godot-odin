@@ -264,6 +264,9 @@
 		<method name="replaced_packed">
 			<description>The packed array reads of godot/packed.odin on [code]arrays[/code], one array of each packed type in the order of their Variant types, each with the value at the same place in [code]values[/code]: size, is_empty, get at [code]index[/code], has, find and rfind from [code]from[/code], count and bsearch with [code]before[/code], as integers.</description>
 		</method>
+		<method name="replaced_array">
+			<description>The Array reads of godot/array.odin through the generated procs that try them first, in the order _array_read_results in test.gd calls the engine's: per array, size, is_empty, get(index), front and back, then per value find(value, from), rfind(value, from), count and has.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>

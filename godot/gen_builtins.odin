@@ -2642,6 +2642,7 @@ array_destroy :: proc "contextless" (self: ^Array) {
 	__fn(self)
 }
 array_size :: proc "contextless" (self: ^Array) -> i64 {
+	if array_layout_known { return array_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -2649,6 +2650,7 @@ array_size :: proc "contextless" (self: ^Array) -> i64 {
 	return __ret
 }
 array_is_empty :: proc "contextless" (self: ^Array) -> bool {
+	if array_layout_known { return array_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -2675,6 +2677,7 @@ array_assign :: proc "contextless" (self: ^Array, array: Array) {
 	__fn(self, &__args[0], nil, 1)
 }
 array_get :: proc "contextless" (self: ^Array, index: i64) -> Variant {
+	if v, ok := array_stored_get(self, index); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "get", 708700221) }
 	__a_index := index
@@ -2760,6 +2763,7 @@ array_erase :: proc "contextless" (self: ^Array, value: Variant) {
 	__fn(self, &__args[0], nil, 1)
 }
 array_front :: proc "contextless" (self: ^Array) -> Variant {
+	if v, ok := array_stored_front(self); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "front", 1460142086) }
 	__ret: Variant
@@ -2767,6 +2771,7 @@ array_front :: proc "contextless" (self: ^Array) -> Variant {
 	return __ret
 }
 array_back :: proc "contextless" (self: ^Array) -> Variant {
+	if v, ok := array_stored_back(self); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "back", 1460142086) }
 	__ret: Variant
@@ -2781,6 +2786,7 @@ array_pick_random :: proc "contextless" (self: ^Array) -> Variant {
 	return __ret
 }
 array_find :: proc "contextless" (self: ^Array, what: Variant, from: i64) -> i64 {
+	if r, ok := array_stored_find(self, what, from); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "find", 2336346817) }
 	__a_what := what
@@ -2801,6 +2807,7 @@ array_find_custom :: proc "contextless" (self: ^Array, method: Callable, from: i
 	return __ret
 }
 array_rfind :: proc "contextless" (self: ^Array, what: Variant, from: i64) -> i64 {
+	if r, ok := array_stored_rfind(self, what, from); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "rfind", 2336346817) }
 	__a_what := what
@@ -2821,6 +2828,7 @@ array_rfind_custom :: proc "contextless" (self: ^Array, method: Callable, from: 
 	return __ret
 }
 array_count :: proc "contextless" (self: ^Array, value: Variant) -> i64 {
+	if r, ok := array_stored_count(self, value); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "count", 1481661226) }
 	__a_value := value
@@ -2830,6 +2838,7 @@ array_count :: proc "contextless" (self: ^Array, value: Variant) -> i64 {
 	return __ret
 }
 array_has :: proc "contextless" (self: ^Array, value: Variant) -> bool {
+	if r, ok := array_stored_has(self, value); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "has", 3680194679) }
 	__a_value := value

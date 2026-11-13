@@ -67,6 +67,7 @@ register :: proc() {
 	godot.method(c, "rect2_ns", rect2_ns, {"kind", "n"})
 	godot.method(c, "projection_ns", projection_ns, {"kind", "n"})
 	godot.method(c, "packed_ns", packed_ns, {"kind", "n"})
+	godot.method(c, "array_ns", array_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1665,6 +1666,90 @@ packed_ns :: proc(self: ^Bench, kind: Packed_Op, n: i64) -> f64 {
 		}
 	case .STRING_FIND:
 		for _ in 0 ..< n { sum += godot.packed_string_array_find(&sa, key, intrinsics.volatile_load(&from)) }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += sum
+	return ns
+}
+
+// The Array reads `array_ns` times, paired the same way as Vector_Op.
+Array_Op :: enum i64 {
+	SIZE_CALL,        // the engine's Array.size
+	SIZE,             // array_size
+	GET_CALL,         // the engine's Array.get
+	GET,              // array_get
+	FIND_CALL,        // the engine's Array.find, on ints
+	FIND,             // array_find, on ints
+	STRING_FIND_CALL, // the engine's Array.find, on Strings
+	STRING_FIND,      // array_find, on Strings
+}
+
+// Nanoseconds per `kind` round on the ints 0 to 63 in one Array and the Strings "0" to "15" in
+// another: get reads index 40, find looks for 40 and for "12", the index, value or start reread
+// through a volatile load each round, as in packed_ns.
+array_ns :: proc(self: ^Bench, kind: Array_Op, n: i64) -> f64 {
+	xs: [64]i64
+	for &x, i in xs { x = i64(i) }
+	a := godot.array_of(xs[:])
+	defer godot.destroy[.ARRAY](&a)
+	words: [16]godot.String
+	for &w, i in words { w = godot.string_of_int(i64(i)) }
+	sa := godot.array_of(words[:])
+	defer godot.destroy[.ARRAY](&sa)
+	for &w in words { godot.destroy[.STRING](&w) }
+	key := godot.string_of_int(12)
+	defer godot.destroy[.STRING](&key)
+	kv := godot.variant(key)
+	defer gde.variant_destroy(&kv)
+	ref := &a
+	at, from := i64(40), i64(0)
+	size_fn := godot.builtin_method(.ARRAY, "size", 3173160232)
+	get_fn := godot.builtin_method(.ARRAY, "get", 708700221)
+	find_fn := godot.builtin_method(.ARRAY, "find", 2336346817)
+	sum: i64
+	start := time.tick_now()
+	switch kind {
+	case .SIZE_CALL:
+		for _ in 0 ..< n {
+			r: i64
+			size_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r
+		}
+	case .SIZE:
+		for _ in 0 ..< n { sum += godot.array_size(intrinsics.volatile_load(&ref)) }
+	case .GET_CALL:
+		for _ in 0 ..< n {
+			i := intrinsics.volatile_load(&at)
+			args := [1]gde.ConstTypePtr{&i}
+			r: godot.Variant
+			get_fn(&a, &args[0], &r, 1)
+			sum += godot.from_variant(i64, &r)
+		}
+	case .GET:
+		for _ in 0 ..< n {
+			r := godot.array_get(&a, intrinsics.volatile_load(&at))
+			sum += godot.from_variant(i64, &r)
+		}
+	case .FIND_CALL:
+		for _ in 0 ..< n {
+			v := godot.variant(intrinsics.volatile_load(&at))
+			args := [2]gde.ConstTypePtr{&v, &from}
+			r: i64
+			find_fn(&a, &args[0], &r, 2)
+			sum += r
+		}
+	case .FIND:
+		for _ in 0 ..< n { sum += godot.array_find(&a, godot.variant(intrinsics.volatile_load(&at)), from) }
+	case .STRING_FIND_CALL:
+		for _ in 0 ..< n {
+			f := intrinsics.volatile_load(&from)
+			args := [2]gde.ConstTypePtr{&kv, &f}
+			r: i64
+			find_fn(&sa, &args[0], &r, 2)
+			sum += r
+		}
+	case .STRING_FIND:
+		for _ in 0 ..< n { sum += godot.array_find(&sa, kv, intrinsics.volatile_load(&from)) }
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += sum

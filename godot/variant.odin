@@ -27,6 +27,7 @@ load_variants :: proc "contextless" () {
 	check_borrow_layout()
 	check_string_layout()
 	check_packed_layout()
+	check_array_layout()
 }
 
 // The Variant type an Odin type crosses as: bool, any integer, enum or bit_set, any float, a builtin struct,
