@@ -161,7 +161,8 @@ constant :: proc(c: ^Class($T), name: string, value: i64) {
 // class, or to the builtin it names (`array:"PackedInt32Array"`);
 // `dict:"Key,Value"` types a Dictionary field's keys and values, each a builtin, a class or `Variant`;
 // `class:"Name"` types an Object field to an extension class, read back through `instance_of`;
-// `godot:"new"` gives each instance a new object of a RefCounted field's class, released at free.
+// `godot:"new"` gives each instance a new object of a RefCounted field's class, released at free;
+// the property is not saved and not shown in the inspector.
 // Array and Dictionary fields always start empty: the template's must be zero, as must a new one's.
 // A `bit_set` of an enum crosses as an integer of its bits, a flags checklist in the inspector.
 fields :: proc(c: ^Class($T), template: ^T = nil) {
@@ -444,6 +445,10 @@ register_field :: proc(class: ^StringName, sf: reflect.Struct_Field, f: ^Field) 
 	}
 	gde.classdb_register_extension_class_method(library, class, &getter)
 	gde.classdb_register_extension_class_method(library, class, &setter)
+	// A `godot:"new"` field holds an object of the instance's own. Stored or shown in the inspector,
+	// the engine would take that object as the property's default and warn of an instantiated
+	// default, so the property is neither. Scripts still read and write it.
+	if f.fresh != nil { info.usage = u32(PropertyUsageFlags_PROPERTY_USAGE_NONE) }
 	gde.classdb_register_extension_class_property(library, class, &info, &set_sn, &get_sn)
 	destroy[.STRING_NAME](&get_sn)
 	destroy[.STRING_NAME](&set_sn)

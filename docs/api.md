@@ -95,7 +95,7 @@ for a short name: take `String` on a hot path.
 | `array:"Class"` | Types an `Array` field's elements to a class or a builtin (`array:"PackedInt32Array"`). |
 | `dict:"Key,Value"` | Types a `Dictionary` field. Each side is a builtin, a class or `Variant`. |
 | `class:"Name"` | Types an Object field to an extension class. Read it back with `instance_of`. |
-| `godot:"new"` | Gives each instance a new object of a RefCounted field's class, released at free. |
+| `godot:"new"` | Gives each instance a new object of a RefCounted field's class, released at free. The property is not saved and not shown in the inspector; scripts read and write it. |
 | `godot:"-"` | Odin only: not a property, never set up or destroyed by the core. |
 
 Integers `u8` to `u64` read back unsigned. A `bit_set` field crosses as an integer of its bits and

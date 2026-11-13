@@ -155,6 +155,11 @@ func _check_extras() -> int:
 	if box != null and box.get_reference_count() != 1:
 		print("FAIL: Bag.box holds %d references after its bag went, not 1" % box.get_reference_count())
 		failures += 1
+	# A field made new with each instance is neither stored nor shown, so the engine takes no default from it.
+	for p: Dictionary in ClassDB.class_get_property_list(&"Bag"):
+		if p.name == "box" and p.usage & (PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_EDITOR) != 0:
+			print("FAIL: Bag.box has usage %d, stored or shown in the inspector" % p.usage)
+			failures += 1
 	var u: Variant = Bag.new()
 	if u.total([1, 2, 3]) != 6 or u.total(PackedInt64Array([4, 5])) != 9:
 		print("FAIL: untyped Bag.total answered %s and %s, not 6 and 9" % [u.total([1, 2, 3]), u.total(PackedInt64Array([4, 5]))])
