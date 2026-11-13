@@ -282,11 +282,19 @@ array_stored_get :: #force_inline proc "contextless" (a: ^Array, index: i64) -> 
 	return stored_copy(&xs[index]), true
 }
 
-// A copy of `x`, its value copied as is when it holds nothing counted or allocated and through the
-// engine's Variant copy otherwise. You destroy it.
+// A copy of `x`, its value copied as is when it holds nothing counted or allocated, a StringName by
+// `name_ref`, and through the engine's Variant copy otherwise. You destroy it.
 @(private)
 stored_copy :: #force_inline proc "contextless" (x: ^Variant) -> (out: Variant) {
-	switch array_elem(variant_tag(x)) {
+	// A StringName takes its new reference here and is then copied as is, through the same switch
+	// as before: a separate branch for it splits the copy into byte stores, which the caller's wide
+	// read of `out` stalls on.
+	elem := array_elem(variant_tag(x))
+	if elem == .NAME && name_layout_known {
+		name_ref((^StringName)(&x._opaque[VARIANT_NAME_OFFSET]))
+		elem = .NIL
+	}
+	switch elem {
 	case .ENGINE, .STRING, .NAME: gde.variant_new_copy(&out, x)
 	case .NIL, .BOOL, .WORD, .DOUBLE, .REAL_2, .REAL_3, .REAL_4, .INT_2, .INT_3, .INT_4: out = x^
 	}

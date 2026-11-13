@@ -456,6 +456,9 @@ func _check_extras() -> int:
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
 		"/root/a/b:c:d", ":x", ":x:y", "../b", "a/b/c/d/e/f:g", "Body:position:x", "\u00f1/\u00fc:\u00f6",
 		"/root/check_node_path/layout:position:x", "a//b", "a/./b/../c"]))
+	if not b2.name_copies_counted(PackedStringArray(["", "a", "check_name_layout", "\u00f1\u00fc", "position"])):
+		print("FAIL: name copies did not each hold one reference")
+		failures += 1
 	var int_values: PackedInt64Array = [0, 1, -1, 9, 10, -10, 35, 36, 255, -256, 123456789, -987654321, 9223372036854775807, -9223372036854775807 - 1]
 	for base: int in [10, 2, 7, 16, 36]:
 		for caps: bool in [false, true]:

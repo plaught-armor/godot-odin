@@ -26,6 +26,7 @@ load_variants :: proc "contextless" () {
 	}
 	check_borrow_layout()
 	check_string_layout()
+	check_name_layout()
 	check_packed_layout()
 	check_array_layout()
 	check_dict_layout()
@@ -36,7 +37,7 @@ load_variants :: proc "contextless" () {
 // Dictionary and NodePath, whose reads otherwise call the engine. The answers are the same either way, so this
 // is the only sign that a new engine build left the in-place reads off.
 layouts_proven :: proc "contextless" () -> bool {
-	return string_layout_known && packed_layout_known && array_layout_known && dict_layout_known &&
+	return string_layout_known && name_layout_known && packed_layout_known && array_layout_known && dict_layout_known &&
 		node_path_layout_known
 }
 

@@ -660,7 +660,8 @@ hold :: proc "contextless" (slot: ^$T, obj: T) where intrinsics.type_base_type(T
 // Native code's write to a StringName field of a record at `slot`: the field keeps its own reference
 // to `name`, released at the record's free or the next write.
 hold_name :: proc "contextless" (slot: ^StringName, name: StringName) {
-	copy := string_name_new_from_string_name(name)
+	name := name
+	copy := name_copy(&name)
 	string_name_destroy(slot)
 	slot^ = copy
 }

@@ -465,7 +465,9 @@ converts the value or prints its error. As in the engine, the start of `find` an
 32-bit int, so only the low 32 bits of `from` count; `find` from a negative start finds nothing, and
 `rfind` counts a negative start back from the end and clamps one still outside the array to the
 last element. `get`, `front` and `back` copy the element, a new reference for a String, a StringName
-or any type the engine owns, and out of range return nil after the engine prints its error.
+or any type the engine owns, and out of range return nil after the engine prints its error. A
+StringName element is copied in place by one more reference on its interned data (see "StringName
+copies" below); the others through the engine's Variant copy.
 
 Checked against Godot 4.7-stable by `_check_replaced_array`, which compares every read from
 GDScript and from `Bag.replaced_array`, the errors included, on empty, mixed and typed Arrays of
@@ -593,12 +595,13 @@ The generated NodePath reads `is_empty`, `is_absolute`, `get_name_count`, `get_s
 `hash`, `get_name`, `get_subname`, `get_concatenated_names` and `get_concatenated_subnames` read the
 path's `NodePath::Data` in place (`godot/node_path.odin`): its name and subname Vectors, its
 `absolute` flag, and its hash and concatenated-name caches. The empty path has no data, and reads as
-empty, relative, with no names and hash 0, as there. A returned name is copied as the StringName copy
-constructor does, by one more reference on its interned data; the path holds its own reference, so
-the count cannot reach 0 meanwhile. The engine is called instead where it prints an error, for an
+empty, relative, with no names and hash 0, as there. A returned name is copied in place by one more
+reference on its interned data (see "StringName copies" below); the path holds its own reference,
+so the count cannot reach 0 meanwhile. The engine is called instead where it prints an error, for an
 index out of range or a name asked of the empty path, and where it fills a cache, for a hash or
-concatenation not computed yet. `check_node_path_layout` proves every offset and the reference
-count at load; when it fails, every read falls back to the engine call.
+concatenation not computed yet. `check_node_path_layout` proves every offset at load, and runs only
+once `check_name_layout` has proven the copy; when either fails, every read falls back to the
+engine call.
 
 Checked against Godot 4.7-stable by `_check_replaced_paths`, which runs each read through
 `Bag.replaced_paths` on absolute, relative, subname-only, empty and non-ASCII paths, the caches read
@@ -614,3 +617,30 @@ reference.
 
 Timings are from `bench/build.sh` on "Body/Sprite:position", `hash` with its cache filled and
 `get_name(1)` with the copy destroyed.
+
+## StringName copies
+
+`name_copy` in `godot/string_name.odin` copies a StringName as the engine's copy constructor does
+(`core/string/string_name.cpp` of Godot 4.7-stable): one more reference on its interned
+`StringName::_Data`, whose 32-bit `SafeRefCount` sits at byte 0, and no reference for the empty
+name, which has no data. The constructor's increment is conditional, failing on a count of 0, but
+a copy is made from a live StringName that holds its own reference, so the count is at least 1 and
+the increment is a plain atomic add. The copies the bindings make use it: `hold_name`, the
+StringName elements `array_get`, `array_front`, `array_back`, `dictionary_get`,
+`dictionary_find_key`, `dictionary_keys` and `dictionary_values` return, and the names the NodePath
+reads return. `check_name_layout`, run at load, proves that an engine copy and an in-place copy
+each add one reference at byte 0 and each destroy takes it away, that a STRING_NAME Variant holds
+its StringName at byte 8, and that the empty StringName has no data; when it fails, every copy
+calls the engine.
+
+Checked against Godot 4.7-stable by `Bag.name_copies_counted`, which reads the reference count
+around each copy of the empty name, ASCII and non-ASCII names, and a name the engine already
+holds: `name_copy`, two `hold_name` writes, and the Array and Dictionary reads above.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| StringName copy constructor | 12.7 ns | 2.8 ns |
+| `Array.get` of a StringName | 15.3 ns | 6.5 ns |
+
+Timings are from `bench/build.sh` on "player_jump", each copy destroyed: the copy alone, and `get`
+of the one element of an Array holding it.

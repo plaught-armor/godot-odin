@@ -1,15 +1,13 @@
 package godot
 
-import "base:intrinsics"
-
 // NodePath reads answered from the engine's storage, with no method call, once
 // `check_node_path_layout` proved it at load: the generated `is_empty`, `is_absolute`,
 // `get_name_count`, `get_subname_count`, `hash`, `get_name`, `get_subname`,
 // `get_concatenated_names` and `get_concatenated_subnames` try these first
 // (tools/odin_bindgen.py IN_PLACE). Each answers as NodePath does in Godot 4.7-stable
 // (core/string/node_path.h, node_path.cpp). A NodePath points at its NodePath::Data, nil for the
-// empty path. The names it returns are copied as the StringName copy constructor does, by adding a
-// reference to the interned data in place; the engine is called instead where it would print an error (the empty path, an index out of range) or fill a
+// empty path. The names it returns are copied by `name_ref` (string_name.odin); the engine is
+// called instead where it would print an error (the empty path, an index out of range) or fill a
 // cache (a hash or concatenated name not yet computed), so those still behave as there.
 
 // True when a NodePath's data is NodePath::Data as the reads below take it.
@@ -105,23 +103,14 @@ node_path_stored_concat :: #force_inline proc "contextless" (p: ^NodePath, offse
 	return n
 }
 
-// A copy of the StringName `n` that a NodePath holds, made as StringName's copy constructor does:
-// one more reference on its interned data, whose 32-bit SafeRefCount sits at byte 0. The NodePath
-// keeps its own reference, so the count is at least 1 and cannot reach 0 meanwhile, which is why
-// the constructor's conditional increment is a plain one here. Only when `node_path_layout_known`.
-node_path_name_copy :: #force_inline proc "contextless" (n: ^StringName) -> StringName {
-	intrinsics.atomic_add_explicit((^u32)((^rawptr)(n)^), 1, .Acq_Rel)
-	return n^
-}
-
 // Sets `node_path_layout_known` from NodePaths of known contents: an absolute one with three names
 // and two subnames, a relative one with one name and none, and "/" with neither; each read is
 // compared with the engine's answer, the names and caches by their interned data.
 check_node_path_layout :: proc "contextless" () {
 	node_path_layout_known = false
-	if !packed_layout_known { return }
+	if !packed_layout_known || !name_layout_known { return }
 	// The stored name is the engine's, and its reference count is one more while the engine's copy
-	// lives, and again while one `node_path_name_copy` made lives: the count it adds to.
+	// lives, and again while one `name_ref` made lives: the count it adds to.
 	same_name :: proc "contextless" (stored: ^StringName, engine: StringName) -> bool {
 		e := engine
 		if stored == nil || (^rawptr)(stored)^ == nil || (^rawptr)(stored)^ != (^rawptr)(&e)^ {
@@ -132,7 +121,7 @@ check_node_path_layout :: proc "contextless" () {
 		with_copy := count^
 		destroy[.STRING_NAME](&e)
 		held := count^
-		c := node_path_name_copy(stored)
+		c := name_ref(stored)
 		copied := count^
 		destroy[.STRING_NAME](&c)
 		return with_copy == held + 1 && copied == held + 1 && count^ == held

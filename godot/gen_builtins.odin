@@ -1866,7 +1866,7 @@ node_path_get_name_count :: proc "contextless" (self: ^NodePath) -> i64 {
 	return __ret
 }
 node_path_get_name :: proc "contextless" (self: ^NodePath, idx: i64) -> StringName {
-	if node_path_layout_known { if n := node_path_stored_name(self, NODE_PATH_NAMES_OFFSET, idx); n != nil { return node_path_name_copy(n) } }
+	if node_path_layout_known { if n := node_path_stored_name(self, NODE_PATH_NAMES_OFFSET, idx); n != nil { return name_ref(n) } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.NODE_PATH, "get_name", 2948586938) }
 	__a_idx := idx
@@ -1892,7 +1892,7 @@ node_path_hash :: proc "contextless" (self: ^NodePath) -> i64 {
 	return __ret
 }
 node_path_get_subname :: proc "contextless" (self: ^NodePath, idx: i64) -> StringName {
-	if node_path_layout_known { if n := node_path_stored_name(self, NODE_PATH_SUBNAMES_OFFSET, idx); n != nil { return node_path_name_copy(n) } }
+	if node_path_layout_known { if n := node_path_stored_name(self, NODE_PATH_SUBNAMES_OFFSET, idx); n != nil { return name_ref(n) } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.NODE_PATH, "get_subname", 2948586938) }
 	__a_idx := idx
@@ -1902,7 +1902,7 @@ node_path_get_subname :: proc "contextless" (self: ^NodePath, idx: i64) -> Strin
 	return __ret
 }
 node_path_get_concatenated_names :: proc "contextless" (self: ^NodePath) -> StringName {
-	if node_path_layout_known { if n := node_path_stored_concat(self, NODE_PATH_CONCAT_NAMES_OFFSET); n != nil { return node_path_name_copy(n) } }
+	if node_path_layout_known { if n := node_path_stored_concat(self, NODE_PATH_CONCAT_NAMES_OFFSET); n != nil { return name_ref(n) } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.NODE_PATH, "get_concatenated_names", 1825232092) }
 	__ret: StringName
@@ -1910,7 +1910,7 @@ node_path_get_concatenated_names :: proc "contextless" (self: ^NodePath) -> Stri
 	return __ret
 }
 node_path_get_concatenated_subnames :: proc "contextless" (self: ^NodePath) -> StringName {
-	if node_path_layout_known { if n := node_path_stored_concat(self, NODE_PATH_CONCAT_SUBNAMES_OFFSET); n != nil { return node_path_name_copy(n) } }
+	if node_path_layout_known { if n := node_path_stored_concat(self, NODE_PATH_CONCAT_SUBNAMES_OFFSET); n != nil { return name_ref(n) } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.NODE_PATH, "get_concatenated_subnames", 1825232092) }
 	__ret: StringName

@@ -586,6 +586,10 @@ Ident :: enum i64 {
 	PATH_HASH,         // the generated node_path_hash of the same, read from its data
 	PATH_NAME_CALL,    // the engine's NodePath.get_name(1) of the same, the StringName destroyed, the same way
 	PATH_NAME,         // the generated node_path_get_name(1), copied from its data
+	NAME_GET_CALL,     // the engine's Array.get(0) of a one-StringName Array, the Variant destroyed, called as the bindings did before
+	NAME_GET,          // the generated array_get(0) of the same, the StringName copied in place
+	NAME_COPY_CALL,    // the engine's StringName copy constructor, string_name_new_from_string_name, the copy destroyed
+	NAME_COPY,         // name_copy of the same StringName
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1033,6 +1037,46 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		r := &path
 		for _ in 0 ..< n {
 			v := godot.node_path_get_name(intrinsics.volatile_load(&r), 1)
+			sum += i64(uintptr((^rawptr)(&v)^) & 1)
+			godot.destroy[.STRING_NAME](&v)
+		}
+	case .NAME_GET_CALL, .NAME_GET:
+		name := godot.name_of("player_jump")
+		defer godot.destroy[.STRING_NAME](&name)
+		a := godot.array_new()
+		defer godot.destroy[.ARRAY](&a)
+		nv := godot.variant(name)
+		godot.array_push_back(&a, nv)
+		gde.variant_destroy(&nv)
+		r := &a
+		fn := godot.builtin_method(.ARRAY, "get", 708700221)
+		idx := i64(0)
+		for _ in 0 ..< n {
+			v: godot.Variant
+			if kind == .NAME_GET_CALL {
+				args := [1]gde.ConstTypePtr{&idx}
+				fn(intrinsics.volatile_load(&r), &args[0], &v, 1)
+			} else {
+				v = godot.array_get(intrinsics.volatile_load(&r), idx)
+			}
+			sum += i64(v._opaque[8] & 1)
+			gde.variant_destroy(&v)
+		}
+	case .NAME_COPY_CALL:
+		name := godot.name_of("player_jump")
+		defer godot.destroy[.STRING_NAME](&name)
+		r := &name
+		for _ in 0 ..< n {
+			v := godot.string_name_new_from_string_name(intrinsics.volatile_load(&r)^)
+			sum += i64(uintptr((^rawptr)(&v)^) & 1)
+			godot.destroy[.STRING_NAME](&v)
+		}
+	case .NAME_COPY:
+		name := godot.name_of("player_jump")
+		defer godot.destroy[.STRING_NAME](&name)
+		r := &name
+		for _ in 0 ..< n {
+			v := godot.name_copy(intrinsics.volatile_load(&r))
 			sum += i64(uintptr((^rawptr)(&v)^) & 1)
 			godot.destroy[.STRING_NAME](&v)
 		}
