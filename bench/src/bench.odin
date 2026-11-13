@@ -484,6 +484,8 @@ Ident :: enum i64 {
 	FLOAT_TEXT_ENGINE, // the generated string_num of -123.456 at the default places
 	FLOAT_TEXT,        // string_of_float of the same number
 	FIND_CALL,         // the engine's String.find, called as the bindings did before string_find replaced it
+	RFIND_CALL,        // the engine's String.rfind the same way
+	FINDN_CALL,        // the engine's String.findn the same way
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -492,6 +494,25 @@ WHICH_NAMES :: [8]string{"player_jum", "player_run", "player_walk", "player_dash
 
 // The text the find rows search, for "lazy" near its end.
 FIND_HAY :: "the quick brown fox jumps over the lazy dog"
+
+// `n` calls of the engine's String method `method`, taking a String and a from and giving an int,
+// through its builtin method pointer as the bindings called it before replacing it: on FIND_HAY,
+// for `what` from `from`.
+call_find_method :: proc(method: cstring, $what: string, from: i64, n: i64) -> (sum: i64) {
+	hay := godot.string_of(FIND_HAY)
+	defer godot.destroy[.STRING](&hay)
+	h := &hay
+	needle := godot.intern_text(what)
+	fn := godot.builtin_method(.STRING, method, 1760645412)
+	from := from
+	for _ in 0 ..< n {
+		args := [2]gde.ConstTypePtr{&needle, &from}
+		r: i64
+		fn(intrinsics.volatile_load(&h), &args[0], &r, 2)
+		sum += r
+	}
+	return
+}
 
 // Nanoseconds per `kind` round on a short identifier, over `n` rounds.
 ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
@@ -645,18 +666,11 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			sum += godot.string_find(intrinsics.volatile_load(&h), needle, 0)
 		}
 	case .FIND_CALL:
-		hay := godot.string_of(FIND_HAY)
-		defer godot.destroy[.STRING](&hay)
-		h := &hay
-		needle := godot.intern_text("lazy")
-		find := godot.builtin_method(.STRING, "find", 1760645412)
-		for _ in 0 ..< n {
-			from: i64
-			args := [2]gde.ConstTypePtr{&needle, &from}
-			r: i64
-			find(intrinsics.volatile_load(&h), &args[0], &r, 2)
-			sum += r
-		}
+		sum += call_find_method("find", "lazy", 0, n)
+	case .RFIND_CALL:
+		sum += call_find_method("rfind", "quick", -1, n)
+	case .FINDN_CALL:
+		sum += call_find_method("findn", "LAZY", 0, n)
 	case .FIND_TEXT:
 		hay := godot.string_of(FIND_HAY)
 		defer godot.destroy[.STRING](&hay)

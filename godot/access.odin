@@ -215,17 +215,88 @@ string_find_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0)
 	return find_forward(chars, start, last, n, false)
 }
 
+// The String procs below replace the generated bindings of the engine's methods of the same name
+// (tools/odin_bindgen.py REPLACED, logged in docs/replaced.md): same signature and answers, read in
+// place from both Strings with no engine call.
+
 // Where `what` first appears in `self` at or after character `from`, in characters, or -1: the
-// engine's `find`, which the bindings leave out (tools/odin_bindgen.py REPLACED), read in place
-// with no engine call. A negative `from` counts back from the last place `what` fits, and an
-// empty `what` gives -1.
+// engine's `find`. A negative `from` counts back from the last place `what` fits, and an empty
+// `what` gives -1.
 string_find :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
+	return find_string(self, what, from, false)
+}
+
+// `string_find` ignoring case: the engine's `findn`.
+string_findn :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
+	return find_string(self, what, from, true)
+}
+
+// Where `what` last appears in `self` at or before character `from`, or -1: the engine's `rfind`,
+// `from` read as in `string_find`.
+string_rfind :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
+	return rfind_string(self, what, from, false)
+}
+
+// `string_rfind` ignoring case: the engine's `rfindn`.
+string_rfindn :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
+	return rfind_string(self, what, from, true)
+}
+
+// Whether `what` appears in `self`: the engine's `contains`. Empty `what` gives false.
+string_contains :: proc "contextless" (self: ^String, what: String) -> bool {
+	return find_string(self, what, 0, false) >= 0
+}
+
+// `string_contains` ignoring case: the engine's `containsn`.
+string_containsn :: proc "contextless" (self: ^String, what: String) -> bool {
+	return find_string(self, what, 0, true) >= 0
+}
+
+// How many times `what` appears in `self` between characters `from` and `to`, not overlapping:
+// the engine's `count`, with `to` read as in `string_count_text`.
+string_count :: proc "contextless" (self: ^String, what: String, from: i64, to: i64) -> i64 {
+	what := what
+	return count_in(string_read(self), rune_needle_of(string_read(&what), false), from, to, false)
+}
+
+// `string_count` ignoring case: the engine's `countn`.
+string_countn :: proc "contextless" (self: ^String, what: String, from: i64, to: i64) -> i64 {
+	what := what
+	return count_in(string_read(self), rune_needle_of(string_read(&what), true), from, to, true)
+}
+
+// Whether `self` starts with `text`: the engine's `begins_with`. Empty `text` gives true.
+string_begins_with :: proc "contextless" (self: ^String, text: String) -> bool {
+	text := text
+	chars, t := string_read(self), string_read(&text)
+	return len(t) <= len(chars) && runes_equal(raw_data(chars), raw_data(t), len(t))
+}
+
+// Whether `self` ends with `text`: the engine's `ends_with`. Empty `text` gives true.
+string_ends_with :: proc "contextless" (self: ^String, text: String) -> bool {
+	text := text
+	chars, t := string_read(self), string_read(&text)
+	return len(t) <= len(chars) && runes_equal(raw_data(chars[len(chars) - len(t):]), raw_data(t), len(t))
+}
+
+@(private)
+find_string :: #force_inline proc "contextless" (self: ^String, what: String, from: i64, $NOCASE: bool) -> i64 {
 	what := what
 	chars := string_read(self)
-	n := rune_needle_of(string_read(&what))
+	n := rune_needle_of(string_read(&what), NOCASE)
 	start, last, ok := find_start(len(chars), n, from)
 	if !ok { return -1 }
-	return find_forward(chars, start, last, n, false)
+	return find_forward(chars, start, last, n, NOCASE)
+}
+
+@(private)
+rfind_string :: #force_inline proc "contextless" (self: ^String, what: String, from: i64, $NOCASE: bool) -> i64 {
+	what := what
+	chars := string_read(self)
+	n := rune_needle_of(string_read(&what), NOCASE)
+	start, _, ok := find_start(len(chars), n, from)
+	if !ok { return -1 }
+	return find_backward(chars, start, n, NOCASE)
 }
 
 // Where Odin text `text` last appears in `s` at or before character `from`, in characters, or -1:
@@ -743,7 +814,9 @@ text_put :: #force_inline proc "contextless" (dst: []rune, text: string, ascii: 
 }
 
 @(private)
-count_in :: #force_inline proc "contextless" (chars: []rune, n: Needle, from, to: i64, $NOCASE: bool) -> (count: i64) {
+count_in :: #force_inline proc "contextless" (chars: []rune, n: $N, from, to: i64, $NOCASE: bool) -> (count: i64) {
+	// The engine's bounds are 32-bit ints: wrap them as it does.
+	from, to := i64(i32(from)), i64(i32(to))
 	if n.count == 0 || from < 0 || to < 0 { return 0 }
 	end := i64(len(chars)) if to == 0 else min(to, i64(len(chars)))
 	if from >= end { return 0 }
@@ -856,18 +929,31 @@ Rune_Needle :: struct {
 }
 
 @(private)
-rune_needle_of :: #force_inline proc "contextless" (chars: []rune) -> (n: Rune_Needle) {
+rune_needle_of :: #force_inline proc "contextless" (chars: []rune, $NOCASE: bool) -> (n: Rune_Needle) {
 	n.chars, n.count = chars, len(chars)
-	if n.count > 0 { n.first = chars[0] }
+	if n.count == 0 { return }
+	n.first = chars[0]
+	when NOCASE {
+		n.first = rune_lower(n.first)
+		if n.first >= 'a' && n.first <= 'z' { n.fold_bit = 0x20 }
+	}
 	return
 }
 
-// Whether `n` appears at character `i` of `chars`, which it fits in. Case-sensitive only.
+// Whether `n` appears at character `i` of `chars`, which it fits in. Ignoring case, each character
+// of both lowers as the engine's `findn` lowers it.
 @(private)
 rune_needle_at :: #force_inline proc "contextless" (chars: []rune, i: int, n: Rune_Needle, $NOCASE: bool) -> bool {
-	#assert(!NOCASE)
-	if chars[i] != n.first { return false }
-	return runes_equal(raw_data(chars[i:]), raw_data(n.chars), n.count)
+	when NOCASE {
+		if rune_lower(chars[i]) != n.first { return false }
+		for k in 1 ..< n.count {
+			if rune_lower(chars[i + k]) != rune_lower(n.chars[k]) { return false }
+		}
+		return true
+	} else {
+		if chars[i] != n.first { return false }
+		return runes_equal(raw_data(chars[i:]), raw_data(n.chars), n.count)
+	}
 }
 
 // The first place a search from `from` looks, and the last place `n` fits in `length` characters,

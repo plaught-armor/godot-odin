@@ -140,58 +140,6 @@ string_get_slice_count :: proc "contextless" (self: ^String, delimiter: String) 
 	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
-string_findn :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "findn", 1760645412) }
-	__a_what := what
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_count :: proc "contextless" (self: ^String, what: String, from: i64, to: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "count", 2343087891) }
-	__a_what := what
-	__a_from := from
-	__a_to := to
-	__args := [3]gde.ConstTypePtr{&__a_what, &__a_from, &__a_to}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 3)
-	return __ret
-}
-string_countn :: proc "contextless" (self: ^String, what: String, from: i64, to: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "countn", 2343087891) }
-	__a_what := what
-	__a_from := from
-	__a_to := to
-	__args := [3]gde.ConstTypePtr{&__a_what, &__a_from, &__a_to}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 3)
-	return __ret
-}
-string_rfind :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "rfind", 1760645412) }
-	__a_what := what
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_rfindn :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "rfindn", 1760645412) }
-	__a_what := what
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 string_match :: proc "contextless" (self: ^String, expr: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "match", 2566493496) }
@@ -206,24 +154,6 @@ string_matchn :: proc "contextless" (self: ^String, expr: String) -> bool {
 	if __fn == nil { __fn = builtin_method(.STRING, "matchn", 2566493496) }
 	__a_expr := expr
 	__args := [1]gde.ConstTypePtr{&__a_expr}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
-string_begins_with :: proc "contextless" (self: ^String, text: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "begins_with", 2566493496) }
-	__a_text := text
-	__args := [1]gde.ConstTypePtr{&__a_text}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
-string_ends_with :: proc "contextless" (self: ^String, text: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "ends_with", 2566493496) }
-	__a_text := text
-	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
 	return __ret != 0
@@ -612,24 +542,6 @@ string_is_empty :: proc "contextless" (self: ^String) -> bool {
 	if __fn == nil { __fn = builtin_method(.STRING, "is_empty", 3918633141) }
 	__ret: u8
 	__fn(self, nil, &__ret, 0)
-	return __ret != 0
-}
-string_contains :: proc "contextless" (self: ^String, what: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "contains", 2566493496) }
-	__a_what := what
-	__args := [1]gde.ConstTypePtr{&__a_what}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
-string_containsn :: proc "contextless" (self: ^String, what: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "containsn", 2566493496) }
-	__a_what := what
-	__args := [1]gde.ConstTypePtr{&__a_what}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret != 0
 }
 string_is_absolute_path :: proc "contextless" (self: ^String) -> bool {

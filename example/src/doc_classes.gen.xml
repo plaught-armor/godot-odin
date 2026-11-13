@@ -216,8 +216,8 @@
 		<method name="which_name">
 			<description>The index of [code]name[/code] among a fixed set of names by [code]name_which[/code], or -1.</description>
 		</method>
-		<method name="find">
-			<description>Where [code]part[/code] first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find[/code], which replaces the engine's String.find.</description>
+		<method name="replaced_ops">
+			<description>The String procs that replace engine methods, on [code]s[/code] and [code]part[/code]: find, rfind, findn and rfindn from [code]from[/code], then contains, containsn, count and countn from [code]from[/code] to [code]to[/code], begins_with and ends_with, booleans as 0 or 1. test.gd builds the same array from the engine's methods.</description>
 		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>

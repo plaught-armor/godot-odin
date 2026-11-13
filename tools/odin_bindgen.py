@@ -57,6 +57,15 @@ STRING_IN_PLACE = {
 # the engine version checked in docs/replaced.md.
 REPLACED = {
     ("String", "find"),
+    ("String", "findn"),
+    ("String", "rfind"),
+    ("String", "rfindn"),
+    ("String", "contains"),
+    ("String", "containsn"),
+    ("String", "count"),
+    ("String", "countn"),
+    ("String", "begins_with"),
+    ("String", "ends_with"),
 }
 
 class Interface:

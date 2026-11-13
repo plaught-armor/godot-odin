@@ -494,9 +494,8 @@ func _check_extras() -> int:
 	for c: Array in find_cases:
 		var s: String = c[0]
 		for from: int in [-20, -3, -2, -1, 0, 1, 2, 4, 9, 20, 1 << 32, (1 << 32) + 1, -(1 << 32) - 1]:
-			if b2.find(s, c[1], from) != s.find(c[1], from):
-				print("FAIL: Bag.find(%s, %s, %d) gave %d, not %d" % [s, c[1], from, b2.find(s, c[1], from), s.find(c[1], from)])
-				failures += 1
+			for to: int in [0, 4, -1, (1 << 32) + 2]:
+				failures += _check_replaced_ops(b2, s, c[1], from, to)
 			if b2.find_text(s, c[1], from) != s.find(c[1], from):
 				print("FAIL: Bag.find_text(%s, %s, %d) gave %d, not %d" % [s, c[1], from, b2.find_text(s, c[1], from), s.find(c[1], from)])
 				failures += 1
@@ -506,7 +505,7 @@ func _check_extras() -> int:
 		if b2.has_text(s, c[1]) != s.contains(c[1]):
 			print("FAIL: Bag.has_text(%s, %s) gave %s" % [s, c[1], b2.has_text(s, c[1])])
 			failures += 1
-	failures += _check_find_random(b2)
+	failures += _check_replaced_random(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -581,12 +580,25 @@ func _check_extras() -> int:
 
 # Untyped calls and property writes arrive as Variants, and an int, float or bool converts to the
 # parameter's or field's type as the engine's own would.
-# Bag.find, which replaces the engine's String.find, against the engine's on seeded random Strings
-# over a small alphabet, so most needles match somewhere. The seed is fixed so a failure repeats.
-func _check_find_random(b2: Bag) -> int:
+# The String procs that replace engine methods, from Bag.replaced_ops, against the engine's own
+# methods called from GDScript, which do not go through the bindings. Returns 1 on a mismatch.
+func _check_replaced_ops(b2: Bag, s: String, part: String, from: int, to: int) -> int:
+	var want := PackedInt64Array([s.find(part, from), s.rfind(part, from), s.findn(part, from),
+		s.rfindn(part, from), int(s.contains(part)), int(s.containsn(part)), s.count(part, from, to),
+		s.countn(part, from, to), int(s.begins_with(part)), int(s.ends_with(part))])
+	var got: PackedInt64Array = b2.replaced_ops(s, part, from, to)
+	if got != want:
+		print("FAIL: Bag.replaced_ops(%s, %s, %d, %d) gave %s, not %s" % [s, part, from, to, got, want])
+		return 1
+	return 0
+
+
+# _check_replaced_ops on seeded random Strings over a small alphabet with both cases, so most
+# needles match somewhere, with and without case. The seed is fixed so a failure repeats.
+func _check_replaced_random(b2: Bag) -> int:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261112
-	var alphabet: Array[String] = ["a", "b", "-", "日", "é"]
+	var alphabet: Array[String] = ["a", "A", "b", "-", "日", "é", "É"]
 	var failures := 0
 	for round: int in 3000:
 		var hay := ""
@@ -595,10 +607,13 @@ func _check_find_random(b2: Bag) -> int:
 		var needle := ""
 		for k: int in rng.randi_range(0, 5):
 			needle += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		# Half the needles come from the String itself, so begins_with and ends_with also match.
+		if round % 2 == 0 and not hay.is_empty():
+			var at := rng.randi_range(0, hay.length() - 1)
+			needle = hay.substr(at, rng.randi_range(1, 5))
 		var from := rng.randi_range(-45, 45)
-		if b2.find(hay, needle, from) != hay.find(needle, from):
-			print("FAIL: Bag.find(%s, %s, %d) gave %d, not %d (round %d)" % [hay, needle, from, b2.find(hay, needle, from), hay.find(needle, from), round])
-			failures += 1
+		var to := rng.randi_range(-5, 45)
+		failures += _check_replaced_ops(b2, hay, needle, from, to)
 	return failures
 
 
