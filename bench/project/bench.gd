@@ -318,6 +318,10 @@ func _initialize() -> void:
 	_report("Node._process, no override (baseline)", func() -> float: return _process_calls(plain))
 	_report("Node._process, Odin override", func() -> float: return _process_calls(odin))
 	_report("Node._process, GDScript override", func() -> float: return _process_calls(gd))
+	# Every other replaced method, from tools/bench_gen.py.
+	for i in b.replaced_count():
+		_report("Engine %s call" % b.replaced_label(i, true), func() -> float: return b.replaced_ns(i, true, N))
+		_report("Odin %s" % b.replaced_label(i, false), func() -> float: return b.replaced_ns(i, false, N))
 	plain.free()
 	odin.free()
 	gd.free()

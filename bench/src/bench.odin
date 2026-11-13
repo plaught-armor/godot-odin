@@ -71,6 +71,9 @@ register :: proc() {
 	godot.method(c, "packed_ns", packed_ns, {"kind", "n"})
 	godot.method(c, "array_ns", array_ns, {"kind", "n"})
 	godot.method(c, "dict_ns", dict_ns, {"kind", "n"})
+	godot.method(c, "replaced_count", replaced_count)
+	godot.method(c, "replaced_label", replaced_label, {"index", "engine"})
+	godot.method(c, "replaced_ns", replaced_ns, {"index", "engine", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -2368,4 +2371,23 @@ projection_ns :: proc(self: ^Bench, kind: Projection_Op, n: i64) -> f64 {
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)
 	return ns
+}
+
+// How many replaced methods gen_replaced.odin times, for bench.gd to list.
+replaced_count :: proc(self: ^Bench) -> i64 {
+	return len(replaced_benches)
+}
+
+// The name of replaced method `index`: the engine's, as "Vector2.angle", or the Odin proc's.
+replaced_label :: proc(self: ^Bench, index: i64, engine: bool) -> godot.String {
+	if index < 0 || index >= len(replaced_benches) { return {} }
+	b := replaced_benches[index]
+	return godot.string_of(b.engine if engine else b.odin)
+}
+
+// Nanoseconds per call of replaced method `index` over `n` rounds, through the engine's ptrcall
+// or through the Odin proc, on a value reread through a volatile load each round.
+replaced_ns :: proc(self: ^Bench, index: i64, engine: bool, n: i64) -> f64 {
+	if index < 0 || index >= len(replaced_benches) { return 0 }
+	return replaced_benches[index].run(engine, n)
 }
