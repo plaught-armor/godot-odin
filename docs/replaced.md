@@ -586,3 +586,31 @@ methods called from GDScript, comparing `to_float` by its bits.
 
 Timings are from `bench/build.sh` on a cached String: `to_int` of "-12345", the others of
 "-123.456e-2".
+
+## NodePath
+
+The generated NodePath reads `is_empty`, `is_absolute`, `get_name_count`, `get_subname_count`,
+`hash`, `get_name`, `get_subname`, `get_concatenated_names` and `get_concatenated_subnames` read the
+path's `NodePath::Data` in place (`godot/node_path.odin`): its name and subname Vectors, its
+`absolute` flag, and its hash and concatenated-name caches. The empty path has no data, and reads as
+empty, relative, with no names and hash 0, as there. A returned name is copied as the StringName copy
+constructor does, by one more reference on its interned data; the path holds its own reference, so
+the count cannot reach 0 meanwhile. The engine is called instead where it prints an error, for an
+index out of range or a name asked of the empty path, and where it fills a cache, for a hash or
+concatenation not computed yet. `check_node_path_layout` proves every offset and the reference
+count at load; when it fails, every read falls back to the engine call.
+
+Checked against Godot 4.7-stable by `_check_replaced_paths`, which runs each read through
+`Bag.replaced_paths` on absolute, relative, subname-only, empty and non-ASCII paths, the caches read
+both before and after they are filled, against the engine's NodePath methods called from GDScript
+on a separate NodePath of the same text. `path_copies_counted` checks that each copy adds exactly one
+reference.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `NodePath.get_name_count` | 2.36 ns | 1.20 ns |
+| `NodePath.hash` | 2.57 ns | 1.19 ns |
+| `NodePath.get_name` | 9.98 ns | 3.72 ns |
+
+Timings are from `bench/build.sh` on "Body/Sprite:position", `hash` with its cache filled and
+`get_name(1)` with the copy destroyed.

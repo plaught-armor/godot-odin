@@ -90,6 +90,19 @@ IN_PLACE = {
     # godot/dictionary.odin: a StringName keeps its name String and hash in its interned data, which
     # check_dict_layout proves before it sets dict_layout_known. The engine converts a StringName
     # to that String and calls the String method, so each delegates to the String proc.
+    # godot/node_path.odin: a NodePath's data keeps its names, subnames, caches and flag, which
+    # check_node_path_layout proves before it sets node_path_layout_known. A name is copied by adding
+    # a reference in place, as the StringName copy constructor does; the engine answers where it prints an error or fills a cache.
+    **{("NodePath", m): f"\tif node_path_layout_known {{ {body} }}\n" for m, body in (
+        ("is_empty", "return (^rawptr)(self)^ == nil"),
+        ("is_absolute", "return node_path_stored_absolute(self)"),
+        ("get_name_count", "return node_path_stored_name_count(self)"),
+        ("get_subname_count", "return node_path_stored_subname_count(self)"),
+        ("hash", "if h, ok := node_path_stored_hash(self); ok { return i64(h) }"),
+        ("get_name", "if n := node_path_stored_name(self, NODE_PATH_NAMES_OFFSET, idx); n != nil { return node_path_name_copy(n) }"),
+        ("get_subname", "if n := node_path_stored_name(self, NODE_PATH_SUBNAMES_OFFSET, idx); n != nil { return node_path_name_copy(n) }"),
+        ("get_concatenated_names", "if n := node_path_stored_concat(self, NODE_PATH_CONCAT_NAMES_OFFSET); n != nil { return node_path_name_copy(n) }"),
+        ("get_concatenated_subnames", "if n := node_path_stored_concat(self, NODE_PATH_CONCAT_SUBNAMES_OFFSET); n != nil { return node_path_name_copy(n) }"))},
     ("StringName", "length"): "\tif dict_layout_known { return string_stored_length(name_text(self)) }\n",
     ("StringName", "is_empty"): "\tif dict_layout_known { return string_stored_length(name_text(self)) == 0 }\n",
     ("StringName", "hash"): "\tif dict_layout_known { return i64(name_stored_hash(self)) }\n",

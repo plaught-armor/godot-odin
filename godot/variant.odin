@@ -29,13 +29,15 @@ load_variants :: proc "contextless" () {
 	check_packed_layout()
 	check_array_layout()
 	check_dict_layout()
+	check_node_path_layout()
 }
 
-// Whether every layout check at load passed: those of String, the packed arrays, Array and
-// Dictionary, whose reads otherwise call the engine. The answers are the same either way, so this
+// Whether every layout check at load passed: those of String, the packed arrays, Array,
+// Dictionary and NodePath, whose reads otherwise call the engine. The answers are the same either way, so this
 // is the only sign that a new engine build left the in-place reads off.
 layouts_proven :: proc "contextless" () -> bool {
-	return string_layout_known && packed_layout_known && array_layout_known && dict_layout_known
+	return string_layout_known && packed_layout_known && array_layout_known && dict_layout_known &&
+		node_path_layout_known
 }
 
 // The Variant type an Odin type crosses as: bool, any integer, enum or bit_set, any float, a builtin struct,

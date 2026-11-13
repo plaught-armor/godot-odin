@@ -580,11 +580,20 @@ Ident :: enum i64 {
 	TO_FLOAT_CALL,     // the engine's String.to_float of "-123.456e-2" the same way
 	VALID_FLOAT_CALL,  // the engine's String.is_valid_float of "-123.456e-2" the same way
 	VALID_FLOAT,       // the generated string_is_valid_float of the same, which reads it in place
+	PATH_COUNT_CALL,   // the engine's NodePath.get_name_count of "Body/Sprite:position", called as the bindings did before
+	PATH_COUNT,        // the generated node_path_get_name_count of the same, read from its data
+	PATH_HASH_CALL,    // the engine's NodePath.hash of the same, its cache filled, the same way
+	PATH_HASH,         // the generated node_path_hash of the same, read from its data
+	PATH_NAME_CALL,    // the engine's NodePath.get_name(1) of the same, the StringName destroyed, the same way
+	PATH_NAME,         // the generated node_path_get_name(1), copied from its data
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
 // first character among them.
 WHICH_NAMES :: [8]string{"player_jum", "player_run", "player_walk", "player_dash", "pause", "player_crouch", "player_jumq", "player_jump"}
+
+// The NodePath the path rows read.
+BENCH_PATH :: "Body/Sprite:position"
 
 // The text the find rows search, for "lazy" near its end.
 FIND_HAY :: "the quick brown fox jumps over the lazy dog"
@@ -983,6 +992,49 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			v: f64
 			fn(intrinsics.volatile_load(&p), nil, &v, 0)
 			sum += i64(v)
+		}
+	case .PATH_COUNT_CALL, .PATH_HASH_CALL:
+		path := godot.path_of(BENCH_PATH)
+		defer godot.destroy[.NODE_PATH](&path)
+		r := &path
+		fn := godot.builtin_method(.NODE_PATH, "get_name_count" if kind == .PATH_COUNT_CALL else "hash", 3173160232)
+		for _ in 0 ..< n {
+			v: i64
+			fn(intrinsics.volatile_load(&r), nil, &v, 0)
+			sum += v
+		}
+	case .PATH_COUNT:
+		path := godot.path_of(BENCH_PATH)
+		defer godot.destroy[.NODE_PATH](&path)
+		r := &path
+		for _ in 0 ..< n { sum += godot.node_path_get_name_count(intrinsics.volatile_load(&r)) }
+	case .PATH_HASH:
+		path := godot.path_of(BENCH_PATH)
+		defer godot.destroy[.NODE_PATH](&path)
+		r := &path
+		godot.node_path_hash(r)
+		for _ in 0 ..< n { sum += godot.node_path_hash(intrinsics.volatile_load(&r)) }
+	case .PATH_NAME_CALL:
+		path := godot.path_of(BENCH_PATH)
+		defer godot.destroy[.NODE_PATH](&path)
+		r := &path
+		fn := godot.builtin_method(.NODE_PATH, "get_name", 2948586938)
+		idx := i64(1)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&idx}
+			v: godot.StringName
+			fn(intrinsics.volatile_load(&r), &args[0], &v, 1)
+			sum += i64(uintptr((^rawptr)(&v)^) & 1)
+			godot.destroy[.STRING_NAME](&v)
+		}
+	case .PATH_NAME:
+		path := godot.path_of(BENCH_PATH)
+		defer godot.destroy[.NODE_PATH](&path)
+		r := &path
+		for _ in 0 ..< n {
+			v := godot.node_path_get_name(intrinsics.volatile_load(&r), 1)
+			sum += i64(uintptr((^rawptr)(&v)^) & 1)
+			godot.destroy[.STRING_NAME](&v)
 		}
 	case .VALID_FLOAT_CALL:
 		num := godot.string_of("-123.456e-2")

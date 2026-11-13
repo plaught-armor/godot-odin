@@ -125,6 +125,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
+	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "replaced_name_strs", bag_replaced_name_strs, {"n", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
@@ -963,6 +964,68 @@ bag_replaced_numbers :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godo
 			i64(godot.string_name_is_valid_float(&n)),
 		}
 		for v in r { godot.packed_int64_array_append(&out, v) }
+	}
+	return out
+}
+
+// The NodePath reads of each text's NodePath, in the order `_check_replaced_paths` repeats them:
+// `is_empty`, `is_absolute`, both counts, each name, the name past the last, each subname, the
+// subname before the first, the concatenated names and subnames twice each (the second read from
+// the cache the first fills), then `hash` twice (likewise), then the concatenated names and
+// subnames again, both caches now filled, and whether `path_copies_counted` holds.
+// Whether each name, subname and filled concatenation `p` returns holds one reference of its own on
+// the interned data, as the engine's copy does: the 32-bit count at the start of that data rises by
+// one per live copy and falls back when it is destroyed. The count is read from the engine's
+// StringName::_Data, so only the counting is checked, not the layout.
+path_copies_counted :: proc(p: ^godot.NodePath, names, subnames: i64) -> bool {
+	counted :: proc(read: proc(p: ^godot.NodePath) -> godot.StringName, p: ^godot.NodePath) -> bool {
+		a := read(p)
+		defer godot.destroy[.STRING_NAME](&a)
+		if (^rawptr)(&a)^ == nil { return true }
+		count := (^u32)((^rawptr)(&a)^)
+		held := count^
+		b := read(p)
+		with_b := count^
+		godot.destroy[.STRING_NAME](&b)
+		return with_b == held + 1 && count^ == held
+	}
+	ok := counted(proc(p: ^godot.NodePath) -> godot.StringName { return godot.node_path_get_concatenated_names(p) }, p) &&
+		counted(proc(p: ^godot.NodePath) -> godot.StringName { return godot.node_path_get_concatenated_subnames(p) }, p)
+	if names > 0 { ok = ok && counted(proc(p: ^godot.NodePath) -> godot.StringName { return godot.node_path_get_name(p, 0) }, p) }
+	if subnames > 0 { ok = ok && counted(proc(p: ^godot.NodePath) -> godot.StringName { return godot.node_path_get_subname(p, 0) }, p) }
+	return ok
+}
+
+bag_replaced_paths :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godot.Array {
+	texts := texts
+	out := godot.array_new()
+	push :: proc(out: ^godot.Array, v: godot.Variant) {
+		v := v
+		godot.array_push_back(out, v)
+		gde.variant_destroy(&v)
+	}
+	name :: proc(out: ^godot.Array, n: godot.StringName) {
+		n := n
+		push(out, godot.variant(n))
+		godot.destroy[.STRING_NAME](&n)
+	}
+	for &t in godot.packed_read_string(&texts) {
+		p := godot.node_path_new_from_string(t)
+		defer godot.destroy[.NODE_PATH](&p)
+		names := godot.node_path_get_name_count(&p)
+		subnames := godot.node_path_get_subname_count(&p)
+		push(&out, godot.variant(godot.node_path_is_empty(&p)))
+		push(&out, godot.variant(godot.node_path_is_absolute(&p)))
+		push(&out, godot.variant(names))
+		push(&out, godot.variant(subnames))
+		for k in 0 ..= names { name(&out, godot.node_path_get_name(&p, k)) }
+		for k in -1 ..< subnames { name(&out, godot.node_path_get_subname(&p, k)) }
+		for _ in 0 ..< 2 { name(&out, godot.node_path_get_concatenated_names(&p)) }
+		for _ in 0 ..< 2 { name(&out, godot.node_path_get_concatenated_subnames(&p)) }
+		for _ in 0 ..< 2 { push(&out, godot.variant(godot.node_path_hash(&p))) }
+		name(&out, godot.node_path_get_concatenated_names(&p))
+		name(&out, godot.node_path_get_concatenated_subnames(&p))
+		push(&out, godot.variant(path_copies_counted(&p, names, subnames)))
 	}
 	return out
 }

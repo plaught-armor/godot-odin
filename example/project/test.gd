@@ -453,6 +453,9 @@ func _check_extras() -> int:
 	number_texts.append_array(["", "+", "-", "+1", "-1", "1-", "--1", "+-1", "1e5", "1e", "e5", ".e5", "1.e5",
 		"1e+5", "1e+-5", "1e5.0", "1.2.3", " 1", "1 ", "\u0661", "1E5", "-.5", "+.", "5e-", "0x1F", "1,5", "1e5-", "1e5+5", "1e-5+"])
 	failures += _check_replaced_numbers(b2, number_texts)
+	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
+		"/root/a/b:c:d", ":x", ":x:y", "../b", "a/b/c/d/e/f:g", "Body:position:x", "\u00f1/\u00fc:\u00f6",
+		"/root/check_node_path/layout:position:x", "a//b", "a/./b/../c"]))
 	var int_values: PackedInt64Array = [0, 1, -1, 9, 10, -10, 35, 36, 255, -256, 123456789, -987654321, 9223372036854775807, -9223372036854775807 - 1]
 	for base: int in [10, 2, 7, 16, 36]:
 		for caps: bool in [false, true]:
@@ -674,6 +677,40 @@ func _check_replaced_numbers(b2: Bag, texts: PackedStringArray) -> int:
 				print("FAIL: Bag.replaced_numbers on %s, read %d, gave %s, not %d" % [texts[i / 8], i % 8, got[i] if i < got.size() else "nothing", want[i]])
 				return 1
 		print("FAIL: Bag.replaced_numbers gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	return 0
+
+
+# The NodePath reads, from Bag.replaced_paths, against the engine's NodePath methods called from
+# GDScript in the same order on a separate NodePath of each text, so each side fills its own caches.
+# The out-of-range name and subname, and every read of the empty path, print the engine's errors.
+func _check_replaced_paths(b2: Bag, texts: PackedStringArray) -> int:
+	var want: Array = []
+	for t: String in texts:
+		var p: NodePath = NodePath(t)
+		var names: int = p.get_name_count()
+		var subnames: int = p.get_subname_count()
+		want.append_array([p.is_empty(), p.is_absolute(), names, subnames])
+		for k: int in range(0, names + 1):
+			want.append(p.get_name(k))
+		for k: int in range(-1, subnames):
+			want.append(p.get_subname(k))
+		for _k: int in 2:
+			want.append(p.get_concatenated_names())
+		for _k: int in 2:
+			want.append(p.get_concatenated_subnames())
+		for _k: int in 2:
+			want.append(p.hash())
+		want.append(p.get_concatenated_names())
+		want.append(p.get_concatenated_subnames())
+		want.append(true)
+	var got: Array = b2.replaced_paths(texts)
+	for i: int in want.size():
+		if i >= got.size() or typeof(got[i]) != typeof(want[i]) or got[i] != want[i]:
+			print("FAIL: Bag.replaced_paths, value %d, gave %s, not %s" % [i, got[i] if i < got.size() else "nothing", want[i]])
+			return 1
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_paths gave %d values, not %d" % [got.size(), want.size()])
 		return 1
 	return 0
 
