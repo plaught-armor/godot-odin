@@ -65,6 +65,7 @@ register :: proc() {
 	godot.method(c, "plane_ns", plane_ns, {"kind", "n"})
 	godot.method(c, "aabb_ns", aabb_ns, {"kind", "n"})
 	godot.method(c, "rect2_ns", rect2_ns, {"kind", "n"})
+	godot.method(c, "projection_ns", projection_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1538,6 +1539,74 @@ rect2_ns :: proc(self: ^Bench, kind: Rect2_Op, n: i64) -> f64 {
 		}
 	case .I_INTERSECTION:
 		for _ in 0 ..< n { sum += f32(godot.rect2i_intersection(intrinsics.volatile_load(&refi), bi).size.x) }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
+	return ns
+}
+
+// The Projection methods `projection_ns` times, paired the same way as Vector_Op.
+Projection_Op :: enum i64 {
+	INVERSE_CALL,     // the engine's Projection.inverse
+	INVERSE,          // projection_inverse
+	DETERMINANT_CALL, // the engine's Projection.determinant
+	DETERMINANT,      // projection_determinant
+	PLANE_CALL,       // the engine's Projection.get_projection_plane
+	PLANE,            // projection_get_projection_plane
+	PERSPECTIVE_CALL, // the engine's Projection.create_perspective
+	PERSPECTIVE,      // projection_create_perspective
+}
+
+// Nanoseconds per `kind` round on a perspective projection reread through a volatile load each
+// round, as in vector_ns. create_perspective rereads its field of view the same way.
+projection_ns :: proc(self: ^Bench, kind: Projection_Op, n: i64) -> f64 {
+	p := godot.projection_create_perspective(75, 16.0 / 9.0, 0.05, 4000, false)
+	ref := &p
+	fov, aspect, near, far := f64(75), f64(16.0 / 9.0), f64(0.05), f64(4000)
+	flip := u8(0)
+	plane := i64(godot.Projection_Planes.PLANE_LEFT)
+	inverse_fn := godot.builtin_method(.PROJECTION, "inverse", 4212530932)
+	determinant_fn := godot.builtin_method(.PROJECTION, "determinant", 466405837)
+	plane_fn := godot.builtin_method(.PROJECTION, "get_projection_plane", 1551184160)
+	perspective_fn := godot.builtin_method(.PROJECTION, "create_perspective", 390915442)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .INVERSE_CALL:
+		for _ in 0 ..< n {
+			r: godot.Projection
+			inverse_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r.x.x
+		}
+	case .INVERSE:
+		for _ in 0 ..< n { sum += godot.projection_inverse(intrinsics.volatile_load(&ref)).x.x }
+	case .DETERMINANT_CALL:
+		for _ in 0 ..< n {
+			r: f64
+			determinant_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += f32(r)
+		}
+	case .DETERMINANT:
+		for _ in 0 ..< n { sum += f32(godot.projection_determinant(intrinsics.volatile_load(&ref))) }
+	case .PLANE_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&plane}
+			r: godot.Plane
+			plane_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += r.d
+		}
+	case .PLANE:
+		for _ in 0 ..< n { sum += godot.projection_get_projection_plane(intrinsics.volatile_load(&ref), plane).d }
+	case .PERSPECTIVE_CALL:
+		for _ in 0 ..< n {
+			f := intrinsics.volatile_load(&fov)
+			args := [5]gde.ConstTypePtr{&f, &aspect, &near, &far, &flip}
+			r: godot.Projection
+			perspective_fn(nil, &args[0], &r, 5)
+			sum += r.x.x
+		}
+	case .PERSPECTIVE:
+		for _ in 0 ..< n { sum += godot.projection_create_perspective(intrinsics.volatile_load(&fov), aspect, near, far, false).x.x }
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)

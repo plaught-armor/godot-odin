@@ -134,6 +134,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_aabbs", bag_replaced_aabbs, {"a", "b", "p", "v", "w", "x", "n"})
 	godot.method(b, "replaced_rect2s", bag_replaced_rect2s, {"a", "b", "c", "v", "w", "x", "n"})
 	godot.method(b, "replaced_rect2is", bag_replaced_rect2is, {"a", "b", "v", "w", "n", "m"})
+	godot.method(b, "replaced_projections", bag_replaced_projections, {"a", "t", "r", "box", "w", "q", "x", "y", "z", "u", "n", "m", "flip"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1354,7 +1355,7 @@ Basis_Results :: struct {
 
 // Appends `v` to `o` as integers: floats by their bits with NaNs made one quiet NaN, a Basis by
 // its columns (the axes GDScript indexes), a transform by its basis columns and then its origin,
-// a vector or quaternion by component, an AABB or Rect2 or Rect2i by position and then size, a Plane by its normal and then its distance as a double.
+// a Projection by its columns, a vector or quaternion by component, an AABB or Rect2 or Rect2i by position and then size, a Plane by its normal and then its distance as a double.
 put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 	when T == godot.Basis {
 		for c in 0 ..< 3 { put_basis_result(o, godot.Vector3{v.x[c], v.y[c], v.z[c]}) }
@@ -1374,7 +1375,9 @@ put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 		v := v
 		put_basis_result(o, i64(godot.variant_tag(&v)))
 		if godot.variant_tag(&v) == .VECTOR3 { put_basis_result(o, (^godot.Vector3)(&v._opaque[8])^) }
-	} else when T == godot.Vector2 || T == godot.Vector3 || T == godot.Quaternion || T == godot.Vector2i {
+	} else when T == godot.Projection {
+		for e in ([4]godot.Vector4{v.x, v.y, v.z, v.w}) { put_basis_result(o, e) }
+	} else when T == godot.Vector2 || T == godot.Vector3 || T == godot.Vector4 || T == godot.Quaternion || T == godot.Vector2i {
 		for e in v { put_basis_result(o, e) }
 	} else when T == f32 {
 		put_basis_result(o, i64(0x7fc00000) if v != v else i64(transmute(u32)v))
@@ -1647,5 +1650,43 @@ bag_replaced_rect2is :: proc(self: ^Bag, a, b: godot.Rect2i, v, w: godot.Vector2
 	put_basis_result(&o, godot.rect2i_grow_side(&a, n, m))
 	put_basis_result(&o, godot.rect2i_grow_individual(&a, m, i64(v.x), i64(w.y), -m))
 	put_basis_result(&o, godot.rect2i_abs(&a))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// Each Projection proc that replaces an engine method, in the order test.gd calls the engine's.
+bag_replaced_projections :: proc(self: ^Bag, a: godot.Projection, t: godot.Transform3D, r: godot.Rect2, box: godot.AABB, w, q: godot.Vector2, x, y, z, u: f64, n, m: i64, flip: bool) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	wx, wy, qx, qy := f64(w.x), f64(w.y), f64(q.x), f64(q.y)
+	put_basis_result(&o, godot.projection_new())
+	put_basis_result(&o, godot.projection_new_from_projection(a))
+	put_basis_result(&o, godot.projection_new_from_transform3d(t))
+	put_basis_result(&o, godot.projection_new_from_vector4_vector4_vector4_vector4(a.w, a.z, a.y, a.x))
+	put_basis_result(&o, godot.projection_create_depth_correction(flip))
+	put_basis_result(&o, godot.projection_create_light_atlas_rect(r))
+	put_basis_result(&o, godot.projection_create_perspective(x, y, z, u, flip))
+	put_basis_result(&o, godot.projection_create_perspective_hmd(x, y, z, u, flip, n, wx, wy))
+	put_basis_result(&o, godot.projection_create_for_hmd(n, y, wx, qx, qy, x, z, u))
+	put_basis_result(&o, godot.projection_create_orthogonal(wx, qx, wy, qy, z, u))
+	put_basis_result(&o, godot.projection_create_orthogonal_aspect(x, y, z, u, flip))
+	put_basis_result(&o, godot.projection_create_frustum(wx, qx, wy, qy, z, u))
+	put_basis_result(&o, godot.projection_create_frustum_aspect(x, y, w, z, u, flip))
+	put_basis_result(&o, godot.projection_create_fit_aabb(box))
+	put_basis_result(&o, godot.projection_get_fovy(x, y))
+	put_basis_result(&o, godot.projection_determinant(&a))
+	put_basis_result(&o, godot.projection_perspective_znear_adjusted(&a, z))
+	put_basis_result(&o, godot.projection_get_projection_plane(&a, n))
+	put_basis_result(&o, godot.projection_flipped_y(&a))
+	put_basis_result(&o, godot.projection_jitter_offseted(&a, w))
+	put_basis_result(&o, godot.projection_get_z_far(&a))
+	put_basis_result(&o, godot.projection_get_z_near(&a))
+	put_basis_result(&o, godot.projection_get_aspect(&a))
+	put_basis_result(&o, godot.projection_get_fov(&a))
+	put_basis_result(&o, godot.projection_is_orthogonal(&a))
+	put_basis_result(&o, godot.projection_get_viewport_half_extents(&a))
+	put_basis_result(&o, godot.projection_get_far_plane_half_extents(&a))
+	put_basis_result(&o, godot.projection_inverse(&a))
+	put_basis_result(&o, godot.projection_get_pixels_per_meter(&a, m))
+	put_basis_result(&o, godot.projection_get_lod_multiplier(&a))
 	return godot.packed_of_int64(o.v[:o.n])
 }

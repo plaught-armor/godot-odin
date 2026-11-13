@@ -328,3 +328,46 @@ points often on an edge.
 The error the engine prints under `MATH_CHECKS` for a negative size is printed by the same methods
 here, once for a two-rect method, whichever rect is negative. `intersection` prints it through its
 intersection test, as the engine's does.
+
+## Projection
+
+The `Projection` methods and constructors are defined in `godot/projection.odin` under the same
+names and signatures: the constructors (identity, from a projection, from a `Transform3D`, from
+four columns), the static `create_depth_correction`, `create_light_atlas_rect`,
+`create_perspective`, `create_perspective_hmd`, `create_for_hmd`, `create_orthogonal`,
+`create_orthogonal_aspect`, `create_frustum`, `create_frustum_aspect`, `create_fit_aabb` and
+`get_fovy`, and `determinant`, `perspective_znear_adjusted`, `get_projection_plane`, `flipped_y`,
+`jitter_offseted`, `get_z_far`, `get_z_near`, `get_aspect`, `get_fov`, `is_orthogonal`,
+`get_viewport_half_extents`, `get_far_plane_half_extents`, `inverse`, `get_pixels_per_meter` and
+`get_lod_multiplier`. Each follows `core/math/projection.cpp` and `projection.h` of Godot
+4.7-stable with the same operation order, so results match bit for bit, NaN and signed zero
+included. Where a double literal in the engine's code widens an expression to double (`/ 2.0`,
+`* 0.5`, `1.0 /`, the double overload of `Math::deg_to_rad`), the replacement computes that step
+in double too, and it calls the same libm functions: `sinf`, `cosf` and `atan2f` on floats, `tan`
+and `atan` on doubles. Products such as `-2 * far * near` keep the engine's order, since the first
+product can overflow on its own. Plane and eye indices keep only their low 32 bits, as the engine's
+`int` parameters do: a plane outside the enum gives the zero plane, and an eye other than 1 or 2
+gives the mono projection, or the identity from `create_for_hmd`.
+`get_pixels_per_meter` truncates to `int` as x86-64's `cvttss2si` does. `inverse` runs the
+engine's Gauss-Jordan elimination with the same pivot swaps and the same skipped zero entries,
+holding each row as two four-lane values swapped by value rather than through row pointers, so
+the rows stay in registers. Checked against Godot 4.7-stable by `_check_replaced_projections`,
+which compares every result from GDScript and from `Bag.replaced_projections` on edge cases (the
+identity, the zero matrix, perspective, orthogonal and asymmetric frustums, a permutation that
+needs every pivot swap, matrices singular at each pivot, signed-zero, infinite, NaN and huge
+entries, refused frustums, zero aspects and depth ranges, far planes and sizes that overflow in
+one order of operations but not another, subnormal sizes, every plane and eye and ones out of
+range, pixel widths beyond a C `int`) and on 1500 seeded random cases. One random case in five
+takes most matrix entries from 0, -0, ±1 and ±2, so pivot candidates tie in magnitude.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Projection.inverse` | 34.9 ns | 13.7 ns |
+| `Projection.determinant` | 11.3 ns | 8.6 ns |
+| `Projection.get_projection_plane` | 15.2 ns | 2.5 ns |
+| `Projection.create_perspective` | 13.2 ns | 3.4 ns |
+
+The errors the engine prints when it refuses a frustum (`p_right <= p_left`, `p_top <= p_bottom`,
+`p_far <= p_near`) or meets a zero pivot in `inverse` (`0.0 == r0[0]` to `0.0 == r3[3]`) are
+printed by the same methods here, and the result is then what the engine returns: the matrix as
+it stood before the frustum was set, or the matrix itself for a singular inverse.

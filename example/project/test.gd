@@ -523,6 +523,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_aabbs(b2)
 	failures += _check_replaced_rect2s(b2)
 	failures += _check_replaced_rect2is(b2)
+	failures += _check_replaced_projections(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -973,13 +974,19 @@ func _put_basis_result(out: PackedInt64Array, v: Variant) -> void:
 		TYPE_TRANSFORM2D:
 			for e: Vector2 in [v.x, v.y, v.origin]:
 				_put_basis_result(out, e)
+		TYPE_PROJECTION:
+			for e: Vector4 in [v.x, v.y, v.z, v.w]:
+				_put_basis_result(out, e)
+		TYPE_PLANE:
+			_put_basis_result(out, v.normal)
+			_put_basis_result(out, v.d)
 		TYPE_VECTOR2:
 			for e: float in [v.x, v.y]:
 				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
 		TYPE_VECTOR3:
 			for e: float in [v.x, v.y, v.z]:
 				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
-		TYPE_QUATERNION:
+		TYPE_QUATERNION, TYPE_VECTOR4:
 			for e: float in [v.x, v.y, v.z, v.w]:
 				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
 		TYPE_VECTOR2I:
@@ -1719,6 +1726,140 @@ func _check_replaced_rect2is(b2: Bag) -> int:
 			v = a.position + a.size * rng.randi_range(0, 1)
 		failures += _check_rect2i_case(b2, a, b, v, Vector2i(rng.randi_range(-10, 10), rng.randi_range(-10, 10)),
 			rng.randi_range(0, 4), rng.randi_range(-3, 3))
+	return failures
+
+
+
+# The engine's Projection methods in the order Bag.replaced_projections calls the Odin procs.
+func _projection_results(a: Projection, t: Transform3D, r: Rect2, box: AABB, w: Vector2, q: Vector2, x: float,
+		y: float, z: float, u: float, n: int, m: int, flip: bool) -> PackedInt64Array:
+	var vs: Array = [Projection(), Projection(a), Projection(t), Projection(a.w, a.z, a.y, a.x),
+		Projection.create_depth_correction(flip), Projection.create_light_atlas_rect(r),
+		Projection.create_perspective(x, y, z, u, flip), Projection.create_perspective_hmd(x, y, z, u, flip, n, w.x, w.y),
+		Projection.create_for_hmd(n, y, w.x, q.x, q.y, x, z, u), Projection.create_orthogonal(w.x, q.x, w.y, q.y, z, u),
+		Projection.create_orthogonal_aspect(x, y, z, u, flip), Projection.create_frustum(w.x, q.x, w.y, q.y, z, u),
+		Projection.create_frustum_aspect(x, y, w, z, u, flip), Projection.create_fit_aabb(box), Projection.get_fovy(x, y),
+		a.determinant(), a.perspective_znear_adjusted(z), a.get_projection_plane(n), a.flipped_y(), a.jitter_offseted(w),
+		a.get_z_far(), a.get_z_near(), a.get_aspect(), a.get_fov(), a.is_orthogonal(), a.get_viewport_half_extents(),
+		a.get_far_plane_half_extents(), a.inverse(), a.get_pixels_per_meter(m), a.get_lod_multiplier()]
+	var o: PackedInt64Array = PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+func _check_projection_case(b2: Bag, a: Projection, t: Transform3D, r: Rect2, box: AABB, w: Vector2, q: Vector2,
+		x: float, y: float, z: float, u: float, n: int, m: int, flip: bool) -> int:
+	var want: PackedInt64Array = _projection_results(a, t, r, box, w, q, x, y, z, u, n, m, flip)
+	var got: PackedInt64Array = b2.replaced_projections(a, t, r, box, w, q, x, y, z, u, n, m, flip)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_projections(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d, %s) differs at %d of %d: %s, not %s" % [
+		a, t, r, box, w, q, x, y, z, u, n, m, flip, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# A random projection: a perspective, a frustum, an orthogonal one, or loose columns in [-3, 3]
+# with about a quarter of the entries zero, so the inverse meets both pivot swaps and skipped rows.
+# One kind in five takes most entries from 0, -0, 1, -1, 2 and -2, so pivot candidates tie in
+# magnitude and signed zeros meet in the elimination.
+func _random_projection(rng: RandomNumberGenerator) -> Projection:
+	var kind: int = rng.randi_range(0, 4)
+	match kind:
+		0:
+			return Projection.create_perspective(rng.randf_range(10, 150), rng.randf_range(0.3, 3), rng.randf_range(0.01, 2),
+				rng.randf_range(3, 500), rng.randi_range(0, 1) == 1)
+		1:
+			return Projection.create_frustum(rng.randf_range(-3, -0.1), rng.randf_range(0.1, 3), rng.randf_range(-3, -0.1),
+				rng.randf_range(0.1, 3), rng.randf_range(0.01, 2), rng.randf_range(3, 500))
+		2:
+			return Projection.create_orthogonal(rng.randf_range(-3, -0.1), rng.randf_range(0.1, 3), rng.randf_range(-3, -0.1),
+				rng.randf_range(0.1, 3), rng.randf_range(0.01, 2), rng.randf_range(3, 500))
+	var c: Array[Vector4] = []
+	for k: int in 4:
+		var e: Vector4 = Vector4()
+		for i: int in 4:
+			if kind == 4 and rng.randi_range(0, 3) != 0:
+				e[i] = [0.0, -float(Time.get_ticks_msec() * 0), 1.0, -1.0, 2.0, -2.0][rng.randi_range(0, 5)]
+			else:
+				e[i] = 0.0 if rng.randi_range(0, 3) == 0 else rng.randf_range(-3, 3)
+		c.append(e)
+	return Projection(c[0], c[1], c[2], c[3])
+
+
+# The Projection procs that replace engine methods, on edge cases (the identity, singular matrices
+# that stop the inverse at each pivot, a permutation that needs every pivot swap, signed-zero,
+# infinite and NaN entries, refused frustums, zero aspects and depth ranges, every plane, eye and
+# out-of-range ones, pixel widths beyond a C int), then on seeded random projections.
+func _check_replaced_projections(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var edges: Array[Projection] = [Projection(), Projection.ZERO, Projection.create_perspective(75, 16.0 / 9.0, 0.05, 4000),
+		Projection.create_orthogonal(-2, 2, -1, 1, 0.1, 100), Projection.create_frustum(-1, 2, -0.5, 1.5, 0.1, 50),
+		Projection(Vector4(0, 1, 0, 0), Vector4(0, 0, 0, 1), Vector4(1, 0, 0, 0), Vector4(0, 0, 1, 0)),
+		Projection(Vector4(0, 1, 0, 0), Vector4(0, 2, 0, 0), Vector4(1, 0, 1, 0), Vector4(0, 0, 0, 1)),
+		Projection(Vector4(1, 2, 0, 0), Vector4(2, 4, 0, 0), Vector4(0, 0, 1, 0), Vector4(0, 0, 0, 1)),
+		Projection(Vector4(1, 0, 0, 0), Vector4(0, 1, 0, 0), Vector4(0, 0, 1, 0), Vector4(0, 0, 0, 0)),
+		Projection(Vector4(nz, 0, 0, 0), Vector4(0, nz, 0, nz), Vector4(nz, 0, -1, -1), Vector4(0, 0, nz, 0)),
+		Projection(Vector4(1, NAN, 0, 0), Vector4(0, 1, 0, 0), Vector4(0, 0, INF, 0), Vector4(0, 0, 0, 1)),
+		Projection(Vector4(1e30, 0, 0, 1e-30), Vector4(3, -1e30, 0, 0), Vector4(0, 2, 1e-30, -1), Vector4(-5, 0, 1e30, 0))]
+	var ts: Array[Transform3D] = [Transform3D(), Transform3D(Basis(Vector3(1, 2, 3), Vector3(4, 5, 6), Vector3(7, 8, 9)),
+		Vector3(-1, nz, NAN))]
+	var rs: Array[Rect2] = [Rect2(0.25, 0.5, 0.5, 0.25), Rect2(nz, 1, -2, NAN)]
+	var boxes: Array[AABB] = [AABB(Vector3(-1, -2, -3), Vector3(2, 4, 6)), AABB(Vector3.ZERO, Vector3(0, 1, nz)),
+		AABB(Vector3(1e30, 0, 0), Vector3(1e30, INF, NAN))]
+	var ws: PackedVector2Array = PackedVector2Array([Vector2(-1, -0.5), Vector2(1, 0.5), Vector2.ZERO, Vector2(nz, nz),
+		Vector2(NAN, 1), Vector2(INF, -INF), Vector2(0.064, 0.0)])
+	var qs: PackedVector2Array = PackedVector2Array([Vector2(1, 0.5), Vector2(-1, -0.5), Vector2(0.14, 0.04), Vector2.ZERO,
+		Vector2(1e30, 1e-30)])
+	var xs: PackedFloat64Array = PackedFloat64Array([75.0, 0.0, 180.0, -90.0, 360.0, 1e-30, NAN, INF, nz, 90.0, 1.0])
+	var ys: PackedFloat64Array = PackedFloat64Array([16.0 / 9.0, 0.0, -1.0, 1.0, NAN, INF, nz, 1e-30, 3.0])
+	var zs: PackedFloat64Array = PackedFloat64Array([0.05, 0.0, -1.0, 1.0, 100.0, NAN, nz])
+	var us: PackedFloat64Array = PackedFloat64Array([4000.0, 0.05, 0.0, 1.0, INF, NAN, 100.0, 0.5])
+	var ns: PackedInt64Array = PackedInt64Array([0, 1, 2, 3, 4, 5, 6, -1, 4294967297, 4294967298])
+	var ms: PackedInt64Array = PackedInt64Array([0, 1, 1920, -7, 2147483647, -2147483648, 4294967396])
+	for i: int in edges.size():
+		for j: int in [0, 1, 3, 5, 8, 11]:
+			var k: int = i + j
+			failures += _check_projection_case(b2, edges[i], ts[k % ts.size()], rs[k % rs.size()], boxes[k % boxes.size()],
+				ws[k % ws.size()], qs[(i + 2 * j + 1) % qs.size()], xs[k % xs.size()], ys[(i + 2 * j) % ys.size()],
+				zs[k % zs.size()], us[(i + 3 * j) % us.size()], ns[k % ns.size()], ms[k % ms.size()], k % 2 == 1)
+	for n: int in ns:
+		for i: int in [2, 4]:
+			failures += _check_projection_case(b2, edges[i], ts[1], rs[0], boxes[0], ws[0], qs[2], 90.0, 1.5, 0.1, 100.0, n,
+				ms[n % ms.size()], n % 2 == 0)
+	# A far plane past half the float range, so `-2 * far` overflows before the near plane scales
+	# it, a size whose quotient by the aspect overflows before it is halved, and subnormal sizes,
+	# whose quotient and half round differently in each order.
+	var deep: Projection = Projection(Vector4(1, 0, 0, 0), Vector4(0, 1, 0, 0), Vector4(0, 0, 0, 1), Vector4(0, 0, -3e38, 0))
+	for c: Array in [[75.0, 1.5, false, 1], [3e38, 0.85, true, 2], [3e-45, 1.495929, true, 0], [3e-45, 0.36658695, true, 1],
+			[1e-38, 3.0, true, 2]]:
+		failures += _check_projection_case(b2, deep, ts[0], rs[0], boxes[0], Vector2(-1, -1), Vector2(1, 1), c[0], c[1], 0.5,
+			3e38, c[3], 1920, c[2])
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261119
+	for round: int in 1500:
+		var a: Projection = _random_projection(rng)
+		var t: Transform3D = Transform3D(Basis(Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3)),
+			Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3)),
+			Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))),
+			Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3)))
+		var r: Rect2 = Rect2(rng.randf_range(-1, 1), rng.randf_range(-1, 1), rng.randf_range(0, 1), rng.randf_range(0, 1))
+		var box: AABB = AABB(Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3)),
+			Vector3(rng.randf_range(0.1, 3), rng.randf_range(0.1, 3), rng.randf_range(0.1, 3)))
+		# Left and bottom below right and top, except one time in eight, when the frustum is refused.
+		var w: Vector2 = Vector2(rng.randf_range(-3, -0.01), rng.randf_range(-3, -0.01))
+		var q: Vector2 = Vector2(rng.randf_range(0.01, 3), rng.randf_range(0.01, 3))
+		if rng.randi_range(0, 7) == 0:
+			var swap: Vector2 = w
+			w = q
+			q = swap
+		var near: float = rng.randf_range(0.01, 3)
+		failures += _check_projection_case(b2, a, t, r, box, w, q, rng.randf_range(-30, 179), rng.randf_range(0.2, 3), near,
+			near + rng.randf_range(0.5, 600), rng.randi_range(-1, 6), rng.randi_range(0, 4000), rng.randi_range(0, 1) == 1)
 	return failures
 
 

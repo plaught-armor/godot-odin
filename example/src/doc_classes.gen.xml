@@ -255,6 +255,9 @@
 		<method name="replaced_rect2is">
 			<description>The Rect2i procs that replace engine methods (godot/rect2.odin) on [code]a[/code] and [code]b[/code], with [code]v[/code] and [code]w[/code] the vector arguments, [code]n[/code] the side and [code]m[/code] the growth. test.gd's _rect2i_results calls the engine's own methods in the same order.</description>
 		</method>
+		<method name="replaced_projections">
+			<description>Each Projection proc that replaces an engine method, in the order test.gd calls the engine's.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>
