@@ -23,7 +23,8 @@ import gde "../gdextension"
 @(private) m_clamp :: #force_inline proc "contextless" (x, lo, hi: f32) -> f32 { return lo if x < lo else (hi if x > hi else x) }
 @(private) m_sqrt :: #force_inline proc "contextless" (x: f32) -> f32 { return intrinsics.sqrt(x) }
 @(private) m_lerp :: #force_inline proc "contextless" (from, to, weight: f32) -> f32 { return from + (to - from) * weight }
-@(private) m_is_finite :: #force_inline proc "contextless" (x: f32) -> bool { return x == x && m_abs(x) != math.INF_F32 }
+// Neither an infinity nor a NaN: those alone have every exponent bit set. One test, no branch.
+@(private) m_is_finite :: #force_inline proc "contextless" (x: f32) -> bool { return transmute(u32)x & 0x7f800000 != 0x7f800000 }
 @(private) m_is_zero_approx :: #force_inline proc "contextless" (x: f32) -> bool { return m_abs(x) < CMP_EPSILON }
 
 @(private) m_is_equal_approx :: #force_inline proc "contextless" (a, b: f32) -> bool {
@@ -100,8 +101,10 @@ import gde "../gdextension"
 }
 
 @(private) v_all :: #force_inline proc "contextless" (v: $V/[$N]f32, $f: proc "contextless" (f32) -> bool) -> bool {
-	#unroll for i in 0 ..< N { if !f(v[i]) { return false } }
-	return true
+	// Every component tested and the answers combined, so no branch separates them.
+	ok := true
+	#unroll for i in 0 ..< N { ok &= f(v[i]) }
+	return ok
 }
 
 @(private) v_is_finite :: #force_inline proc "contextless" (v: $V/[$N]f32) -> bool { return v_all(v, m_is_finite) }
@@ -206,8 +209,14 @@ import gde "../gdextension"
 }
 
 @(private) m_floor :: #force_inline proc "contextless" (x: f32) -> f32 { return libc.floorf(x) }
-@(private) m_ceil :: #force_inline proc "contextless" (x: f32) -> f32 { return libc.ceilf(x) }
-@(private) m_round :: #force_inline proc "contextless" (x: f32) -> f32 { return libc.roundf(x) }
+// ceilf and roundf through floorf, which compiles to one instruction where they stay libm calls.
+// Both equal libm's on every f32 bit pattern, NaN payloads and signs included.
+@(private) m_ceil :: #force_inline proc "contextless" (x: f32) -> f32 { return -libc.floorf(-x) }
+@(private) m_round :: #force_inline proc "contextless" (x: f32) -> f32 {
+	// 0.49999997 is the f32 just under one half, so a value just under a half does not round up.
+	whole := libc.floorf(abs(x) + 0.49999997)
+	return transmute(f32)(transmute(u32)whole & 0x7fffffff | transmute(u32)x & 0x80000000)
+}
 
 // Vector2 ----------------------------------------------------------------------------------------
 

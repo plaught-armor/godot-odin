@@ -140,9 +140,16 @@ elem_eq :: #force_inline proc "contextless" (a, b: ^$E) -> bool {
 		if pa == pb { return true }
 		n := string_stored_length(a)
 		return n == string_stored_length(b) && runes_equal(([^]rune)(pa), ([^]rune)(pb), int(n))
+	} else when E == Vector4 || E == Color {
+		// Four floats compared as one vector: the same `==` per component, in one instruction.
+		x := intrinsics.unaligned_load((^#simd[4]f32)(a))
+		y := intrinsics.unaligned_load((^#simd[4]f32)(b))
+		return intrinsics.simd_reduce_and(intrinsics.simd_lanes_eq(x, y)) != 0
 	} else when intrinsics.type_is_array(E) {
-		#unroll for i in 0 ..< len(E) { if a[i] != b[i] { return false } }
-		return true
+		// Every component compared and the answers combined, so a search has no branch per component.
+		eq := true
+		#unroll for i in 0 ..< len(E) { eq &= a[i] == b[i] }
+		return eq
 	} else {
 		return a^ == b^
 	}
@@ -156,8 +163,15 @@ elem_less :: #force_inline proc "contextless" (a, b: ^$E) -> bool {
 	when E == String {
 		return string_less(a, b)
 	} else when intrinsics.type_is_array(E) {
-		#unroll for i in 0 ..< len(E) - 1 { if a[i] != b[i] { return a[i] < b[i] } }
-		return a[len(E) - 1] < b[len(E) - 1]
+		when len(E) == 2 {
+			// Two components with no branch: the first is less, or equal with the second less. A
+			// NaN is neither, so it ends the comparison as false. Slower than branches from three
+			// components up.
+			return (a[0] < b[0]) | ((a[0] == b[0]) & (a[1] < b[1]))
+		} else {
+			#unroll for i in 0 ..< len(E) - 1 { if a[i] != b[i] { return a[i] < b[i] } }
+			return a[len(E) - 1] < b[len(E) - 1]
+		}
 	} else {
 		return a^ < b^
 	}
@@ -166,14 +180,15 @@ elem_less :: #force_inline proc "contextless" (a, b: ^$E) -> bool {
 // String's `<`: the characters compared as unsigned codes until one differs or `a` ends, its end
 // read as the terminator 0, as str_compare reads it.
 @(private)
-string_less :: proc "contextless" (a, b: ^String) -> bool {
+string_less :: #force_inline proc "contextless" (a, b: ^String) -> bool {
 	x, y := string_read(a), string_read(b)
-	for i in 0 ..= len(x) {
-		l := u32(x[i]) if i < len(x) else 0
-		r := u32(y[i]) if i < len(y) else 0
+	n := min(len(x), len(y))
+	#no_bounds_check for i in 0 ..< n {
+		l, r := u32(x[i]), u32(y[i])
 		if l == 0 || l != r { return l < r }
 	}
-	return false
+	// Equal so far: `a` is less only when it ends here and `b` goes on with a character.
+	#no_bounds_check return len(x) == n && n < len(y) && y[n] != 0
 }
 
 // Vector::find: the first `v` at or after `from`, a negative `from` counting back from the end, or
@@ -184,9 +199,10 @@ packed_find :: proc "contextless" (xs: []$E, v: ^E, from: i64) -> i64 {
 	from := from + n if from < 0 else from
 	if from < 0 || from >= n { return -1 }
 	start := from
-	when E != String {
+	when E != String && E != Vector4 && E != Color {
 		// Whole blocks of PACKED_BLOCK tested with no branch per element, so the compares vectorize;
-		// the block holding the first `v` is then searched one by one.
+		// the block holding the first `v` is then searched one by one. Not for Vector4 and Color:
+		// one of those is a whole vector compare already, and searching a block twice costs more.
 		#no_bounds_check for _ in 0 ..< (n - from) / PACKED_BLOCK {
 			hit := false
 			#unroll for k in 0 ..< PACKED_BLOCK { hit |= elem_eq(&xs[start + i64(k)], v) }
@@ -205,7 +221,7 @@ packed_rfind :: proc "contextless" (xs: []$E, v: ^E, from: i64) -> i64 {
 	from := from + n if from < 0 else from
 	if from < 0 || from >= n { return -1 }
 	last := from
-	when E != String {
+	when E != String && E != Vector4 && E != Color {
 		// Blocks ending at `last`, tested as in `packed_find`, going down.
 		#no_bounds_check for _ in 0 ..< (from + 1) / PACKED_BLOCK {
 			hit := false
@@ -214,8 +230,8 @@ packed_rfind :: proc "contextless" (xs: []$E, v: ^E, from: i64) -> i64 {
 			last -= PACKED_BLOCK
 		}
 	}
-	#no_bounds_check for j in 0 ..= last {
-		if elem_eq(&xs[last - j], v) { return last - j }
+	#no_bounds_check for i := last; i >= 0; i -= 1 {
+		if elem_eq(&xs[i], v) { return i }
 	}
 	return -1
 }
@@ -223,7 +239,21 @@ packed_rfind :: proc "contextless" (xs: []$E, v: ^E, from: i64) -> i64 {
 // Vector::count: how many elements equal `v`.
 @(private)
 packed_count :: proc "contextless" (xs: []$E, v: ^E) -> (c: i64) {
-	for &x in xs { if elem_eq(&x, v) { c += 1 } }
+	when size_of(E) == 1 {
+		// Bytes are counted 255 at a time into a byte, so the compares stay sixteen to an
+		// instruction and are not widened to the 64-bit total one by one.
+		CHUNK :: 255
+		rest := xs
+		for _ in 0 ..= len(xs) / CHUNK {
+			part := rest[:min(len(rest), CHUNK)]
+			hits: u8
+			for &x in part { hits += u8(elem_eq(&x, v)) }
+			c += i64(hits)
+			rest = rest[len(part):]
+		}
+	} else {
+		for &x in xs { if elem_eq(&x, v) { c += 1 } }
+	}
 	return
 }
 
@@ -232,11 +262,20 @@ packed_count :: proc "contextless" (xs: []$E, v: ^E) -> (c: i64) {
 @(private)
 packed_bsearch :: proc "contextless" (xs: []$E, v: ^E, before: bool) -> i64 {
 	lo, hi := 0, len(xs)
-	// Each step halves hi - lo, so 64 steps cover any length.
-	for _ in 0 ..< 64 {
-		if lo >= hi { break }
-		mid := (lo + hi) / 2
-		if before ? elem_less(&xs[mid], v) : !elem_less(v, &xs[mid]) { lo = mid + 1 } else { hi = mid }
+	// Each step halves hi - lo, so 64 steps cover any length. One loop per `before`, so the choice
+	// is made once, and mid is always below len(xs).
+	if before {
+		#no_bounds_check for _ in 0 ..< 64 {
+			if lo >= hi { break }
+			mid := int(uint(lo + hi) >> 1)
+			if elem_less(&xs[mid], v) { lo = mid + 1 } else { hi = mid }
+		}
+	} else {
+		#no_bounds_check for _ in 0 ..< 64 {
+			if lo >= hi { break }
+			mid := int(uint(lo + hi) >> 1)
+			if !elem_less(v, &xs[mid]) { lo = mid + 1 } else { hi = mid }
+		}
 	}
 	return i64(lo)
 }

@@ -438,7 +438,11 @@ shared array, a pushed one whose capacity differs from its size, and an emptied 
 these and `packed_read` fall back to engine calls.
 
 `find` and `rfind` test whole blocks of eight elements with no branch per element, so the
-compares vectorize, and search the block holding a match one by one. Checked against Godot
+compares vectorize, and search the block holding a match one by one. Vector4 and Color elements
+are the exception: each is compared as one four-float vector, element by element. `count` adds
+bytes up 255 at a time in a byte, so those compares stay sixteen to an instruction. `<` on
+two-component vectors is computed with no branch; from three components up branches are faster.
+Checked against Godot
 4.7-stable by `_check_replaced_packed`, which compares every read of every type from GDScript and
 from `Bag.replaced_packed`, the out-of-range errors included, on empty, sorted and unsorted arrays
 holding repeats, NaN, -0 and the extremes; on values that hit, miss, or hit only after the ptrcall
@@ -451,9 +455,25 @@ seeded random sets, half of them of up to 40 elements with a value set at random
 | `PackedInt64Array.get` | 1.8 ns | 1.4 ns |
 | `PackedInt64Array.find` | 12.0 ns | 5.1 ns |
 | `PackedStringArray.find` | 13.3 ns | 11.7 ns |
+| `PackedByteArray.count` | 25.0 ns | 2.5 ns |
+| `PackedByteArray.bsearch` | 5.3 ns | 3.4 ns |
+| `PackedVector2Array.rfind` | 13.4 ns | 7.1 ns |
+| `PackedVector4Array.find` | 23.1 ns | 13.9 ns |
+| `PackedVector4Array.count` | 30.6 ns | 25.1 ns |
+| `PackedStringArray.bsearch` | 13.9 ns | 10.3 ns |
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an array of 0 to 63,
-and `find` of "12" in a PackedStringArray of "0" to "15".
+and `find` of "12" in a PackedStringArray of "0" to "15". The rows from `PackedByteArray.count`
+down search 64 ascending elements for element 40, `rfind` from the end.
+
+## Benching every replacement
+
+`tools/bench_gen.py` writes `bench/src/gen_replaced.odin`: one engine-against-replacement pair
+for every method in `REPLACED` and `REPLACED_TYPES` that `bench/project/bench.gd` does not time
+by hand, with sample arguments picked by type and argument name. Run it after adding a
+replacement, then `bench/build.sh`; a replacement slower than its engine call is a defect to fix
+or drop. On Godot 4.7-stable every pair is at or ahead of the engine within run-to-run noise of
+about 5%; `Basis.looking_at` and the Vector4 and Color `rfind` and `bsearch` are the ties.
 
 ## Array
 
