@@ -282,6 +282,7 @@ Variant or Callable in between.
 | Pattern | Example |
 |---|---|
 | Engine classes are `distinct rawptr` | `godot.Node`, `godot.InputEventKey` |
+| Vectors and `Color` are `distinct [N]T` arrays, so arithmetic and swizzles work on them directly | `v := godot.Vector3{1, 2, 3}; v.xy * 2`, `c.rgb` |
 | Class methods are `<class>_<method>(self, ...)` | `godot.node_add_child(node, child, false, .INTERNAL_MODE_DISABLED)` |
 | Singletons are `<class>_singleton()` | `godot.engine_singleton()` |
 | Builtin methods are `<type>_<method>(&self, ...)` | `godot.callable_call(&f, arg)` |

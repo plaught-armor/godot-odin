@@ -56,6 +56,7 @@ register :: proc() {
 	godot.method(c, "group_item_ns", group_item_ns, {"n"})
 	godot.method(c, "callable_call_ns", callable_call_ns, {"f", "n"})
 	godot.method(c, "ident_ns", ident_ns, {"kind", "n"})
+	godot.method(c, "vector_ns", vector_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -432,6 +433,74 @@ odin_callable :: proc(self: ^Bench) -> godot.Callable {
 // Adds `x` to the total.
 bump :: proc(self: ^Bench, x: i64) {
 	self.total += x
+}
+
+// The Vector3 methods `vector_ns` times: each _CALL row calls the engine's method through its
+// builtin method pointer, as the bindings did before godot/vector.odin replaced it, and the row
+// after it the in-place proc.
+Vector_Op :: enum i64 {
+	LENGTH_CALL,     // the engine's Vector3.length
+	LENGTH,          // vector3_length
+	NORMALIZED_CALL, // the engine's Vector3.normalized
+	NORMALIZED,      // vector3_normalized
+	DOT_CALL,        // the engine's Vector3.dot
+	DOT,             // vector3_dot
+	LERP_CALL,       // the engine's Vector3.lerp at weight 0.25
+	LERP,            // vector3_lerp at weight 0.25
+}
+
+// Nanoseconds per `kind` round on a Vector3 reread through a volatile load each round, so no
+// result is hoisted out of the loop, over `n` rounds.
+vector_ns :: proc(self: ^Bench, kind: Vector_Op, n: i64) -> f64 {
+	v := godot.Vector3{1.5, -2.25, 3}
+	to := godot.Vector3{-0.5, 4, 2}
+	weight := f64(0.25)
+	ref := &v
+	length_fn := godot.builtin_method(.VECTOR3, "length", 466405837)
+	normalized_fn := godot.builtin_method(.VECTOR3, "normalized", 1776574132)
+	dot_fn := godot.builtin_method(.VECTOR3, "dot", 1047977935)
+	lerp_fn := godot.builtin_method(.VECTOR3, "lerp", 1682608829)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .LENGTH_CALL:
+		for _ in 0 ..< n {
+			r: f64
+			length_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += f32(r)
+		}
+	case .LENGTH:
+		for _ in 0 ..< n { sum += f32(godot.vector3_length(intrinsics.volatile_load(&ref))) }
+	case .NORMALIZED_CALL:
+		for _ in 0 ..< n {
+			r: godot.Vector3
+			normalized_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r.x
+		}
+	case .NORMALIZED:
+		for _ in 0 ..< n { sum += godot.vector3_normalized(intrinsics.volatile_load(&ref)).x }
+	case .DOT_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&to}
+			r: f64
+			dot_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += f32(r)
+		}
+	case .DOT:
+		for _ in 0 ..< n { sum += f32(godot.vector3_dot(intrinsics.volatile_load(&ref), to)) }
+	case .LERP_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&to, &weight}
+			r: godot.Vector3
+			lerp_fn(intrinsics.volatile_load(&ref), &args[0], &r, 2)
+			sum += r.x
+		}
+	case .LERP:
+		for _ in 0 ..< n { sum += godot.vector3_lerp(intrinsics.volatile_load(&ref), to, weight).x }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
+	return ns
 }
 
 // The identifier and text paths `ident_ns` times.

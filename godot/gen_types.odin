@@ -560,24 +560,14 @@ Variant_Operator :: enum i64 {
 	OP_MAX = 25,
 }
 String :: struct #align(8) { _opaque: [8]u8 }
-Vector2 :: struct {
-	x: f32,
-	y: f32,
-}
+Vector2 :: distinct [2]f32
 #assert(size_of(Vector2) == 8)
-#assert(offset_of(Vector2, x) == 0)
-#assert(offset_of(Vector2, y) == 4)
 Vector2_Axis :: enum i64 {
 	AXIS_X = 0,
 	AXIS_Y = 1,
 }
-Vector2i :: struct {
-	x: i32,
-	y: i32,
-}
+Vector2i :: distinct [2]i32
 #assert(size_of(Vector2i) == 8)
-#assert(offset_of(Vector2i, x) == 0)
-#assert(offset_of(Vector2i, y) == 4)
 Vector2i_Axis :: enum i64 {
 	AXIS_X = 0,
 	AXIS_Y = 1,
@@ -596,29 +586,15 @@ Rect2i :: struct {
 #assert(size_of(Rect2i) == 16)
 #assert(offset_of(Rect2i, position) == 0)
 #assert(offset_of(Rect2i, size) == 8)
-Vector3 :: struct {
-	x: f32,
-	y: f32,
-	z: f32,
-}
+Vector3 :: distinct [3]f32
 #assert(size_of(Vector3) == 12)
-#assert(offset_of(Vector3, x) == 0)
-#assert(offset_of(Vector3, y) == 4)
-#assert(offset_of(Vector3, z) == 8)
 Vector3_Axis :: enum i64 {
 	AXIS_X = 0,
 	AXIS_Y = 1,
 	AXIS_Z = 2,
 }
-Vector3i :: struct {
-	x: i32,
-	y: i32,
-	z: i32,
-}
+Vector3i :: distinct [3]i32
 #assert(size_of(Vector3i) == 12)
-#assert(offset_of(Vector3i, x) == 0)
-#assert(offset_of(Vector3i, y) == 4)
-#assert(offset_of(Vector3i, z) == 8)
 Vector3i_Axis :: enum i64 {
 	AXIS_X = 0,
 	AXIS_Y = 1,
@@ -633,34 +609,16 @@ Transform2D :: struct {
 #assert(offset_of(Transform2D, x) == 0)
 #assert(offset_of(Transform2D, y) == 8)
 #assert(offset_of(Transform2D, origin) == 16)
-Vector4 :: struct {
-	x: f32,
-	y: f32,
-	z: f32,
-	w: f32,
-}
+Vector4 :: distinct [4]f32
 #assert(size_of(Vector4) == 16)
-#assert(offset_of(Vector4, x) == 0)
-#assert(offset_of(Vector4, y) == 4)
-#assert(offset_of(Vector4, z) == 8)
-#assert(offset_of(Vector4, w) == 12)
 Vector4_Axis :: enum i64 {
 	AXIS_X = 0,
 	AXIS_Y = 1,
 	AXIS_Z = 2,
 	AXIS_W = 3,
 }
-Vector4i :: struct {
-	x: i32,
-	y: i32,
-	z: i32,
-	w: i32,
-}
+Vector4i :: distinct [4]i32
 #assert(size_of(Vector4i) == 16)
-#assert(offset_of(Vector4i, x) == 0)
-#assert(offset_of(Vector4i, y) == 4)
-#assert(offset_of(Vector4i, z) == 8)
-#assert(offset_of(Vector4i, w) == 12)
 Vector4i_Axis :: enum i64 {
 	AXIS_X = 0,
 	AXIS_Y = 1,
@@ -674,17 +632,8 @@ Plane :: struct {
 #assert(size_of(Plane) == 16)
 #assert(offset_of(Plane, normal) == 0)
 #assert(offset_of(Plane, d) == 12)
-Quaternion :: struct {
-	x: f32,
-	y: f32,
-	z: f32,
-	w: f32,
-}
+Quaternion :: distinct [4]f32
 #assert(size_of(Quaternion) == 16)
-#assert(offset_of(Quaternion, x) == 0)
-#assert(offset_of(Quaternion, y) == 4)
-#assert(offset_of(Quaternion, z) == 8)
-#assert(offset_of(Quaternion, w) == 12)
 AABB :: struct {
 	position: Vector3,
 	size: Vector3,
@@ -727,17 +676,8 @@ Projection_Planes :: enum i64 {
 	PLANE_RIGHT = 4,
 	PLANE_BOTTOM = 5,
 }
-Color :: struct {
-	r: f32,
-	g: f32,
-	b: f32,
-	a: f32,
-}
+Color :: distinct [4]f32
 #assert(size_of(Color) == 16)
-#assert(offset_of(Color, r) == 0)
-#assert(offset_of(Color, g) == 4)
-#assert(offset_of(Color, b) == 8)
-#assert(offset_of(Color, a) == 12)
 StringName :: struct #align(8) { _opaque: [8]u8 }
 NodePath :: struct #align(8) { _opaque: [8]u8 }
 RID :: struct #align(8) { _opaque: [8]u8 }

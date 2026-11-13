@@ -33,3 +33,34 @@ follow it or be dropped from `REPLACED`.
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
 sentence split on spaces into nine Strings, which making those Strings dominates. Blank timings are not benched; the methods share the scans above.
+
+## Vector2, Vector3 and Vector4
+
+`REPLACED_TYPES` in `tools/odin_bindgen.py` leaves out every method and constructor of `Vector2`,
+`Vector3` and `Vector4`. `godot/vector.odin` defines all 140 under the same names and signatures
+as plain `f32` arithmetic that copies the engine's operation order, so results match bit for bit.
+Checked against Godot 4.7-stable by `_check_replaced_vectors`, which calls every method from
+GDScript and from `Bag.replaced_vectors` on edge cases (signed zeros, units, halves, infinities,
+NaNs, tiny and huge values, normals that are not normalized, zero and normal lengths) and on 2000
+seeded random cases, and compares the float bits.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Vector3.length` | 2.9 ns | 1.1 ns |
+| `Vector3.normalized` | 4.9 ns | 1.9 to 2.6 ns |
+| `Vector3.dot` | 2.7 ns | 0.6 ns |
+| `Vector3.lerp` | 3.5 ns | 0.6 ns |
+
+Known differences from the engine, all deliberate:
+
+- Error messages, such as a `slide` or `reflect` normal that is not normalized, are fixed text.
+  The engine's message also prints the vector's value.
+- A NaN result may carry a different sign bit. Which NaN survives an operation depends on operand
+  order in the compiled code, so the test accepts any NaN for a NaN.
+
+Two engine behaviours are copied on purpose: `Vector3.rotated` with an axis that is not normalized
+reports the error and transforms by the identity Basis, so an infinite component yields NaN, and
+`snapped` and `snappedf` divide in double precision.
+
+When writing tests for these, note that GDScript pools equal constants: a literal `-0.0` in a
+script that also uses `0.0` becomes `+0.0`. Build a negative zero at run time, as the test does.

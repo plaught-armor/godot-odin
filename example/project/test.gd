@@ -459,6 +459,8 @@ func _check_extras() -> int:
 				print("FAIL: Bag.int_texts base %d gave %s, not %s" % [base, got_digits, want_digits])
 				failures += 1
 	var float_values: PackedFloat64Array = [0.0, -0.0, 1.0, -1.0, 1.5, -1.5, 0.1, 0.5, 2.5, 2.675, 1.005, 123.456, -123.456e-2, 10.0, 10.000000000000002, 9.999999999999998, 99.99999999999999, 999.9999999999999, 1000.0, 12345678.9, 1e15 + 0.3, 1e20, 1e300, 1.7976931348623157e308, 5e-324, 1e-5, 0.000123456, 3.14159265358979, 0.1 + 0.2, 9223372036854775807.0, -9223372036854775808.0, 1e19, 4294967296.5, 0.125, 0.375, -0.625, -1e-30, 1e22, 123456789012345678.0, 18446744073709551616.0, NAN, INF, -INF]
+	# GDScript pools equal constants, so the literal -0.0 above is +0.0; append a run-time one.
+	float_values.append(-float(Time.get_ticks_msec() * 0))
 	for decimals: int in [-1, 0, 1, 2, 5, 14, 22, 23, 32, 40]:
 		var want_nums: PackedStringArray = []
 		for v: float in float_values:
@@ -511,6 +513,7 @@ func _check_extras() -> int:
 			print("FAIL: Bag.has_text(%s, %s) gave %s" % [s, c[1], b2.has_text(s, c[1])])
 			failures += 1
 	failures += _check_replaced_random(b2)
+	failures += _check_replaced_vectors(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -634,6 +637,141 @@ func _check_replaced_random(b2: Bag) -> int:
 		failures += _check_replaced_ops(b2, hay, needle, from, to)
 		var with: String = ["", "x", "日é", "AbA"][rng.randi_range(0, 3)]
 		failures += _check_replaced_strs(b2, hay, needle, with, rng.randi() % 2 == 0, rng.randi_range(-1, 3))
+	return failures
+
+
+# Appends `v` to `out` as floats, as Bag.replaced_vectors does: a vector by component, a Basis row
+# by row, a boolean or an index as its number.
+func _put_result(out: PackedFloat32Array, v: Variant) -> void:
+	match typeof(v):
+		TYPE_VECTOR2:
+			out.append_array([v.x, v.y])
+		TYPE_VECTOR3:
+			out.append_array([v.x, v.y, v.z])
+		TYPE_VECTOR4:
+			out.append_array([v.x, v.y, v.z, v.w])
+		TYPE_BASIS:
+			for row: int in 3:
+				for col: int in 3:
+					out.append(v[col][row])
+		_:
+			out.append(float(v))
+
+
+# The engine's own Vector2, Vector3 and Vector4 methods, in Bag.replaced_vectors' order.
+func _vector_results(a: Vector4, b: Vector4, c: Vector4, d: Vector4, n2: Vector2, n3: Vector3, w: float, x: float, y: float, z: float) -> PackedFloat32Array:
+	var o := PackedFloat32Array()
+	var a2 := Vector2(a.x, a.y)
+	var b2 := Vector2(b.x, b.y)
+	var c2 := Vector2(c.x, c.y)
+	var d2 := Vector2(d.x, d.y)
+	for v: Variant in [a2.angle(), a2.angle_to(b2), a2.angle_to_point(b2), a2.direction_to(b2),
+			a2.distance_to(b2), a2.distance_squared_to(b2), a2.length(), a2.length_squared(),
+			a2.limit_length(x), a2.normalized(), a2.is_normalized(), a2.is_equal_approx(b2),
+			a2.is_zero_approx(), a2.is_finite(), a2.posmod(x), a2.posmodv(b2), a2.project(b2),
+			a2.lerp(b2, w), a2.slerp(b2, w), a2.cubic_interpolate(b2, c2, d2, w),
+			a2.cubic_interpolate_in_time(b2, c2, d2, w, x, y, z), a2.bezier_interpolate(b2, c2, d2, w),
+			a2.bezier_derivative(b2, c2, d2, w), a2.max_axis_index(), a2.min_axis_index(),
+			a2.move_toward(b2, x), a2.rotated(x), a2.orthogonal(), a2.floor(), a2.ceil(), a2.round(),
+			a2.aspect(), a2.dot(b2), a2.slide(n2), a2.bounce(n2), a2.reflect(n2), a2.cross(b2), a2.abs(),
+			a2.sign(), a2.clamp(b2, c2), a2.clampf(y, z), a2.snapped(b2), a2.snappedf(x), a2.min(b2),
+			a2.minf(x), a2.max(b2), a2.maxf(x), Vector2.from_angle(x), Vector2(x, y),
+			Vector2(Vector2i(int(x), int(y)))]:
+		_put_result(o, v)
+	var a3 := Vector3(a.x, a.y, a.z)
+	var b3 := Vector3(b.x, b.y, b.z)
+	var c3 := Vector3(c.x, c.y, c.z)
+	var d3 := Vector3(d.x, d.y, d.z)
+	for v: Variant in [a3.angle_to(b3), a3.signed_angle_to(b3, n3), a3.direction_to(b3),
+			a3.distance_to(b3), a3.distance_squared_to(b3), a3.length(), a3.length_squared(),
+			a3.limit_length(x), a3.normalized(), a3.is_normalized(), a3.is_equal_approx(b3),
+			a3.is_zero_approx(), a3.is_finite(), a3.inverse(), a3.clamp(b3, c3), a3.clampf(y, z),
+			a3.snapped(b3), a3.snappedf(x), a3.rotated(n3, x), a3.lerp(b3, w), a3.slerp(b3, w),
+			a3.cubic_interpolate(b3, c3, d3, w), a3.cubic_interpolate_in_time(b3, c3, d3, w, x, y, z),
+			a3.bezier_interpolate(b3, c3, d3, w), a3.bezier_derivative(b3, c3, d3, w),
+			a3.move_toward(b3, x), a3.dot(b3), a3.cross(b3), a3.outer(b3), a3.abs(), a3.floor(),
+			a3.ceil(), a3.round(), a3.posmod(x), a3.posmodv(b3), a3.project(b3), a3.slide(n3),
+			a3.bounce(n3), a3.reflect(n3), a3.sign(), a3.octahedron_encode(), a3.min(b3), a3.minf(x),
+			a3.max(b3), a3.maxf(x), Vector3.octahedron_decode(a2), a3.min_axis_index(),
+			a3.max_axis_index(), Vector3(x, y, z), Vector3(Vector3i(int(x), int(y), int(z)))]:
+		_put_result(o, v)
+	for v: Variant in [a.min_axis_index(), a.max_axis_index(), a.length(), a.length_squared(), a.abs(),
+			a.sign(), a.floor(), a.ceil(), a.round(), a.lerp(b, w), a.cubic_interpolate(b, c, d, w),
+			a.cubic_interpolate_in_time(b, c, d, w, x, y, z), a.posmod(x), a.posmodv(b), a.snapped(b),
+			a.snappedf(x), a.clamp(b, c), a.clampf(y, z), a.normalized(), a.is_normalized(),
+			a.direction_to(b), a.distance_to(b), a.distance_squared_to(b), a.dot(b), a.inverse(),
+			a.is_equal_approx(b), a.is_zero_approx(), a.is_finite(), a.min(b), a.minf(x), a.max(b),
+			a.maxf(x), Vector4(w, x, y, z), Vector4(Vector4i(int(w), int(x), int(y), int(z)))]:
+		_put_result(o, v)
+	return o
+
+
+# One Bag.replaced_vectors call against _vector_results, compared bit for bit, so signed zeros
+# count, except that any NaN matches any NaN: which NaN an operation keeps depends on the order the
+# compiler puts its operands in. Returns 1 on a mismatch.
+func _check_vector_case(b2: Bag, a: Vector4, b: Vector4, c: Vector4, d: Vector4, n2: Vector2, n3: Vector3, w: float, x: float, y: float, z: float) -> int:
+	var want := _vector_results(a, b, c, d, n2, n3, w, x, y, z)
+	var got: PackedFloat32Array = b2.replaced_vectors(a, b, c, d, n2, n3, w, x, y, z)
+	var got_bits := got.to_byte_array().to_int32_array()
+	var want_bits := want.to_byte_array().to_int32_array()
+	if got_bits == want_bits:
+		return 0
+	var at := 0
+	while at < mini(got.size(), want.size()) and (got_bits[at] == want_bits[at] or (is_nan(got[at]) and is_nan(want[at]))):
+		at += 1
+	if at == got.size() and at == want.size():
+		return 0
+	print("FAIL: Bag.replaced_vectors(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, b, c, d, n2, n3, w, x, y, z, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# The vector procs that replace engine methods, on edge cases (zeros, signed zeros, halves, units,
+# infinities and NaNs, zero times and steps, normals that are not normalized) and then on seeded
+# random vectors, some with integer and half components so floor, round and snapped meet ties.
+func _check_replaced_vectors(b2: Bag) -> int:
+	var failures := 0
+	var inf := INF
+	# GDScript pools equal constants, so a literal -0.0 becomes +0.0; build it at run time.
+	var neg_zero := -float(Time.get_ticks_msec() * 0)
+	var edges: Array[Vector4] = [Vector4.ZERO, Vector4(neg_zero, 0, neg_zero, 0), Vector4(1, 0, 0, 0),
+		Vector4(0, 1, 0, 0), Vector4(0.5, -0.5, 2.5, -2.5), Vector4(1.5, -1.5, 3, -3),
+		Vector4(inf, 1, 2, 3), Vector4(1, -inf, 2, 3), Vector4(NAN, 0, 0, 0), Vector4(3, 4, 0, 0),
+		Vector4(-3, 4, -12, 0.25), Vector4(1e-6, -1e-6, 1e-7, 0), Vector4(1e20, 1e20, -1e20, 1e20)]
+	var normals2: Array[Vector2] = [Vector2(1, 0), Vector2(0.6, 0.8), Vector2(2, 0), Vector2.ZERO, Vector2(1.0002, 0)]
+	var normals3: Array[Vector3] = [Vector3(0, 0, 1), Vector3(0.6, 0, -0.8), Vector3(1, 1, 0), Vector3.ZERO, Vector3(0, 0, 1.0002)]
+	var scalars: Array = [[0.5, 1.0, -1.0, 2.0], [0.0, 0.0, 0.0, 0.0], [1.0, 0.5, 0.0, 1.0],
+		[-0.25, 2.5, 1.0, 1.0], [1.5, -3.0, 2.0, -2.0], [0.0, 0.25, -0.5, 0.75]]
+	for i: int in edges.size():
+		for j: int in [0, 3, 5, 9]:
+			var a := edges[i]
+			var b := edges[(i + j) % edges.size()]
+			var s: Array = scalars[(i + j) % scalars.size()]
+			failures += _check_vector_case(b2, a, b, edges[(i + 2) % edges.size()], edges[(i + 7) % edges.size()],
+				normals2[(i + j) % normals2.size()], normals3[(i + j) % normals3.size()], s[0], s[1], s[2], s[3])
+	# 5.35 / 0.1 and -4.05 / 0.3 land on a tie only when snapped divides in double.
+	failures += _check_vector_case(b2, Vector4(5.35, -4.05, 5.35, -4.05), Vector4(0.1, 0.3, 0.1, 0.3),
+		edges[2], edges[3], normals2[0], normals3[0], 0.5, 0.1, 0.0, 1.0)
+	# A delta equal to the length must return the target exactly, not v + vd / l * delta.
+	failures += _check_vector_case(b2, Vector4.ZERO, Vector4(1, 1, 0, 0), edges[2], edges[3],
+		normals2[0], normals3[0], 0.5, Vector2(1, 1).length(), 0.0, 1.0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261112
+	for round: int in 2000:
+		var v: Array[Vector4] = []
+		for k: int in 4:
+			var e := Vector4()
+			for m: int in 4:
+				match rng.randi_range(0, 5):
+					0: e[m] = float(rng.randi_range(-4, 4))
+					1: e[m] = rng.randi_range(-8, 8) * 0.5
+					_: e[m] = rng.randf_range(-10, 10)
+			v.append(e)
+		var n2 := Vector2.from_angle(rng.randf_range(-PI, PI))
+		var n3 := Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1), rng.randf_range(-1, 1)).normalized()
+		if round % 4 == 0:
+			v[1] = v[0] * rng.randf_range(-2, 2)
+		failures += _check_vector_case(b2, v[0], v[1], v[2], v[3], n2, n3, rng.randf_range(-0.5, 1.5),
+			rng.randf_range(-6, 6), rng.randf_range(-3, 1), rng.randf_range(0, 4))
 	return failures
 
 

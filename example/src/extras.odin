@@ -5,6 +5,7 @@ package example
 
 import "../../godot"
 import gde "../../gdextension"
+import "base:intrinsics"
 import "base:runtime"
 import "core:fmt"
 
@@ -122,6 +123,7 @@ register_extras :: proc() {
 	godot.method(b, "which_name", bag_which_name, {"name"})
 	godot.method(b, "replaced_ops", bag_replaced_ops, {"s", "part", "from", "to"})
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
+	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -634,6 +636,177 @@ bag_replaced_strs :: proc(self: ^Bag, s: godot.String, part: godot.String, with:
 	godot.packed_string_array_append_array(&out, parts)
 	godot.destroy[.PACKED_STRING_ARRAY](&parts)
 	return out
+}
+
+// Floats gathered for bag_replaced_vectors, in call order.
+Vector_Results :: struct {
+	v: [400]f32,
+	n: int,
+}
+
+// Appends `v` to `o` as floats: a vector or Basis by component (a Basis row by row), a boolean
+// or an index as its number.
+put_result :: proc(o: ^Vector_Results, v: $T) {
+	when T == godot.Basis {
+		put_result(o, v.x)
+		put_result(o, v.y)
+		put_result(o, v.z)
+	} else when intrinsics.type_is_array(T) {
+		for e in v { put_result(o, f64(e)) }
+	} else when T == bool {
+		put_result(o, f64(1 if v else 0))
+	} else {
+		o.v[o.n] = f32(v)
+		o.n += 1
+	}
+}
+
+// The Vector2, Vector3 and Vector4 procs that replace engine methods (godot/vector.odin), each on
+// the leading components of `a` to `d`, with `n2` and `n3` the normals and rotation axis, `w` the
+// weight and `x`, `y` and `z` the other scalars. test.gd's _vector_results calls the engine's own
+// methods in the same order.
+bag_replaced_vectors :: proc(self: ^Bag, a, b, c, d: godot.Vector4, n2: godot.Vector2, n3: godot.Vector3, w, x, y, z: f64) -> godot.PackedFloat32Array {
+	o: Vector_Results
+	a2, b2, c2, d2 := godot.Vector2(a.xy), godot.Vector2(b.xy), godot.Vector2(c.xy), godot.Vector2(d.xy)
+	put_result(&o, godot.vector2_angle(&a2))
+	put_result(&o, godot.vector2_angle_to(&a2, b2))
+	put_result(&o, godot.vector2_angle_to_point(&a2, b2))
+	put_result(&o, godot.vector2_direction_to(&a2, b2))
+	put_result(&o, godot.vector2_distance_to(&a2, b2))
+	put_result(&o, godot.vector2_distance_squared_to(&a2, b2))
+	put_result(&o, godot.vector2_length(&a2))
+	put_result(&o, godot.vector2_length_squared(&a2))
+	put_result(&o, godot.vector2_limit_length(&a2, x))
+	put_result(&o, godot.vector2_normalized(&a2))
+	put_result(&o, godot.vector2_is_normalized(&a2))
+	put_result(&o, godot.vector2_is_equal_approx(&a2, b2))
+	put_result(&o, godot.vector2_is_zero_approx(&a2))
+	put_result(&o, godot.vector2_is_finite(&a2))
+	put_result(&o, godot.vector2_posmod(&a2, x))
+	put_result(&o, godot.vector2_posmodv(&a2, b2))
+	put_result(&o, godot.vector2_project(&a2, b2))
+	put_result(&o, godot.vector2_lerp(&a2, b2, w))
+	put_result(&o, godot.vector2_slerp(&a2, b2, w))
+	put_result(&o, godot.vector2_cubic_interpolate(&a2, b2, c2, d2, w))
+	put_result(&o, godot.vector2_cubic_interpolate_in_time(&a2, b2, c2, d2, w, x, y, z))
+	put_result(&o, godot.vector2_bezier_interpolate(&a2, b2, c2, d2, w))
+	put_result(&o, godot.vector2_bezier_derivative(&a2, b2, c2, d2, w))
+	put_result(&o, godot.vector2_max_axis_index(&a2))
+	put_result(&o, godot.vector2_min_axis_index(&a2))
+	put_result(&o, godot.vector2_move_toward(&a2, b2, x))
+	put_result(&o, godot.vector2_rotated(&a2, x))
+	put_result(&o, godot.vector2_orthogonal(&a2))
+	put_result(&o, godot.vector2_floor(&a2))
+	put_result(&o, godot.vector2_ceil(&a2))
+	put_result(&o, godot.vector2_round(&a2))
+	put_result(&o, godot.vector2_aspect(&a2))
+	put_result(&o, godot.vector2_dot(&a2, b2))
+	put_result(&o, godot.vector2_slide(&a2, n2))
+	put_result(&o, godot.vector2_bounce(&a2, n2))
+	put_result(&o, godot.vector2_reflect(&a2, n2))
+	put_result(&o, godot.vector2_cross(&a2, b2))
+	put_result(&o, godot.vector2_abs(&a2))
+	put_result(&o, godot.vector2_sign(&a2))
+	put_result(&o, godot.vector2_clamp(&a2, b2, c2))
+	put_result(&o, godot.vector2_clampf(&a2, y, z))
+	put_result(&o, godot.vector2_snapped(&a2, b2))
+	put_result(&o, godot.vector2_snappedf(&a2, x))
+	put_result(&o, godot.vector2_min(&a2, b2))
+	put_result(&o, godot.vector2_minf(&a2, x))
+	put_result(&o, godot.vector2_max(&a2, b2))
+	put_result(&o, godot.vector2_maxf(&a2, x))
+	put_result(&o, godot.vector2_from_angle(x))
+	put_result(&o, godot.vector2_new_from_float_float(x, y))
+	put_result(&o, godot.vector2_new_from_vector2i(godot.Vector2i{i32(x), i32(y)}))
+
+	a3, b3, c3, d3 := godot.Vector3(a.xyz), godot.Vector3(b.xyz), godot.Vector3(c.xyz), godot.Vector3(d.xyz)
+	put_result(&o, godot.vector3_angle_to(&a3, b3))
+	put_result(&o, godot.vector3_signed_angle_to(&a3, b3, n3))
+	put_result(&o, godot.vector3_direction_to(&a3, b3))
+	put_result(&o, godot.vector3_distance_to(&a3, b3))
+	put_result(&o, godot.vector3_distance_squared_to(&a3, b3))
+	put_result(&o, godot.vector3_length(&a3))
+	put_result(&o, godot.vector3_length_squared(&a3))
+	put_result(&o, godot.vector3_limit_length(&a3, x))
+	put_result(&o, godot.vector3_normalized(&a3))
+	put_result(&o, godot.vector3_is_normalized(&a3))
+	put_result(&o, godot.vector3_is_equal_approx(&a3, b3))
+	put_result(&o, godot.vector3_is_zero_approx(&a3))
+	put_result(&o, godot.vector3_is_finite(&a3))
+	put_result(&o, godot.vector3_inverse(&a3))
+	put_result(&o, godot.vector3_clamp(&a3, b3, c3))
+	put_result(&o, godot.vector3_clampf(&a3, y, z))
+	put_result(&o, godot.vector3_snapped(&a3, b3))
+	put_result(&o, godot.vector3_snappedf(&a3, x))
+	put_result(&o, godot.vector3_rotated(&a3, n3, x))
+	put_result(&o, godot.vector3_lerp(&a3, b3, w))
+	put_result(&o, godot.vector3_slerp(&a3, b3, w))
+	put_result(&o, godot.vector3_cubic_interpolate(&a3, b3, c3, d3, w))
+	put_result(&o, godot.vector3_cubic_interpolate_in_time(&a3, b3, c3, d3, w, x, y, z))
+	put_result(&o, godot.vector3_bezier_interpolate(&a3, b3, c3, d3, w))
+	put_result(&o, godot.vector3_bezier_derivative(&a3, b3, c3, d3, w))
+	put_result(&o, godot.vector3_move_toward(&a3, b3, x))
+	put_result(&o, godot.vector3_dot(&a3, b3))
+	put_result(&o, godot.vector3_cross(&a3, b3))
+	put_result(&o, godot.vector3_outer(&a3, b3))
+	put_result(&o, godot.vector3_abs(&a3))
+	put_result(&o, godot.vector3_floor(&a3))
+	put_result(&o, godot.vector3_ceil(&a3))
+	put_result(&o, godot.vector3_round(&a3))
+	put_result(&o, godot.vector3_posmod(&a3, x))
+	put_result(&o, godot.vector3_posmodv(&a3, b3))
+	put_result(&o, godot.vector3_project(&a3, b3))
+	put_result(&o, godot.vector3_slide(&a3, n3))
+	put_result(&o, godot.vector3_bounce(&a3, n3))
+	put_result(&o, godot.vector3_reflect(&a3, n3))
+	put_result(&o, godot.vector3_sign(&a3))
+	put_result(&o, godot.vector3_octahedron_encode(&a3))
+	put_result(&o, godot.vector3_min(&a3, b3))
+	put_result(&o, godot.vector3_minf(&a3, x))
+	put_result(&o, godot.vector3_max(&a3, b3))
+	put_result(&o, godot.vector3_maxf(&a3, x))
+	put_result(&o, godot.vector3_octahedron_decode(a2))
+	put_result(&o, godot.vector3_min_axis_index(&a3))
+	put_result(&o, godot.vector3_max_axis_index(&a3))
+	put_result(&o, godot.vector3_new_from_float_float_float(x, y, z))
+	put_result(&o, godot.vector3_new_from_vector3i(godot.Vector3i{i32(x), i32(y), i32(z)}))
+
+	a4 := a
+	put_result(&o, godot.vector4_min_axis_index(&a4))
+	put_result(&o, godot.vector4_max_axis_index(&a4))
+	put_result(&o, godot.vector4_length(&a4))
+	put_result(&o, godot.vector4_length_squared(&a4))
+	put_result(&o, godot.vector4_abs(&a4))
+	put_result(&o, godot.vector4_sign(&a4))
+	put_result(&o, godot.vector4_floor(&a4))
+	put_result(&o, godot.vector4_ceil(&a4))
+	put_result(&o, godot.vector4_round(&a4))
+	put_result(&o, godot.vector4_lerp(&a4, b, w))
+	put_result(&o, godot.vector4_cubic_interpolate(&a4, b, c, d, w))
+	put_result(&o, godot.vector4_cubic_interpolate_in_time(&a4, b, c, d, w, x, y, z))
+	put_result(&o, godot.vector4_posmod(&a4, x))
+	put_result(&o, godot.vector4_posmodv(&a4, b))
+	put_result(&o, godot.vector4_snapped(&a4, b))
+	put_result(&o, godot.vector4_snappedf(&a4, x))
+	put_result(&o, godot.vector4_clamp(&a4, b, c))
+	put_result(&o, godot.vector4_clampf(&a4, y, z))
+	put_result(&o, godot.vector4_normalized(&a4))
+	put_result(&o, godot.vector4_is_normalized(&a4))
+	put_result(&o, godot.vector4_direction_to(&a4, b))
+	put_result(&o, godot.vector4_distance_to(&a4, b))
+	put_result(&o, godot.vector4_distance_squared_to(&a4, b))
+	put_result(&o, godot.vector4_dot(&a4, b))
+	put_result(&o, godot.vector4_inverse(&a4))
+	put_result(&o, godot.vector4_is_equal_approx(&a4, b))
+	put_result(&o, godot.vector4_is_zero_approx(&a4))
+	put_result(&o, godot.vector4_is_finite(&a4))
+	put_result(&o, godot.vector4_min(&a4, b))
+	put_result(&o, godot.vector4_minf(&a4, x))
+	put_result(&o, godot.vector4_max(&a4, b))
+	put_result(&o, godot.vector4_maxf(&a4, x))
+	put_result(&o, godot.vector4_new_from_float_float_float_float(w, x, y, z))
+	put_result(&o, godot.vector4_new_from_vector4i(godot.Vector4i{i32(w), i32(x), i32(y), i32(z)}))
+	return godot.packed_of_float32(o.v[:o.n])
 }
 
 // Where `part`'s text first appears in `s` at or after `from`, by `string_find_text`.

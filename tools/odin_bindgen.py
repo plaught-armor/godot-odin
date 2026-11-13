@@ -73,6 +73,10 @@ REPLACED = {
     ("String", "split"),
 }
 
+# Builtins whose methods and constructors all live in place: godot/vector.odin computes each in
+# single precision as the engine does, under the generated name and signature.
+REPLACED_TYPES = {"Vector2", "Vector3", "Vector4"}
+
 class Interface:
     """The C interface: types, then one proc variable per interface function and a loader."""
 
@@ -244,6 +248,14 @@ class Api:
     def emit_builtin_type(self, name):
         size = self.sizes[name]
         members = self.members.get(name)
+        metas = {m["meta"] for m in members or []}
+        names = "".join(m["member"] for m in members or [])
+        if len(metas) == 1 and metas <= MEMBER_META.keys() and names in ("xy", "xyz", "xyzw", "rgba"):
+            # Vectors and Color as Odin arrays: same layout, plus native arithmetic and swizzles
+            # (`v.xy`, `c.rgb`), which Odin gives [N]T for the xyzw and rgba names. Distinct, so
+            # Vector4 and Color stay two types to Variant conversion and type switches.
+            meta = MEMBER_META.get(metas.pop())
+            return f"{name} :: distinct [{len(names)}]{meta}\n#assert(size_of({name}) == {size})\n"
         if members:
             out = [f"{name} :: struct {{\n"]
             for m in members:
@@ -405,7 +417,7 @@ class Api:
 
     def emit_builtin_method(self, bname, m):
         name = f"{snake(bname)}_{m['name']}"
-        if (bname, m["name"]) in REPLACED:
+        if (bname, m["name"]) in REPLACED or bname in REPLACED_TYPES:
             return ""
         if m.get("is_vararg") and not m.get("is_static") and self.bindable(m):
             return self.emit_vararg_builtin_method(bname, m, name)
@@ -429,7 +441,7 @@ class Api:
         """Constructors by index and the destructor of a builtin with one."""
         vt = VARIANT_TYPE[bname]
         out = []
-        for ctor in b.get("constructors", []):
+        for ctor in [] if bname in REPLACED_TYPES else b.get("constructors", []):
             args = ctor.get("arguments", [])
             if not all(self.odin_type(a["type"]) for a in args):
                 continue
