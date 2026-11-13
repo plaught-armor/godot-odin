@@ -236,6 +236,9 @@ shortest arc between two vectors, four components), `length`, `length_squared`, 
 `slerp`, `slerpni`, `spherical_cubic_interpolate`, `spherical_cubic_interpolate_in_time`,
 `get_euler`, `from_euler`, `get_axis` and `get_angle`. Each follows `core/math/quaternion.cpp` and
 `quaternion.h` of Godot 4.7-stable with the same single-precision operation order and libm calls.
+Godot 4.8 changed three of them: `log` returns twice the x, y and z of a quaternion near the
+identity, and the two spherical cubic interpolations end in `Quaternion::blend_log` instead of a
+slerp. The library reads the engine's version once at load and runs the 4.8 code on 4.8 or later.
 The engine's `CMP_EPSILON` is a double literal, so `get_axis`'s `1 - CMP_EPSILON` and `exp`'s
 `theta < CMP_EPSILON` compare in double here too, and division by a length multiplies by its
 reciprocal as the engine's `operator/` does. The spherical cubic first replaces each quaternion

@@ -219,6 +219,7 @@ initialize :: proc "c" (userdata: rawptr, level: gde.InitializationLevel) {
 	if level != .INITIALIZATION_SCENE { return }
 	context = ctx
 	load_variants()
+	check_quaternion_version()
 	empty_name = static_name("")
 	gde.string_new_with_latin1_chars(&empty_string, "")
 	emit_bind = method_bind("Object", "emit_signal", 4047867050)

@@ -8,6 +8,9 @@ package godot
 // MATH_CHECKS (on in editor and debug builds) are made here too, with the same fallback results:
 // the identity quaternion for a quaternion that must be normalized and is not, and the zero
 // vector from get_euler. tools/odin_bindgen.py leaves these names out of godot/gen_builtins.odin.
+//
+// Godot 4.8 changed Quaternion::log and the blend that ends the two spherical cubic interpolations.
+// `q_blend_log`, set once at load from the engine's version, picks that code on 4.8 or later.
 
 import "core:c/libc"
 import gde "../gdextension"
@@ -20,6 +23,21 @@ import gde "../gdextension"
 
 // The shortest-arc constructor's `ALMOST_ONE` in single precision.
 @(private) Q_ALMOST_ONE :: f32(0.99999975)
+
+// `(real_t)Math::PI`.
+@(private) Q_PI :: f32(3.1415926535897932384626433833)
+
+// True on Godot 4.8 or later, whose Quaternion::log doubles x, y and z near the identity and whose
+// spherical cubic interpolations end in Quaternion::blend_log. False on 4.7, where log has no such
+// case and they end in a slerp. Written once at load by check_quaternion_version.
+@(private) q_blend_log: bool
+
+// Sets `q_blend_log` from the engine's version. Called once at load.
+@(private) check_quaternion_version :: proc "contextless" () {
+	v: gde.GodotVersion2
+	gde.get_godot_version2(&v)
+	q_blend_log = v.major > 4 || (v.major == 4 && v.minor >= 8)
+}
 
 @(private) Q_NOT_NORMALIZED :: "The quaternion must be normalized."
 
@@ -55,7 +73,10 @@ import gde "../gdextension"
 
 @(private) q_get_angle :: #force_inline proc "contextless" (q: Quaternion) -> f32 { return 2 * m_acos(q.w) }
 
+// Quaternion::log. From 4.8 a quaternion within `1 - CMP_EPSILON` of the identity, where the axis
+// is not defined, gives twice its x, y and z; the limit is the double one get_axis compares with.
 @(private) q_log :: #force_inline proc "contextless" (q: Quaternion) -> Quaternion {
+	if q_blend_log && f64(m_abs(q.w)) > Q_AXIS_LIMIT { return {q.x * 2, q.y * 2, q.z * 2, 0} }
 	v := q_get_axis(q) * q_get_angle(q)
 	return {v.x, v.y, v.z, 0}
 }
@@ -101,10 +122,32 @@ import gde "../gdextension"
 	return
 }
 
+// Quaternion::blend_log of 4.8: blends the cubic `from_ln`, taken in the space of `from_q`, with
+// the cubic `to_ln`, taken in the space of the end quaternion, without leaving the exponential map.
+// `to_in_from_ln` is the log of the end quaternion in the space of `from_q`; `to_ln` moves into
+// that space by the engine's approximation of the inverse right Jacobian. `theta >= CMP_EPSILON`
+// compares in double, and `c` takes its two steps in double, each narrowed back as the engine's
+// real_t assignment does.
+@(private) q_blend :: proc "contextless" (from_q, from_ln, to_ln, to_in_from_ln: Quaternion, w: f32) -> Quaternion {
+	from, to, rel := Vector3(from_ln.xyz), Vector3(to_ln.xyz), Vector3(to_in_from_ln.xyz)
+	theta := m_sqrt(v_dot(rel, rel))
+	cross := v3_cross(rel, to)
+	to += rel + cross * 0.5
+	if f64(theta) >= 0.00001 {
+		c := f32(1 / f64(theta * theta))
+		if !m_is_equal_approx(theta, Q_PI) {
+			c = f32(f64(c) - (1 + f64(libc.cosf(theta))) / (2 * f64(theta) * f64(libc.sinf(theta))))
+		}
+		to += v3_cross(rel, cross) * c
+	}
+	blended := v_lerp(from, to, w)
+	return q_mul(from_q, q_exp({blended.x, blended.y, blended.z, 0}))
+}
+
 // Quaternion::spherical_cubic_interpolate and its _in_time form, which differ only in the
 // per-component cubic. Each quaternion is first replaced by the rotation of its own basis, which
 // aligns flip phases, then flipped to the shortest path; the blend of the two exponential maps
-// is a slerp.
+// is a slerp on 4.7 and `q_blend` from 4.8.
 @(private) q_spherical_cubic :: proc "contextless" (from, b, pre_a, post_b: Quaternion, w, b_t, pre_t, post_t: f32, $IN_TIME: bool) -> Quaternion {
 	if !q_is_normalized(from) {
 		math_error("The start quaternion must be normalized.")
@@ -128,14 +171,15 @@ import gde "../gdextension"
 	ln_to := q_log_in(from_q, to_q)
 	ln_pre := q_log_in(from_q, pre_q)
 	ln_post := q_log_in(from_q, post_q)
-	q1 := q_mul(from_q, q_exp(q_cubic({}, ln_to, ln_pre, ln_post, w, b_t, pre_t, post_t, IN_TIME)))
+	from_ln := q_cubic({}, ln_to, ln_pre, ln_post, w, b_t, pre_t, post_t, IN_TIME)
 
 	ln_from := q_log_in(to_q, from_q)
 	ln_pre = q_log_in(to_q, pre_q)
 	ln_post = q_log_in(to_q, post_q)
-	q2 := q_mul(to_q, q_exp(q_cubic(ln_from, {}, ln_pre, ln_post, w, b_t, pre_t, post_t, IN_TIME)))
+	to_ln := q_cubic(ln_from, {}, ln_pre, ln_post, w, b_t, pre_t, post_t, IN_TIME)
 
-	return q_slerp(q1, q2, w)
+	if q_blend_log { return q_blend(from_q, from_ln, to_ln, ln_to, w) }
+	return q_slerp(q_mul(from_q, q_exp(from_ln)), q_mul(to_q, q_exp(to_ln)), w)
 }
 
 // Vector3::get_any_perpendicular: the cross product with the axis of the least component,
