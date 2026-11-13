@@ -521,6 +521,8 @@ func _check_extras() -> int:
 	failures += _check_replaced_quaternions(b2)
 	failures += _check_replaced_planes(b2)
 	failures += _check_replaced_aabbs(b2)
+	failures += _check_replaced_rect2s(b2)
+	failures += _check_replaced_rect2is(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -962,7 +964,7 @@ func _put_basis_result(out: PackedInt64Array, v: Variant) -> void:
 		TYPE_BASIS:
 			for e: Vector3 in [v.x, v.y, v.z]:
 				_put_basis_result(out, e)
-		TYPE_AABB:
+		TYPE_AABB, TYPE_RECT2, TYPE_RECT2I:
 			_put_basis_result(out, v.position)
 			_put_basis_result(out, v.size)
 		TYPE_TRANSFORM3D:
@@ -980,6 +982,9 @@ func _put_basis_result(out: PackedInt64Array, v: Variant) -> void:
 		TYPE_QUATERNION:
 			for e: float in [v.x, v.y, v.z, v.w]:
 				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
+		TYPE_VECTOR2I:
+			out.append(v.x)
+			out.append(v.y)
 		TYPE_FLOAT:
 			out.append(0x7ff8000000000000 if is_nan(v) else PackedFloat64Array([v]).to_byte_array().decode_s64(0))
 		_:
@@ -1575,6 +1580,147 @@ func _check_replaced_aabbs(b2: Bag) -> int:
 		var dir: Vector3 = (a.get_endpoint(rng.randi_range(0, 7)) - from) * rng.randf_range(0.3, 3)
 		failures += _check_aabb_case(b2, a, a, planes[0], from, dir, 1.0, 0)
 	return failures
+
+# The engine's Rect2 methods in the order Bag.replaced_rect2s calls the Odin procs. A rect goes in
+# as its position and then its size.
+func _rect2_results(a: Rect2, b: Rect2, c: Rect2i, v: Vector2, w: Vector2, x: float, n: int) -> PackedInt64Array:
+	var vs: Array = [Rect2(), Rect2(a), Rect2(c), Rect2(v, w), Rect2(x, v.x, w.y, -x), a.get_center(), a.get_area(),
+		a.has_area(), a.has_point(v), a.is_equal_approx(b), a.is_finite(), a.intersects(b), a.intersects(b, true),
+		a.encloses(b), a.intersection(b), a.merge(b), a.expand(v), a.get_support(w), a.grow(x), a.grow_side(n, x),
+		a.grow_individual(x, v.x, w.y, -x), a.abs(), Rect2i(a)]
+	var o: PackedInt64Array = PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+func _check_rect2_case(b2: Bag, a: Rect2, b: Rect2, c: Rect2i, v: Vector2, w: Vector2, x: float, n: int) -> int:
+	var want: PackedInt64Array = _rect2_results(a, b, c, v, w, x, n)
+	var got: PackedInt64Array = b2.replaced_rect2s(a, b, c, v, w, x, n)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_rect2s(%s, %s, %s, %s, %s, %s, %d) differs at %d of %d: %s, not %s" % [a, b, c, v, w, x, n, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# The engine's Rect2i methods in the order Bag.replaced_rect2is calls the Odin procs.
+func _rect2i_results(a: Rect2i, b: Rect2i, v: Vector2i, w: Vector2i, n: int, m: int) -> PackedInt64Array:
+	var vs: Array = [Rect2i(), Rect2i(a), Rect2i(v, w), Rect2i(m, v.x, w.y, -m), a.get_center(), a.get_area(),
+		a.has_area(), a.has_point(v), a.intersects(b), a.encloses(b), a.intersection(b), a.merge(b), a.expand(v),
+		a.grow(m), a.grow_side(n, m), a.grow_individual(m, v.x, w.y, -m), a.abs()]
+	var o: PackedInt64Array = PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+func _check_rect2i_case(b2: Bag, a: Rect2i, b: Rect2i, v: Vector2i, w: Vector2i, n: int, m: int) -> int:
+	var want: PackedInt64Array = _rect2i_results(a, b, v, w, n, m)
+	var got: PackedInt64Array = b2.replaced_rect2is(a, b, v, w, n, m)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_rect2is(%s, %s, %s, %s, %d, %d) differs at %d of %d: %s, not %s" % [a, b, v, w, n, m, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# A random point near a rect in [-3, 3]: on an edge of `a` a third of the time, so the boundary
+# comparisons meet equal values.
+func _random_rect2_vector(rng: RandomNumberGenerator, a: Rect2) -> Vector2:
+	var v: Vector2 = Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3))
+	var k: int = rng.randi_range(0, 1)
+	if rng.randi_range(0, 2) == 0:
+		v[k] = a.position[k] + a.size[k] * rng.randi_range(0, 1)
+	return v
+
+
+# A random rect in [-3, 3] with a size in [0, 3], a size axis zero a sixth of the time.
+func _random_rect2(rng: RandomNumberGenerator) -> Rect2:
+	var s: Vector2 = Vector2(rng.randf_range(0, 3), rng.randf_range(0, 3))
+	if rng.randi_range(0, 5) == 0:
+		s[rng.randi_range(0, 1)] = 0.0
+	return Rect2(Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)), s)
+
+
+# A random int rect in [-8, 8] with a size in [0, 8].
+func _random_rect2i(rng: RandomNumberGenerator) -> Rect2i:
+	return Rect2i(rng.randi_range(-8, 8), rng.randi_range(-8, 8), rng.randi_range(0, 8), rng.randi_range(0, 8))
+
+
+# The Rect2 procs that replace engine methods, on edge cases (empty, flat, negative-size,
+# signed-zero, infinite and NaN rects, touching and nested pairs, points on edges, every side and
+# ones out of range, float-to-int conversions out of range), then on seeded random rects.
+func _check_replaced_rect2s(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var edges: Array[Rect2] = [Rect2(), Rect2(0, 0, 1, 1), Rect2(-1, -2, 2, 4), Rect2(1, 0, 1, 1), Rect2(0.5, 0.5, 0.25, 0.25),
+		Rect2(0, 0, 2, 0), Rect2(1, 1, -1, 2), Rect2(nz, nz, nz, 1), Rect2(-INF, 0, INF, 1), Rect2(0, NAN, 1, 1),
+		Rect2(0, 0, 1, NAN), Rect2(1e30, -1e30, 1e30, 1e-30), Rect2(0.1, 0.2, 3, 3), Rect2(-2.5e9, 2.2e9, 3e9, -7.9),
+		Rect2(-2147483648.0, 2147483520.0, -2147483904.0, 2147483648.0), Rect2(0, 1, 1, 0)]
+	var vs: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ONE, Vector2(0.5, 0.5), Vector2(-1, 0.5),
+		Vector2(1, 0), Vector2(0, 1), Vector2(2, 2), Vector2(INF, 0), Vector2(NAN, 1), Vector2(nz, nz),
+		Vector2(-0.5, -0.5), Vector2(0.3, -1.2), Vector2(1e30, 1e-30)])
+	var cs: Array[Rect2i] = [Rect2i(), Rect2i(1, -2, 3, 4), Rect2i(-2147483648, 2147483647, 16777217, -16777217)]
+	var xs: PackedFloat64Array = PackedFloat64Array([0.0, 1.0, 0.5, -0.25, PI, -3.0, INF, NAN, nz, 1e-7])
+	var ns: PackedInt64Array = PackedInt64Array([0, 1, 2, 3, 4, -1, 4294967298])
+	for i: int in edges.size():
+		for j: int in [0, 1, 3, 5, 8, 11]:
+			var e: int = edges.size()
+			failures += _check_rect2_case(b2, edges[i], edges[(i + j) % e], cs[(i + j) % cs.size()],
+				vs[(i + j) % vs.size()], vs[(i + 2 * j + 1) % vs.size()], xs[(i + j) % xs.size()], ns[(i + j) % ns.size()])
+	for n: int in ns:
+		failures += _check_rect2_case(b2, edges[2], edges[3], cs[1], vs[2], vs[3], 0.75, n)
+	# Negative-zero growth on a negative-zero width: only adding left and right together first, as
+	# the engine does, keeps the width's sign.
+	failures += _check_rect2_case(b2, edges[7], edges[7], cs[0], vs[9], vs[9], nz, 0)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261117
+	for round: int in 1500:
+		var a: Rect2 = _random_rect2(rng)
+		var b: Rect2 = _random_rect2(rng)
+		if rng.randi_range(0, 3) == 0:
+			b = Rect2(a.position + a.size * rng.randi_range(0, 1), b.size)
+		failures += _check_rect2_case(b2, a, b, _random_rect2i(rng), _random_rect2_vector(rng, a),
+			_random_rect2_vector(rng, a), rng.randf_range(-0.5, 2), rng.randi_range(0, 4))
+	return failures
+
+
+# The Rect2i procs that replace engine methods, on edge cases (empty, flat, negative-size and
+# overflowing rects, touching and nested pairs, odd and negative sizes for the halving centre,
+# every side and ones out of range, growth that wraps), then on seeded random rects.
+func _check_replaced_rect2is(b2: Bag) -> int:
+	var failures: int = 0
+	var edges: Array[Rect2i] = [Rect2i(), Rect2i(0, 0, 1, 1), Rect2i(-1, -2, 2, 4), Rect2i(1, 0, 1, 1), Rect2i(0, 0, 2, 0),
+		Rect2i(1, 1, -1, 2), Rect2i(3, -3, -5, -7), Rect2i(2147483647, -2147483648, 1, -1),
+		Rect2i(-2147483648, 0, -2147483648, 3), Rect2i(-5, 5, 7, 9), Rect2i(0, 1, 1, 0)]
+	var vs: Array[Vector2i] = [Vector2i.ZERO, Vector2i.ONE, Vector2i(-1, 1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(2, 2),
+		Vector2i(-5, 5), Vector2i(2, 14), Vector2i(2147483647, -2147483648), Vector2i(-3, -7)]
+	var ns: PackedInt64Array = PackedInt64Array([0, 1, 2, 3, 4, -1, 4294967298])
+	var ms: PackedInt64Array = PackedInt64Array([0, 1, -1, 3, -7, 2147483647, -2147483648, 4294967301, 1073741824])
+	for i: int in edges.size():
+		for j: int in [0, 1, 3, 5, 8]:
+			var e: int = edges.size()
+			failures += _check_rect2i_case(b2, edges[i], edges[(i + j) % e], vs[(i + j) % vs.size()],
+				vs[(i + 2 * j + 1) % vs.size()], ns[(i + j) % ns.size()], ms[(i + j) % ms.size()])
+	for n: int in ns:
+		failures += _check_rect2i_case(b2, edges[2], edges[3], vs[2], vs[3], n, 5)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261118
+	for round: int in 1500:
+		var a: Rect2i = _random_rect2i(rng)
+		var b: Rect2i = _random_rect2i(rng)
+		var v: Vector2i = Vector2i(rng.randi_range(-10, 10), rng.randi_range(-10, 10))
+		if rng.randi_range(0, 2) == 0:
+			v = a.position + a.size * rng.randi_range(0, 1)
+		failures += _check_rect2i_case(b2, a, b, v, Vector2i(rng.randi_range(-10, 10), rng.randi_range(-10, 10)),
+			rng.randi_range(0, 4), rng.randi_range(-3, 3))
+	return failures
+
 
 func _check_untyped() -> int:
 	var failures: int = 0

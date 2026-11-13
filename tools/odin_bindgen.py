@@ -137,7 +137,7 @@ REPLACED_CONSTRUCTORS = {
 # signature: godot/vector.odin computes the float vectors in single precision as the engine does,
 # godot/vectori.odin the int vectors, godot/transform.odin Transform2D and Transform3D, and
 # godot/quaternion.odin Quaternion.
-REPLACED_TYPES = {"Vector2", "Vector3", "Vector4", "Vector2i", "Vector3i", "Vector4i", "Transform2D", "Transform3D", "Quaternion", "Plane", "AABB"}
+REPLACED_TYPES = {"Vector2", "Vector3", "Vector4", "Vector2i", "Vector3i", "Vector4i", "Transform2D", "Transform3D", "Quaternion", "Plane", "AABB", "Rect2", "Rect2i"}
 
 class Interface:
     """The C interface: types, then one proc variable per interface function and a loader."""

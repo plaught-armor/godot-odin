@@ -132,6 +132,8 @@ register_extras :: proc() {
 	godot.method(b, "replaced_quaternions", bag_replaced_quaternions, {"a", "b", "c", "d", "m", "v", "w", "x", "n"})
 	godot.method(b, "replaced_planes", bag_replaced_planes, {"a", "b", "c", "v", "w", "u", "x"})
 	godot.method(b, "replaced_aabbs", bag_replaced_aabbs, {"a", "b", "p", "v", "w", "x", "n"})
+	godot.method(b, "replaced_rect2s", bag_replaced_rect2s, {"a", "b", "c", "v", "w", "x", "n"})
+	godot.method(b, "replaced_rect2is", bag_replaced_rect2is, {"a", "b", "v", "w", "n", "m"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1352,7 +1354,7 @@ Basis_Results :: struct {
 
 // Appends `v` to `o` as integers: floats by their bits with NaNs made one quiet NaN, a Basis by
 // its columns (the axes GDScript indexes), a transform by its basis columns and then its origin,
-// a vector or quaternion by component, a Plane by its normal and then its distance as a double.
+// a vector or quaternion by component, an AABB or Rect2 or Rect2i by position and then size, a Plane by its normal and then its distance as a double.
 put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 	when T == godot.Basis {
 		for c in 0 ..< 3 { put_basis_result(o, godot.Vector3{v.x[c], v.y[c], v.z[c]}) }
@@ -1361,7 +1363,7 @@ put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 		put_basis_result(o, v.origin)
 	} else when T == godot.Transform2D {
 		for e in ([3]godot.Vector2{v.x, v.y, v.origin}) { put_basis_result(o, e) }
-	} else when T == godot.AABB {
+	} else when T == godot.AABB || T == godot.Rect2 || T == godot.Rect2i {
 		put_basis_result(o, v.position)
 		put_basis_result(o, v.size)
 	} else when T == godot.Plane {
@@ -1372,12 +1374,14 @@ put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 		v := v
 		put_basis_result(o, i64(godot.variant_tag(&v)))
 		if godot.variant_tag(&v) == .VECTOR3 { put_basis_result(o, (^godot.Vector3)(&v._opaque[8])^) }
-	} else when T == godot.Vector2 || T == godot.Vector3 || T == godot.Quaternion {
+	} else when T == godot.Vector2 || T == godot.Vector3 || T == godot.Quaternion || T == godot.Vector2i {
 		for e in v { put_basis_result(o, e) }
 	} else when T == f32 {
 		put_basis_result(o, i64(0x7fc00000) if v != v else i64(transmute(u32)v))
 	} else when T == f64 {
 		put_basis_result(o, i64(0x7ff8000000000000) if v != v else transmute(i64)v)
+	} else when T == i32 {
+		put_basis_result(o, i64(v))
 	} else when T == bool {
 		put_basis_result(o, i64(1 if v else 0))
 	} else {
@@ -1585,5 +1589,63 @@ bag_replaced_aabbs :: proc(self: ^Bag, a, b: godot.AABB, p: godot.Plane, v, w: g
 	put_basis_result(&o, godot.aabb_get_endpoint(&a, n))
 	put_basis_result(&o, godot.aabb_intersects_segment(&a, v, w))
 	put_basis_result(&o, godot.aabb_intersects_ray(&a, v, w))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The Rect2 procs that replace engine methods (godot/rect2.odin) on `a` and `b`, with `c` the
+// Rect2i to convert, `v` and `w` the vector arguments, `x` the growth and `n` the side. test.gd's
+// _rect2_results calls the engine's own methods in the same order.
+bag_replaced_rect2s :: proc(self: ^Bag, a, b: godot.Rect2, c: godot.Rect2i, v, w: godot.Vector2, x: f64, n: i64) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	put_basis_result(&o, godot.rect2_new())
+	put_basis_result(&o, godot.rect2_new_from_rect2(a))
+	put_basis_result(&o, godot.rect2_new_from_rect2i(c))
+	put_basis_result(&o, godot.rect2_new_from_vector2_vector2(v, w))
+	put_basis_result(&o, godot.rect2_new_from_float_float_float_float(x, f64(v.x), f64(w.y), -x))
+	put_basis_result(&o, godot.rect2_get_center(&a))
+	put_basis_result(&o, godot.rect2_get_area(&a))
+	put_basis_result(&o, godot.rect2_has_area(&a))
+	put_basis_result(&o, godot.rect2_has_point(&a, v))
+	put_basis_result(&o, godot.rect2_is_equal_approx(&a, b))
+	put_basis_result(&o, godot.rect2_is_finite(&a))
+	put_basis_result(&o, godot.rect2_intersects(&a, b, false))
+	put_basis_result(&o, godot.rect2_intersects(&a, b, true))
+	put_basis_result(&o, godot.rect2_encloses(&a, b))
+	put_basis_result(&o, godot.rect2_intersection(&a, b))
+	put_basis_result(&o, godot.rect2_merge(&a, b))
+	put_basis_result(&o, godot.rect2_expand(&a, v))
+	put_basis_result(&o, godot.rect2_get_support(&a, w))
+	put_basis_result(&o, godot.rect2_grow(&a, x))
+	put_basis_result(&o, godot.rect2_grow_side(&a, n, x))
+	put_basis_result(&o, godot.rect2_grow_individual(&a, x, f64(v.x), f64(w.y), -x))
+	put_basis_result(&o, godot.rect2_abs(&a))
+	put_basis_result(&o, godot.rect2i_new_from_rect2(a))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The Rect2i procs that replace engine methods (godot/rect2.odin) on `a` and `b`, with `v` and `w`
+// the vector arguments, `n` the side and `m` the growth. test.gd's _rect2i_results calls the
+// engine's own methods in the same order.
+bag_replaced_rect2is :: proc(self: ^Bag, a, b: godot.Rect2i, v, w: godot.Vector2i, n, m: i64) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	put_basis_result(&o, godot.rect2i_new())
+	put_basis_result(&o, godot.rect2i_new_from_rect2i(a))
+	put_basis_result(&o, godot.rect2i_new_from_vector2i_vector2i(v, w))
+	put_basis_result(&o, godot.rect2i_new_from_int_int_int_int(m, i64(v.x), i64(w.y), -m))
+	put_basis_result(&o, godot.rect2i_get_center(&a))
+	put_basis_result(&o, godot.rect2i_get_area(&a))
+	put_basis_result(&o, godot.rect2i_has_area(&a))
+	put_basis_result(&o, godot.rect2i_has_point(&a, v))
+	put_basis_result(&o, godot.rect2i_intersects(&a, b))
+	put_basis_result(&o, godot.rect2i_encloses(&a, b))
+	put_basis_result(&o, godot.rect2i_intersection(&a, b))
+	put_basis_result(&o, godot.rect2i_merge(&a, b))
+	put_basis_result(&o, godot.rect2i_expand(&a, v))
+	put_basis_result(&o, godot.rect2i_grow(&a, m))
+	put_basis_result(&o, godot.rect2i_grow_side(&a, n, m))
+	put_basis_result(&o, godot.rect2i_grow_individual(&a, m, i64(v.x), i64(w.y), -m))
+	put_basis_result(&o, godot.rect2i_abs(&a))
 	return godot.packed_of_int64(o.v[:o.n])
 }

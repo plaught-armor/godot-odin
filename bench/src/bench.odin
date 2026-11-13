@@ -64,6 +64,7 @@ register :: proc() {
 	godot.method(c, "quaternion_ns", quaternion_ns, {"kind", "n"})
 	godot.method(c, "plane_ns", plane_ns, {"kind", "n"})
 	godot.method(c, "aabb_ns", aabb_ns, {"kind", "n"})
+	godot.method(c, "rect2_ns", rect2_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1467,6 +1468,76 @@ aabb_ns :: proc(self: ^Bench, kind: AABB_Op, n: i64) -> f64 {
 			r := godot.aabb_intersects_ray(intrinsics.volatile_load(&ref), from, dir)
 			sum += f32(r._opaque[8])
 		}
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
+	return ns
+}
+
+// The Rect2 and Rect2i methods `rect2_ns` times, paired the same way as Vector_Op.
+Rect2_Op :: enum i64 {
+	HAS_POINT_CALL,      // the engine's Rect2.has_point
+	HAS_POINT,           // rect2_has_point
+	INTERSECTION_CALL,   // the engine's Rect2.intersection
+	INTERSECTION,        // rect2_intersection
+	MERGE_CALL,          // the engine's Rect2.merge
+	MERGE,               // rect2_merge
+	I_INTERSECTION_CALL, // the engine's Rect2i.intersection
+	I_INTERSECTION,      // rect2i_intersection
+}
+
+// Nanoseconds per `kind` round on a rect reread through a volatile load each round, as in
+// vector_ns. The point lies inside and the rects overlap, so every test passes.
+rect2_ns :: proc(self: ^Bench, kind: Rect2_Op, n: i64) -> f64 {
+	a := godot.Rect2{{-1, -2}, {2, 4}}
+	b := godot.Rect2{{0.5, 0.5}, {3, 1}}
+	ai := godot.Rect2i{{-1, -2}, {2, 4}}
+	bi := godot.Rect2i{{0, 1}, {3, 1}}
+	point := godot.Vector2{0.25, 1}
+	ref, refi := &a, &ai
+	has_point_fn := godot.builtin_method(.RECT2, "has_point", 3190634762)
+	intersection_fn := godot.builtin_method(.RECT2, "intersection", 2282977743)
+	merge_fn := godot.builtin_method(.RECT2, "merge", 2282977743)
+	i_intersection_fn := godot.builtin_method(.RECT2I, "intersection", 717431873)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .HAS_POINT_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&point}
+			r: bool
+			has_point_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += f32(int(r))
+		}
+	case .HAS_POINT:
+		for _ in 0 ..< n { sum += f32(int(godot.rect2_has_point(intrinsics.volatile_load(&ref), point))) }
+	case .INTERSECTION_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&b}
+			r: godot.Rect2
+			intersection_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += r.size.x
+		}
+	case .INTERSECTION:
+		for _ in 0 ..< n { sum += godot.rect2_intersection(intrinsics.volatile_load(&ref), b).size.x }
+	case .MERGE_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&b}
+			r: godot.Rect2
+			merge_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += r.size.x
+		}
+	case .MERGE:
+		for _ in 0 ..< n { sum += godot.rect2_merge(intrinsics.volatile_load(&ref), b).size.x }
+	case .I_INTERSECTION_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&bi}
+			r: godot.Rect2i
+			i_intersection_fn(intrinsics.volatile_load(&refi), &args[0], &r, 1)
+			sum += f32(r.size.x)
+		}
+	case .I_INTERSECTION:
+		for _ in 0 ..< n { sum += f32(godot.rect2i_intersection(intrinsics.volatile_load(&refi), bi).size.x) }
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)

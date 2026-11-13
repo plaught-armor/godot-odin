@@ -295,3 +295,36 @@ The ray replacement also skips the engine's Variant construction and assignment 
 The error the engine prints under `MATH_CHECKS` for a negative size is printed by the same methods
 here (once for a two-box method, whichever box is negative), as is `get_endpoint`'s error for an
 index outside 0 to 7.
+
+## Rect2 and Rect2i
+
+The `Rect2` and `Rect2i` methods and constructors are defined in `godot/rect2.odin` under the same
+names and signatures: the constructors (empty, from either rect type, from a position and a size,
+from four numbers), `get_center`, `get_area`, `has_area`, `has_point`, `intersects`, `encloses`,
+`intersection`, `merge`, `expand`, `grow`, `grow_side`, `grow_individual` and `abs`, and for
+`Rect2` also `is_equal_approx`, `is_finite` and `get_support`. Each follows `core/math/rect2.h`,
+`rect2.cpp`, `rect2i.h` and `rect2i.cpp` of Godot 4.7-stable with the same operation order and the
+same comparisons. `Rect2` results match bit for bit, NaN and signed zero included: a point with a
+NaN coordinate counts as inside, as in the engine, and `grow_individual` adds left and right
+together before adding them to the width. `Rect2i` arithmetic wraps on 32-bit overflow, as the
+engine's `int` arithmetic does on x86-64, and `get_center` halves the size with truncation toward
+zero. Integer arguments keep only their low 32 bits, as the engine's `int` and `uint32_t`
+parameters do, so a `grow_side` side outside 0 to 3 grows nothing. `Rect2i(Rect2)` converts each
+component as x86-64's `cvttss2si` does: toward zero, and `INT32_MIN` for NaN or a value outside
+the `int32` range. Checked against Godot 4.7-stable by `_check_replaced_rect2s` and
+`_check_replaced_rect2is`, which compare every result from GDScript and from
+`Bag.replaced_rect2s` and `Bag.replaced_rect2is` on edge cases (empty, flat, negative-size,
+signed-zero, huge, infinite and NaN rects, `int32` limits that overflow, touching and nested
+pairs, every side and ones out of range) and on 1500 seeded random cases for each type, with
+points often on an edge.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Rect2.has_point` | 2.7 ns | 1.1 ns |
+| `Rect2.intersection` | 3.3 ns | 1.0 ns |
+| `Rect2.merge` | 2.9 ns | 0.8 ns |
+| `Rect2i.intersection` | 3.1 ns | 0.9 ns |
+
+The error the engine prints under `MATH_CHECKS` for a negative size is printed by the same methods
+here, once for a two-rect method, whichever rect is negative. `intersection` prints it through its
+intersection test, as the engine's does.
