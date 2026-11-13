@@ -118,3 +118,37 @@ A NaN result may carry a different sign or payload than the engine's, so the tes
 NaN as one value. `srgb_to_linear` depends on the last bit of the double constant
 `1.0 / (1.0 + 0.055)`; the edge cases include 17700158, the least float where a one-bit change
 shows.
+
+## Basis
+
+The `Basis` entries in `REPLACED`, and the constructors in `REPLACED_CONSTRUCTORS`, are defined in
+`godot/basis.odin` under the same names and signatures: the constructors (empty, from a Basis, a
+Quaternion, an axis and angle, three columns), `inverse`, `transposed`, `orthonormalized`,
+`determinant`, `rotated`, `scaled`, `scaled_local`, `get_scale`, `get_euler`, `tdotx`, `tdoty`,
+`tdotz`, `slerp`, `is_conformal`, `is_equal_approx`, `is_finite`, `is_orthonormal`,
+`get_rotation_quaternion`, `looking_at`, `from_scale` and `from_euler`. Each follows
+`core/math/basis.cpp` and `quaternion.cpp` of Godot 4.7-stable: the same single-precision
+operation order, the same matrix product order in `from_euler`, the same branches and thresholds in
+the six `get_euler` orders, and the one double step in `Quaternion::slerp`. Checked against Godot
+4.7-stable by `_check_replaced_bases`, which compares every result from GDScript and from
+`Bag.replaced_bases` on edge cases (the identity, zero and singular bases, rotations about one axis
+that take the `get_euler` shortcuts, gimbal-locked and half-turn rotations, scaled and reflected
+rotations, signed zeros, huge entries, infinities and NaNs, zero, parallel and unnormalized
+vectors, every Euler order and invalid ones) and on 1500 seeded random cases. `Vector3.rotated`
+now builds its rotation with the same `b_axis_angle` helper.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Basis.inverse` | 8.5 ns | 2.3 ns |
+| `Basis.rotated` | 16.7 ns | 4.4 ns |
+| `Basis.get_euler` | 23 to 29 ns | 17.5 ns |
+| `Basis.slerp` | 78 ns | 68 ns |
+
+`get_euler` and `slerp` keep most of their cost in the libm calls (`atan2f`, `asinf`, `acosf`,
+`sin`). The editor and debug builds of the engine compile with `MATH_CHECKS`, and the replacements
+reproduce those checks: `inverse` of a singular basis prints an error and returns the basis
+unchanged, `Basis(axis, angle)` with an unnormalized axis gives the identity, `slerp` between
+bases that are not rotations prints an error and falls back the way the engine does, `looking_at`
+with a zero target or up gives the identity, and an invalid Euler order prints an error and
+returns the identity or a zero vector. The `Basis.x`, `y` and `z` fields in Odin are rows, as the
+engine stores them; GDScript's `.x`, `.y` and `.z` are columns.

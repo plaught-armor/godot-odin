@@ -59,6 +59,7 @@ register :: proc() {
 	godot.method(c, "vector_ns", vector_ns, {"kind", "n"})
 	godot.method(c, "vectori_ns", vectori_ns, {"kind", "n"})
 	godot.method(c, "color_ns", color_ns, {"kind", "n"})
+	godot.method(c, "basis_ns", basis_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1105,6 +1106,76 @@ color_ns :: proc(self: ^Bench, kind: Color_Op, n: i64) -> f64 {
 		}
 	case .FROM_HSV:
 		for _ in 0 ..< n { sum += godot.color_from_hsv(f64(intrinsics.volatile_load(&ref).r) + h, s, val, alpha).r }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
+	return ns
+}
+
+// The Basis methods `basis_ns` times, paired the same way as Vector_Op.
+Basis_Op :: enum i64 {
+	INVERSE_CALL,   // the engine's Basis.inverse
+	INVERSE,        // basis_inverse
+	ROTATED_CALL,   // the engine's Basis.rotated about a unit axis
+	ROTATED,        // basis_rotated about a unit axis
+	GET_EULER_CALL, // the engine's Basis.get_euler in YXZ order
+	GET_EULER,      // basis_get_euler in YXZ order
+	SLERP_CALL,     // the engine's Basis.slerp at weight 0.25
+	SLERP,          // basis_slerp at weight 0.25
+}
+
+// Nanoseconds per `kind` round on a rotation reread through a volatile load each round, as in
+// vector_ns.
+basis_ns :: proc(self: ^Bench, kind: Basis_Op, n: i64) -> f64 {
+	v := godot.basis_from_euler(godot.Vector3{0.3, -1.2, 2.0}, 2)
+	to := godot.basis_from_euler(godot.Vector3{-0.7, 0.4, 1.1}, 2)
+	axis := godot.Vector3{0.6, 0, 0.8}
+	angle, weight, order := f64(0.7), f64(0.25), i64(2)
+	ref := &v
+	inverse_fn := godot.builtin_method(.BASIS, "inverse", 594669093)
+	rotated_fn := godot.builtin_method(.BASIS, "rotated", 1998708965)
+	euler_fn := godot.builtin_method(.BASIS, "get_euler", 1394941017)
+	slerp_fn := godot.builtin_method(.BASIS, "slerp", 3118673011)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .INVERSE_CALL:
+		for _ in 0 ..< n {
+			r: godot.Basis
+			inverse_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r.x.x
+		}
+	case .INVERSE:
+		for _ in 0 ..< n { sum += godot.basis_inverse(intrinsics.volatile_load(&ref)).x.x }
+	case .ROTATED_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&axis, &angle}
+			r: godot.Basis
+			rotated_fn(intrinsics.volatile_load(&ref), &args[0], &r, 2)
+			sum += r.x.x
+		}
+	case .ROTATED:
+		// The angle is reread too, or the compiler hoists the sine and cosine out of the loop.
+		ang := &angle
+		for _ in 0 ..< n { sum += godot.basis_rotated(intrinsics.volatile_load(&ref), axis, intrinsics.volatile_load(ang)).x.x }
+	case .GET_EULER_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&order}
+			r: godot.Vector3
+			euler_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += r.x
+		}
+	case .GET_EULER:
+		for _ in 0 ..< n { sum += godot.basis_get_euler(intrinsics.volatile_load(&ref), order).x }
+	case .SLERP_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&to, &weight}
+			r: godot.Basis
+			slerp_fn(intrinsics.volatile_load(&ref), &args[0], &r, 2)
+			sum += r.x.x
+		}
+	case .SLERP:
+		for _ in 0 ..< n { sum += godot.basis_slerp(intrinsics.volatile_load(&ref), to, weight).x.x }
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)

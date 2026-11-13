@@ -53,7 +53,8 @@ STRING_IN_PLACE = {
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
-# same name and signature, read in place, and godot/color.odin each Color one, and
+# same name and signature, read in place, godot/color.odin each Color one, godot/basis.odin each
+# Basis one, and
 # example/project/test.gd checks it against the engine's. Listed with
 # the engine version checked in docs/replaced.md.
 REPLACED = {
@@ -93,16 +94,43 @@ REPLACED = {
     ("Color", "from_hsv"),
     ("Color", "from_rgbe9995"),
     ("Color", "from_rgba8"),
+    ("Basis", "inverse"),
+    ("Basis", "transposed"),
+    ("Basis", "orthonormalized"),
+    ("Basis", "determinant"),
+    ("Basis", "rotated"),
+    ("Basis", "scaled"),
+    ("Basis", "scaled_local"),
+    ("Basis", "get_scale"),
+    ("Basis", "get_euler"),
+    ("Basis", "tdotx"),
+    ("Basis", "tdoty"),
+    ("Basis", "tdotz"),
+    ("Basis", "slerp"),
+    ("Basis", "is_conformal"),
+    ("Basis", "is_equal_approx"),
+    ("Basis", "is_finite"),
+    ("Basis", "is_orthonormal"),
+    ("Basis", "get_rotation_quaternion"),
+    ("Basis", "looking_at"),
+    ("Basis", "from_scale"),
+    ("Basis", "from_euler"),
 }
 
 # Builtin constructors defined in place under the generated name: godot/color.odin builds a Color
-# from floats or another Color without a call into the engine.
+# from floats or another Color, and godot/basis.odin a Basis from axes, an axis and angle or a
+# quaternion, without a call into the engine.
 REPLACED_CONSTRUCTORS = {
     "color_new",
     "color_new_from_color",
     "color_new_from_color_float",
     "color_new_from_float_float_float",
     "color_new_from_float_float_float_float",
+    "basis_new",
+    "basis_new_from_basis",
+    "basis_new_from_quaternion",
+    "basis_new_from_vector3_float",
+    "basis_new_from_vector3_vector3_vector3",
 }
 
 # Builtins whose methods and constructors all live in place under the generated name and

@@ -400,29 +400,12 @@ vector3_octahedron_decode :: proc "contextless" (uv: Vector2) -> Vector3 {
 	c := v3_cross(a, b)
 	return libc.atan2f(m_sqrt(v_dot(c, c)), v_dot(a, b))
 }
-// Basis(axis, angle).xform(v): the engine's set_axis_angle rows, each dotted with `v`. An axis that
-// is not normalized leaves the identity basis, whose rows still dot with `v`: an infinite or NaN
-// component makes NaNs of the others, as 0 * inf does.
+// Basis(axis, angle).xform(v): the rows of godot/basis.odin's b_axis_angle, each dotted with `v`.
+// An axis that is not normalized leaves the identity basis, whose rows still dot with `v`: an
+// infinite or NaN component makes NaNs of the others, as 0 * inf does.
 @(private) v3_rotated :: #force_inline proc "contextless" (v, axis: Vector3, angle: f32) -> Vector3 {
-	if !v_is_normalized(axis) {
-		math_error("The axis Vector3 must be normalized.")
-		return {v_dot(Vector3{1, 0, 0}, v), v_dot(Vector3{0, 1, 0}, v), v_dot(Vector3{0, 0, 1}, v)}
-	}
-	sq := axis * axis
-	cosine := libc.cosf(angle)
-	sine := libc.sinf(angle)
-	t := 1 - cosine
-	r0, r1, r2: Vector3
-	r0.x = sq.x + cosine * (1 - sq.x)
-	r1.y = sq.y + cosine * (1 - sq.y)
-	r2.z = sq.z + cosine * (1 - sq.z)
-	xyzt, zyxs := axis.x * axis.y * t, axis.z * sine
-	r0.y, r1.x = xyzt - zyxs, xyzt + zyxs
-	xyzt, zyxs = axis.x * axis.z * t, axis.y * sine
-	r0.z, r2.x = xyzt + zyxs, xyzt - zyxs
-	xyzt, zyxs = axis.y * axis.z * t, axis.x * sine
-	r1.z, r2.y = xyzt - zyxs, xyzt + zyxs
-	return {v_dot(r0, v), v_dot(r1, v), v_dot(r2, v)}
+	b := b_axis_angle(axis, angle)
+	return {v_dot(b.x, v), v_dot(b.y, v), v_dot(b.z, v)}
 }
 
 // Vector4 ----------------------------------------------------------------------------------------

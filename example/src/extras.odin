@@ -126,6 +126,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
 	godot.method(b, "replaced_colors", bag_replaced_colors, {"a", "b", "c", "x", "n"})
+	godot.method(b, "replaced_bases", bag_replaced_bases, {"a", "b", "v", "w", "x", "n"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1335,5 +1336,68 @@ bag_replaced_colors :: proc(self: ^Bag, a, b, c: godot.Color, x: f64, n: i64) ->
 	put_color_result(&o, godot.color_from_hsv(f64(a.r), f64(b.g), f64(a.b), x))
 	put_color_result(&o, godot.color_from_rgbe9995(n))
 	put_color_result(&o, godot.color_from_rgba8(n, n >> 40, n % 300, -n))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// Integers gathered for bag_replaced_bases, in call order.
+Basis_Results :: struct {
+	v: [320]i64,
+	n: int,
+}
+
+// Appends `v` to `o` as integers: floats by their bits with NaNs made one quiet NaN, a Basis by
+// its columns (the axes GDScript indexes), a vector or quaternion by component.
+put_basis_result :: proc(o: ^Basis_Results, v: $T) {
+	when T == godot.Basis {
+		for c in 0 ..< 3 { put_basis_result(o, godot.Vector3{v.x[c], v.y[c], v.z[c]}) }
+	} else when T == godot.Vector3 || T == godot.Quaternion {
+		for e in v { put_basis_result(o, e) }
+	} else when T == f32 {
+		put_basis_result(o, i64(0x7fc00000) if v != v else i64(transmute(u32)v))
+	} else when T == f64 {
+		put_basis_result(o, i64(0x7ff8000000000000) if v != v else transmute(i64)v)
+	} else when T == bool {
+		put_basis_result(o, i64(1 if v else 0))
+	} else {
+		o.v[o.n] = v
+		o.n += 1
+	}
+}
+
+// The Basis procs that replace engine methods (godot/basis.odin) on `a` and `b`, with `v` and `w`
+// the vector arguments, `x` the angle or weight and `n` the Euler order. test.gd's
+// _basis_results calls the engine's own methods in the same order.
+bag_replaced_bases :: proc(self: ^Bag, a, b: godot.Basis, v, w: godot.Vector3, x: f64, n: i64) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	put_basis_result(&o, godot.basis_new())
+	put_basis_result(&o, godot.basis_new_from_basis(a))
+	put_basis_result(&o, godot.basis_new_from_quaternion(godot.Quaternion{v.x, v.y, v.z, f32(x)}))
+	put_basis_result(&o, godot.basis_new_from_vector3_float(v, x))
+	put_basis_result(&o, godot.basis_new_from_vector3_vector3_vector3(w, v, w))
+	put_basis_result(&o, godot.basis_inverse(&a))
+	put_basis_result(&o, godot.basis_transposed(&a))
+	put_basis_result(&o, godot.basis_orthonormalized(&a))
+	put_basis_result(&o, godot.basis_determinant(&a))
+	put_basis_result(&o, godot.basis_rotated(&a, v, x))
+	put_basis_result(&o, godot.basis_scaled(&a, v))
+	put_basis_result(&o, godot.basis_scaled_local(&a, v))
+	put_basis_result(&o, godot.basis_get_scale(&a))
+	put_basis_result(&o, godot.basis_get_euler(&a, n))
+	for k in i64(0) ..< 6 { put_basis_result(&o, godot.basis_get_euler(&a, k)) }
+	put_basis_result(&o, godot.basis_tdotx(&a, v))
+	put_basis_result(&o, godot.basis_tdoty(&a, v))
+	put_basis_result(&o, godot.basis_tdotz(&a, v))
+	put_basis_result(&o, godot.basis_slerp(&a, b, x))
+	put_basis_result(&o, godot.basis_is_conformal(&a))
+	put_basis_result(&o, godot.basis_is_equal_approx(&a, b))
+	put_basis_result(&o, godot.basis_is_finite(&a))
+	put_basis_result(&o, godot.basis_is_orthonormal(&a))
+	put_basis_result(&o, godot.basis_get_rotation_quaternion(&a))
+	put_basis_result(&o, godot.basis_looking_at(v, w, false))
+	put_basis_result(&o, godot.basis_looking_at(v, w, true))
+	put_basis_result(&o, godot.basis_from_scale(v))
+	put_basis_result(&o, godot.basis_from_euler(v, n))
+	for k in i64(0) ..< 6 { put_basis_result(&o, godot.basis_from_euler(v, k)) }
 	return godot.packed_of_int64(o.v[:o.n])
 }

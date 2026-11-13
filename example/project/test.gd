@@ -516,6 +516,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_vectors(b2)
 	failures += _check_replaced_vectorsi(b2)
 	failures += _check_replaced_colors(b2)
+	failures += _check_replaced_bases(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -949,6 +950,139 @@ func _check_replaced_colors(b2: Bag) -> int:
 			v.append(e)
 		var n := (rng.randi() << 32) | rng.randi()
 		failures += _check_color_case(b2, v[0], v[1], v[2], rng.randf_range(-2, 2), n)
+	return failures
+
+
+func _put_basis_result(out: PackedInt64Array, v: Variant) -> void:
+	match typeof(v):
+		TYPE_BASIS:
+			for e: Vector3 in [v.x, v.y, v.z]:
+				_put_basis_result(out, e)
+		TYPE_VECTOR3:
+			for e: float in [v.x, v.y, v.z]:
+				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
+		TYPE_QUATERNION:
+			for e: float in [v.x, v.y, v.z, v.w]:
+				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
+		TYPE_FLOAT:
+			out.append(0x7ff8000000000000 if is_nan(v) else PackedFloat64Array([v]).to_byte_array().decode_s64(0))
+		_:
+			out.append(int(v))
+
+
+# The engine's Basis methods in the order Bag.replaced_bases calls the Odin procs.
+func _basis_results(a: Basis, b: Basis, v: Vector3, w: Vector3, x: float, n: int) -> PackedInt64Array:
+	var vs: Array = [Basis(), Basis(a), Basis(Quaternion(v.x, v.y, v.z, x)), Basis(v, x), Basis(w, v, w),
+		a.inverse(), a.transposed(), a.orthonormalized(), a.determinant(), a.rotated(v, x),
+		a.scaled(v), a.scaled_local(v), a.get_scale(), a.get_euler(n)]
+	for k: int in 6:
+		vs.append(a.get_euler(k))
+	vs.append_array([a.tdotx(v), a.tdoty(v), a.tdotz(v), a.slerp(b, x), a.is_conformal(),
+		a.is_equal_approx(b), a.is_finite(), a.is_orthonormal(), a.get_rotation_quaternion(),
+		Basis.looking_at(v, w, false), Basis.looking_at(v, w, true), Basis.from_scale(v),
+		Basis.from_euler(v, n)])
+	for k: int in 6:
+		vs.append(Basis.from_euler(v, k))
+	var o := PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+func _check_basis_case(b2: Bag, a: Basis, b: Basis, v: Vector3, w: Vector3, x: float, n: int) -> int:
+	var want := _basis_results(a, b, v, w, x, n)
+	var got: PackedInt64Array = b2.replaced_bases(a, b, v, w, x, n)
+	if got == want:
+		return 0
+	var at := 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_bases(%s, %s, %s, %s, %s, %d) differs at %d of %d: %s, not %s" % [a, b, v, w, x, n, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# A random basis: a rotation, a scaled or reflected rotation, a rotation about one axis exactly,
+# or arbitrary entries.
+func _random_basis(rng: RandomNumberGenerator) -> Basis:
+	var e := Vector3(rng.randf_range(-4, 4), rng.randf_range(-4, 4), rng.randf_range(-4, 4))
+	match rng.randi_range(0, 4):
+		0:
+			return Basis.from_euler(e, rng.randi_range(0, 5))
+		1:
+			return Basis.from_euler(e).scaled(Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3)))
+		2:
+			return Basis([Vector3.RIGHT, Vector3.UP, Vector3.BACK][rng.randi_range(0, 2)], e.x)
+		3:
+			return Basis.from_euler(e).orthonormalized()
+	return Basis(e, Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3)),
+		Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3)))
+
+
+# The Basis procs that replace engine methods, on edge cases (the identity, zero and singular
+# bases, rotations about one axis that take get_euler's shortcuts, gimbal-locked and half-turn
+# rotations, scaled and reflected rotations, signed zeros, huge entries, infinities and NaNs, with
+# normalized, unnormalized, zero, parallel and non-finite vectors and every Euler order) and then
+# on seeded random bases.
+func _check_replaced_bases(b2: Bag) -> int:
+	var failures := 0
+	var nz := -float(Time.get_ticks_msec() * 0)
+	var r := Basis.from_euler(Vector3(0.3, -1.2, 2.0))
+	var edges: Array[Basis] = [Basis(), Basis(Vector3.ZERO, Vector3.ZERO, Vector3.ZERO), r,
+		Basis(Vector3(1, 2, 3), Vector3(2, 4, 6), Vector3(0, 1, 0)), Basis(Vector3.UP, 0.7),
+		Basis(Vector3.RIGHT, 0.7), Basis(Vector3.BACK, 0.7), Basis.from_euler(Vector3(0, PI / 2, 0), 0),
+		Basis.from_euler(Vector3(PI / 2, 0.4, 0)), Basis(Vector3(0, 0.6, 0.8), PI),
+		Basis(Vector3.RIGHT, PI), r.scaled(Vector3(2, -0.5, 3)), r * Basis.from_scale(Vector3(-1, 1, 1)),
+		Basis(Vector3(nz, 1, nz), Vector3(1, nz, 0), Vector3(0, 0, nz)),
+		Basis(Vector3(1e30, 1, 0), Vector3(0, 1e30, 0), Vector3(0, 0, 1e30)),
+		Basis(Vector3(INF, 0, 0), Vector3(0, NAN, 0), Vector3(0, 0, 1)), r.rotated(Vector3.UP, 1e-6)]
+	var vs: Array[Vector3] = [Vector3.UP, Vector3(0.6, 0, 0.8), Vector3.ZERO, Vector3(1, 1, 1),
+		Vector3(0, 2, 0), Vector3(INF, 0, 0), Vector3(NAN, 1, 0), Vector3(nz, nz, 1),
+		Vector3(1e-30, 0, 0), Vector3(0.3, -1.2, 2.0), Vector3(0, PI / 2, 0), Vector3(-0.48, 0.6, 0.64)]
+	var xs: Array[float] = [0.0, 1.0, 0.5, -0.25, PI, 2.5, INF, NAN, nz, 1e-7, 0.999]
+	var ns: Array[int] = [0, 1, 2, 3, 4, 5, 6, -1, (1 << 32) + 2, 2]
+	for i: int in edges.size():
+		for j: int in [0, 1, 4, 7, 11]:
+			failures += _check_basis_case(b2, edges[i], edges[(i + j) % edges.size()],
+				vs[(i + j) % vs.size()], vs[(i + 2 * j + 1) % vs.size()], xs[(i + j) % xs.size()],
+				ns[(i + j) % ns.size()])
+	# Exact cases: every Euler sine entry at 1 - 0.00000025 and one ulp to either side, both signs;
+	# cyclic and half-turn permutations, whose traces are 0 and -1 with tied diagonal entries, and a
+	# rotation whose quaternion has equal y and z, with tied diagonal entries but no symmetry;
+	# orthogonal quaternions for slerp; and bases that differ, or are not finite or orthonormal,
+	# in one entry only.
+	var limit := PackedByteArray([0, 0, 0, 0])
+	for bits: int in [0x3f7ffffb, 0x3f7ffffc, 0x3f7ffffd]:
+		limit.encode_u32(0, bits)
+		for sg: float in [1.0, -1.0]:
+			var e := limit.decode_float(0) * sg
+			for k: int in 6:
+				failures += _check_basis_case(b2, Basis(Vector3(e, e, e), Vector3(e, e, e), Vector3(e, e, e)),
+					r, Vector3.UP, Vector3.BACK, 0.5, k)
+	var cyc := Basis(Vector3(0, 0, 1), Vector3(1, 0, 0), Vector3(0, 1, 0))
+	var swap := Basis(Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0))
+	var flip_x := Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, -1))
+	var last := Basis(r.x, r.y, Vector3(r.z.x, r.z.y, r.z.z + 0.5))
+	var inf_z := Basis(Vector3.RIGHT, Vector3.UP, Vector3(0, 0, INF))
+	var skew_xz := Basis(Vector3.RIGHT, Vector3.UP, Vector3(0.6, 0, 0.8))
+	var tie := Basis(Quaternion(0.3, 0.6, 0.6, sqrt(0.19)))
+	for pair: Array in [[cyc, swap], [swap, cyc], [Basis(), flip_x], [flip_x, Basis()],
+			[r, last], [inf_z, r], [skew_xz, r], [cyc.transposed(), swap.transposed()], [tie, cyc], [tie.transposed(), r]]:
+		failures += _check_basis_case(b2, pair[0], pair[1], Vector3.UP, Vector3.BACK, 0.25, 0)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261112
+	# Rotations whose quaternions have equal y and z, so their diagonal ties in the second and
+	# third entries without the matrix being symmetric.
+	for round: int in 200:
+		var q := Quaternion(rng.randf_range(-1, 1), rng.randf_range(-1, 1), 0, rng.randf_range(-0.5, 0.5))
+		q.z = q.y
+		failures += _check_basis_case(b2, Basis(q.normalized()), r, Vector3.UP, Vector3.BACK, 0.25, 0)
+	for round: int in 1500:
+		var v := Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))
+		if rng.randi_range(0, 1) == 0:
+			v = v.normalized()
+		var w := Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))
+		failures += _check_basis_case(b2, _random_basis(rng), _random_basis(rng), v, w,
+			rng.randf_range(-2, 2), rng.randi_range(0, 5))
 	return failures
 
 
