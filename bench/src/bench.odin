@@ -36,6 +36,7 @@ register :: proc() {
 	ping = godot.signal(c, "ping", godot.Arg{name = "x", type = .INT})
 	godot.method(c, "emit_ns", emit_ns, {"n"})
 	godot.method(c, "odin_callable", odin_callable)
+	godot.method(c, "odin_callable_plain", odin_callable_plain)
 	godot.method(c, "add", add, {"x"})
 	godot.method(c, "add3", add3, {"a", "b", "c"})
 	godot.method(c, "construct_ns", construct_ns, {"n"})
@@ -441,6 +442,16 @@ emit_ns :: proc(self: ^Bench, n: i64) -> f64 {
 // A Callable of `bump` on this instance, for GDScript to call in a loop.
 odin_callable :: proc(self: ^Bench) -> godot.Callable {
 	return godot.callable(self, bump)
+}
+
+// A Callable of `bump_one` on this instance, a proc with no parameters, for GDScript to call in a loop.
+odin_callable_plain :: proc(self: ^Bench) -> godot.Callable {
+	return godot.callable(self, bump_one)
+}
+
+// Adds 1 to the total.
+bump_one :: proc(self: ^Bench) {
+	self.total += 1
 }
 
 // Adds `x` to the total.
@@ -1693,6 +1704,12 @@ Quaternion_Op :: enum i64 {
 	GET_EULER,      // quaternion_get_euler in YXZ order
 	INVERSE_CALL,   // the engine's Quaternion.inverse
 	INVERSE,        // quaternion_inverse
+	LOG_CALL,       // the engine's Quaternion.log
+	LOG,            // quaternion_log
+	EXP_CALL,       // the engine's Quaternion.exp of that logarithm
+	EXP,            // quaternion_exp of the same
+	CUBIC_TIME_CALL, // the engine's Quaternion.spherical_cubic_interpolate_in_time at weight 0.25
+	CUBIC_TIME,     // quaternion_spherical_cubic_interpolate_in_time at weight 0.25
 }
 
 // Nanoseconds per `kind` round on a unit quaternion reread through a volatile load each round, as
@@ -1709,6 +1726,8 @@ quaternion_ns :: proc(self: ^Bench, kind: Quaternion_Op, n: i64) -> f64 {
 	cubic_fn := godot.builtin_method(.QUATERNION, "spherical_cubic_interpolate", 2150967576)
 	euler_fn := godot.builtin_method(.QUATERNION, "get_euler", 1394941017)
 	inverse_fn := godot.builtin_method(.QUATERNION, "inverse", 4274879941)
+	ln := godot.quaternion_log(&a)
+	b_t, pre_t, post_t := f64(0.1), f64(-0.1), f64(0.2)
 	sum: f32
 	start := time.tick_now()
 	switch kind {
@@ -1747,6 +1766,31 @@ quaternion_ns :: proc(self: ^Bench, kind: Quaternion_Op, n: i64) -> f64 {
 		}
 	case .INVERSE:
 		for _ in 0 ..< n { sum += godot.quaternion_inverse(intrinsics.volatile_load(&ref)).x }
+	case .LOG_CALL, .EXP_CALL:
+		if kind == .EXP_CALL { ref = &ln }
+		fn := godot.builtin_method(.QUATERNION, "log" if kind == .LOG_CALL else "exp", 4274879941)
+		for _ in 0 ..< n {
+			r: godot.Quaternion
+			fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r.x
+		}
+	case .LOG:
+		for _ in 0 ..< n { sum += godot.quaternion_log(intrinsics.volatile_load(&ref)).x }
+	case .EXP:
+		ref = &ln
+		for _ in 0 ..< n { sum += godot.quaternion_exp(intrinsics.volatile_load(&ref)).x }
+	case .CUBIC_TIME_CALL:
+		fn := godot.builtin_method(.QUATERNION, "spherical_cubic_interpolate_in_time", 1436023539)
+		for _ in 0 ..< n {
+			args := [7]gde.ConstTypePtr{&b, &pre, &post, &weight, &b_t, &pre_t, &post_t}
+			r: godot.Quaternion
+			fn(intrinsics.volatile_load(&ref), &args[0], &r, 7)
+			sum += r.x
+		}
+	case .CUBIC_TIME:
+		for _ in 0 ..< n {
+			sum += godot.quaternion_spherical_cubic_interpolate_in_time(intrinsics.volatile_load(&ref), b, pre, post, weight, b_t, pre_t, post_t).x
+		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)

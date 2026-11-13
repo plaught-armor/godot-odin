@@ -208,6 +208,12 @@ func _initialize() -> void:
 	_report("Odin quaternion_get_euler", func() -> float: return b.quaternion_ns(5, N))
 	_report("Engine Quaternion.inverse call", func() -> float: return b.quaternion_ns(6, N))
 	_report("Odin quaternion_inverse", func() -> float: return b.quaternion_ns(7, N))
+	_report("Engine Quaternion.log call", func() -> float: return b.quaternion_ns(8, N))
+	_report("Odin quaternion_log", func() -> float: return b.quaternion_ns(9, N))
+	_report("Engine Quaternion.exp call", func() -> float: return b.quaternion_ns(10, N))
+	_report("Odin quaternion_exp", func() -> float: return b.quaternion_ns(11, N))
+	_report("Engine Quaternion.spherical_cubic_interpolate_in_time call", func() -> float: return b.quaternion_ns(12, N))
+	_report("Odin quaternion_spherical_cubic_interpolate_in_time", func() -> float: return b.quaternion_ns(13, N))
 	_report("Engine Plane.normalized call", func() -> float: return b.plane_ns(0, N))
 	_report("Odin plane_normalized", func() -> float: return b.plane_ns(1, N))
 	_report("Engine Plane.distance_to call", func() -> float: return b.plane_ns(2, N))
@@ -304,6 +310,8 @@ func _initialize() -> void:
 	_report("GDScript Bench.new() + release", func() -> float: return _new_bench())
 	_report("GDScript RefCounted.new() + release", func() -> float: return _new_refcounted())
 	_report("GDScript -> Callable.call (Odin proc)", func() -> float: return _callable_calls(b.odin_callable()))
+	_report("GDScript -> Callable.call (Odin proc, no args)", func() -> float: return _plain_callable_calls(b.odin_callable_plain()))
+	_report("GDScript -> Callable.call (GDScript lambda, no args)", func() -> float: return _plain_callable_calls(func() -> void: pass))
 	var plain: Node = Node.new()
 	var odin: Node = BenchTicker.new()
 	var gd: Node = GdTicker.new()
@@ -387,6 +395,13 @@ func _callable_calls(f: Callable) -> float:
 	var t: int = Time.get_ticks_usec()
 	for i in N:
 		f.call(1)
+	return float(Time.get_ticks_usec() - t) * 1000.0 / N
+
+
+func _plain_callable_calls(f: Callable) -> float:
+	var t: int = Time.get_ticks_usec()
+	for i in N:
+		f.call()
 	return float(Time.get_ticks_usec() - t) * 1000.0 / N
 
 

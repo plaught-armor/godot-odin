@@ -258,7 +258,13 @@ every Euler order and invalid ones) and on 1500 seeded random cases.
 | `Quaternion.inverse` | 2.7 ns | 1.1 ns |
 | `Quaternion.slerp` | 20 ns | 18 ns |
 | `Quaternion.get_euler` | 23 ns | 20 ns |
-| `Quaternion.spherical_cubic_interpolate` | 355 ns | 270 ns |
+| `Quaternion.log` | 9.1 ns | 4.5 ns |
+| `Quaternion.exp` | 11 ns | 6.0 ns |
+| `Quaternion.spherical_cubic_interpolate` | 345 ns | 246 ns |
+| `Quaternion.spherical_cubic_interpolate_in_time` | 338 ns | 248 ns |
+
+On the Godot 4.8 beta build, where the 4.8 code runs, the same rows read 6.9 ns and 4.8 ns for
+`log`, 387 ns and 251 ns for the spherical cubic, and 391 ns and 254 ns for the one in time.
 
 `slerp`, `get_euler` and the spherical cubic keep most of their cost in libm (`sinf`, `cosf`,
 `acosf`, `atan2f`, `asinf`, and `sin` in double for `slerp`), so the gain is the call overhead and
