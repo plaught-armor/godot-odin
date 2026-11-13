@@ -105,6 +105,8 @@ register_extras :: proc() {
 	godot.method(b, "say", bag_say, {"n"})
 	godot.method(b, "adder", bag_adder, {"n"})
 	godot.method(b, "slot_adder", bag_slot_adder, {"slot"})
+	godot.method(b, "bumper", bag_bumper)
+	godot.method(b, "ticker", bag_ticker)
 	godot.method(b, "defer", bag_defer, {"n"})
 	godot.method(b, "proc_total", bag_proc_total)
 	godot.method(b, "dict_squares", bag_dict_squares, {"n"})
@@ -1425,6 +1427,27 @@ bag_adder :: proc(self: ^Bag, n: i64) -> godot.Callable {
 // A Callable `c` whose `c.call(x)` adds `x` to this bag's slot `slot`.
 bag_slot_adder :: proc(self: ^Bag, slot: i64) -> godot.Callable {
 	return godot.callable(self, bag_add_to_slot, godot.variant(slot))
+}
+
+// Adds 1 to `proc_total`: a plain proc with no parameters, for `callable(f)`.
+tick_total :: proc() {
+	proc_total += 1
+}
+
+// Adds 1 to slot 0.
+bag_bump :: proc(self: ^Bag) {
+	self.slots[0] += 1
+}
+
+// A Callable `c` whose `c.call()` adds 1 to this bag's slot 0: an instance proc with no parameters
+// past `self`.
+bag_bumper :: proc(self: ^Bag) -> godot.Callable {
+	return godot.callable(self, bag_bump)
+}
+
+// A Callable `c` whose `c.call()` adds 1 to `proc_total`: a plain proc with no parameters.
+bag_ticker :: proc(self: ^Bag) -> godot.Callable {
+	return godot.callable(tick_total)
 }
 
 // At the end of the frame, adds `n` to `proc_total` and to slot 2.

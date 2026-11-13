@@ -580,6 +580,16 @@ func _check_extras() -> int:
 	if Bag.proc_total() - before != 20 or b2.get(&"slot_1") != 11 or add.get_argument_count() != 1:
 		print("FAIL: Bag Callables gave %d and %s, not 20 and 11" % [Bag.proc_total() - before, b2.get(&"slot_1")])
 		failures += 1
+	var slot_0: int = b2.get(&"slot_0")
+	var ticks: int = Bag.proc_total()
+	var bump: Callable = b2.bumper()
+	var tick: Callable = b2.ticker()
+	bump.call()
+	tick.call()
+	tick.call()
+	if b2.get(&"slot_0") != slot_0 + 1 or Bag.proc_total() != ticks + 2 or bump.get_argument_count() != 0 or tick.get_argument_count() != 0:
+		print("FAIL: Bag's no-parameter Callables gave %s and %d, not %d and %d" % [b2.get(&"slot_0"), Bag.proc_total(), slot_0 + 1, ticks + 2])
+		failures += 1
 	var squares: Dictionary = b2.dict_squares(4)
 	if squares != {0: 0.0, 1: 1.0, 2: 4.0, 3: 9.0} or squares.is_typed() or typeof(squares[3]) != TYPE_FLOAT or not b2.dict_squares(0).is_empty():
 		print("FAIL: Bag.dict_squares gave %s" % squares)

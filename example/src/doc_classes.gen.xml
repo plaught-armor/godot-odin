@@ -168,6 +168,12 @@
 		<method name="slot_adder">
 			<description>A Callable [code]c[/code] whose [code]c.call(x)[/code] adds [code]x[/code] to this bag's slot [code]slot[/code].</description>
 		</method>
+		<method name="bumper">
+			<description>A Callable [code]c[/code] whose [code]c.call()[/code] adds 1 to this bag's slot 0: an instance proc with no parameters past [code]self[/code].</description>
+		</method>
+		<method name="ticker">
+			<description>A Callable [code]c[/code] whose [code]c.call()[/code] adds 1 to [code]proc_total[/code]: a plain proc with no parameters.</description>
+		</method>
 		<method name="defer">
 			<description>At the end of the frame, adds [code]n[/code] to [code]proc_total[/code] and to slot 2.</description>
 		</method>
