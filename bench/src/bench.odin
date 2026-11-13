@@ -57,6 +57,7 @@ register :: proc() {
 	godot.method(c, "callable_call_ns", callable_call_ns, {"f", "n"})
 	godot.method(c, "ident_ns", ident_ns, {"kind", "n"})
 	godot.method(c, "vector_ns", vector_ns, {"kind", "n"})
+	godot.method(c, "vectori_ns", vectori_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -985,4 +986,59 @@ text_len :: proc(self: ^Bench, s: string) -> i64 {
 string_len :: proc(self: ^Bench, s: godot.String) -> i64 {
 	s := s
 	return godot.string_length(&s)
+}
+
+// The Vector3i methods `vectori_ns` times, paired the same way as Vector_Op.
+Vectori_Op :: enum i64 {
+	LENGTH_CALL,        // the engine's Vector3i.length
+	LENGTH,             // vector3i_length
+	DISTANCE_SQ_CALL,   // the engine's Vector3i.distance_squared_to
+	DISTANCE_SQ,        // vector3i_distance_squared_to
+	SNAPPED_CALL,       // the engine's Vector3i.snapped
+	SNAPPED,            // vector3i_snapped
+}
+
+// Nanoseconds per `kind` round on a Vector3i reread through a volatile load each round, as in
+// vector_ns.
+vectori_ns :: proc(self: ^Bench, kind: Vectori_Op, n: i64) -> f64 {
+	v := godot.Vector3i{7, -12, 30}
+	to := godot.Vector3i{-5, 4, 2}
+	step := godot.Vector3i{4, 5, 6}
+	ref := &v
+	length_fn := godot.builtin_method(.VECTOR3I, "length", 466405837)
+	distance_fn := godot.builtin_method(.VECTOR3I, "distance_squared_to", 2947717320)
+	snapped_fn := godot.builtin_method(.VECTOR3I, "snapped", 1989319750)
+	sum: i64
+	start := time.tick_now()
+	switch kind {
+	case .LENGTH_CALL:
+		for _ in 0 ..< n {
+			r: f64
+			length_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += i64(r)
+		}
+	case .LENGTH:
+		for _ in 0 ..< n { sum += i64(godot.vector3i_length(intrinsics.volatile_load(&ref))) }
+	case .DISTANCE_SQ_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&to}
+			r: i64
+			distance_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += r
+		}
+	case .DISTANCE_SQ:
+		for _ in 0 ..< n { sum += godot.vector3i_distance_squared_to(intrinsics.volatile_load(&ref), to) }
+	case .SNAPPED_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&step}
+			r: godot.Vector3i
+			snapped_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += i64(r.x)
+		}
+	case .SNAPPED:
+		for _ in 0 ..< n { sum += i64(godot.vector3i_snapped(intrinsics.volatile_load(&ref), step).x) }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += sum
+	return ns
 }

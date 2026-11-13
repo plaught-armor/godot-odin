@@ -225,6 +225,9 @@
 		<method name="replaced_vectors">
 			<description>The Vector2, Vector3 and Vector4 procs that replace engine methods (godot/vector.odin), each on the leading components of [code]a[/code] to [code]d[/code], with [code]n2[/code] and [code]n3[/code] the normals and rotation axis, [code]w[/code] the weight and [code]x[/code], [code]y[/code] and [code]z[/code] the other scalars. test.gd's _vector_results calls the engine's own methods in the same order.</description>
 		</method>
+		<method name="replaced_vectorsi">
+			<description>Every Vector2i, Vector3i and Vector4i proc on [code]a[/code] and the other arguments, in the order _vectori_results in test.gd calls the engine's methods.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>

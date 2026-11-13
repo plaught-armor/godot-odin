@@ -64,3 +64,24 @@ reports the error and transforms by the identity Basis, so an infinite component
 
 When writing tests for these, note that GDScript pools equal constants: a literal `-0.0` in a
 script that also uses `0.0` becomes `+0.0`. Build a negative zero at run time, as the test does.
+
+## Vector2i, Vector3i and Vector4i
+
+`REPLACED_TYPES` also leaves out every method and constructor of `Vector2i`, `Vector3i` and
+`Vector4i`. `godot/vectori.odin` defines them under the same names and signatures with the
+engine's `int32` semantics: components wrap, `int` arguments truncate to `int32`, and `length`,
+`distance_to` and `aspect` take the engine's precision steps (`int64` squares, a `double` square
+root, `float` division for `aspect`). Checked against Godot 4.7-stable by
+`_check_replaced_vectorsi`, which compares every result from GDScript and from
+`Bag.replaced_vectorsi` on edge cases (zero, `int32` limits, wrapping sums, out-of-range `int`
+scalars, infinite, NaN and out-of-range float sources) and on 2000 seeded random cases.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Vector3i.length` | 2.9 ns | 1.9 ns |
+| `Vector3i.distance_squared_to` | 2.9 ns | 1.2 to 1.3 ns |
+| `Vector3i.snapped` | 7.4 ns | 1.0 to 1.1 ns |
+
+Float to `int32` conversion, in the constructors from float vectors and in `snapped`, follows the
+x86-64 engine build: a value outside the `int32` range, or NaN, becomes `-2147483648`. Odin's own
+conversion saturates or wraps instead, so `i_of_double` checks the range first.

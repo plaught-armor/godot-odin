@@ -514,6 +514,7 @@ func _check_extras() -> int:
 			failures += 1
 	failures += _check_replaced_random(b2)
 	failures += _check_replaced_vectors(b2)
+	failures += _check_replaced_vectorsi(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -772,6 +773,99 @@ func _check_replaced_vectors(b2: Bag) -> int:
 			v[1] = v[0] * rng.randf_range(-2, 2)
 		failures += _check_vector_case(b2, v[0], v[1], v[2], v[3], n2, n3, rng.randf_range(-0.5, 1.5),
 			rng.randf_range(-6, 6), rng.randf_range(-3, 1), rng.randf_range(0, 4))
+	return failures
+
+
+# Appends `v` to `out` as integers: a vector by component, a float as its bits, an int as itself.
+func _put_int_result(out: PackedInt64Array, v: Variant) -> void:
+	match typeof(v):
+		TYPE_VECTOR2I:
+			out.append_array([v.x, v.y])
+		TYPE_VECTOR3I:
+			out.append_array([v.x, v.y, v.z])
+		TYPE_VECTOR4I:
+			out.append_array([v.x, v.y, v.z, v.w])
+		TYPE_FLOAT:
+			out.append(PackedFloat64Array([v]).to_byte_array().decode_s64(0))
+		_:
+			out.append(int(v))
+
+
+# The engine's Vector2i, Vector3i and Vector4i methods in the order Bag.replaced_vectorsi calls
+# the Odin procs.
+func _vectori_results(a: Vector4i, b: Vector4i, c: Vector4i, x: int, y: int, f: Vector4) -> PackedInt64Array:
+	var o := PackedInt64Array()
+	var a2 := Vector2i(a.x, a.y)
+	var b2 := Vector2i(b.x, b.y)
+	var c2 := Vector2i(c.x, c.y)
+	for v: Variant in [Vector2i(), Vector2i(a2), Vector2i(Vector2(f.x, f.y)), Vector2i(x, y), a2.aspect(),
+			a2.max_axis_index(), a2.min_axis_index(), a2.distance_to(b2), a2.distance_squared_to(b2),
+			a2.length(), a2.length_squared(), a2.sign(), a2.abs(), a2.clamp(b2, c2), a2.clampi(x, y),
+			a2.snapped(b2), a2.snappedi(x), a2.min(b2), a2.mini(x), a2.max(b2), a2.maxi(x)]:
+		_put_int_result(o, v)
+	var a3 := Vector3i(a.x, a.y, a.z)
+	var b3 := Vector3i(b.x, b.y, b.z)
+	var c3 := Vector3i(c.x, c.y, c.z)
+	for v: Variant in [Vector3i(), Vector3i(a3), Vector3i(Vector3(f.x, f.y, f.z)), Vector3i(x, y, x),
+			a3.max_axis_index(), a3.min_axis_index(), a3.distance_to(b3), a3.distance_squared_to(b3),
+			a3.length(), a3.length_squared(), a3.sign(), a3.abs(), a3.clamp(b3, c3), a3.clampi(x, y),
+			a3.snapped(b3), a3.snappedi(x), a3.min(b3), a3.mini(x), a3.max(b3), a3.maxi(x)]:
+		_put_int_result(o, v)
+	for v: Variant in [Vector4i(), Vector4i(a), Vector4i(f), Vector4i(x, y, y, x),
+			a.max_axis_index(), a.min_axis_index(), a.distance_to(b), a.distance_squared_to(b),
+			a.length(), a.length_squared(), a.sign(), a.abs(), a.clamp(b, c), a.clampi(x, y),
+			a.snapped(b), a.snappedi(x), a.min(b), a.mini(x), a.max(b), a.maxi(x)]:
+		_put_int_result(o, v)
+	return o
+
+
+func _check_vectori_case(b2: Bag, a: Vector4i, b: Vector4i, c: Vector4i, x: int, y: int, f: Vector4) -> int:
+	var want := _vectori_results(a, b, c, x, y, f)
+	var got: PackedInt64Array = b2.replaced_vectorsi(a, b, c, x, y, f)
+	if got == want:
+		return 0
+	var at := 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_vectorsi(%s, %s, %s, %d, %d, %s) differs at %d of %d: %s, not %s" % [a, b, c, x, y, f, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# The int vector procs that replace engine methods, on edge cases (zero, units, the int32 limits,
+# whose differences and snaps wrap, zero and negative steps, scalars past int32 that truncate,
+# floats that truncate or fall out of range) and then on seeded random vectors.
+func _check_replaced_vectorsi(b2: Bag) -> int:
+	var failures := 0
+	var top := 2147483647
+	var low := -2147483648
+	var edges: Array[Vector4i] = [Vector4i.ZERO, Vector4i(1, -1, 0, 2), Vector4i(2, 2, 2, 2),
+		Vector4i(-7, 7, 3, -3), Vector4i(top, low, top, low), Vector4i(low, top, -1, 1),
+		Vector4i(top, top, low, low), Vector4i(46341, -46341, 65536, -65536), Vector4i(0, 0, 1, 1),
+		Vector4i(5, 3, 5, 3), Vector4i(-2, -4, -6, -8), Vector4i(1073741824, -1073741824, 3, 0)]
+	var scalars: Array = [[0, 0], [1, -1], [2, 5], [-3, 3], [top, low], [4294967298, -4294967291],
+		[3, 2], [-1, 7]]
+	var floats: Array[Vector4] = [Vector4(0.5, -0.5, 1.9, -1.9), Vector4(INF, -INF, NAN, 0),
+		Vector4(3e9, -3e9, 2147483520.0, -2147483648.0), Vector4(1e-30, -1e30, 7, -7.99),
+		Vector4(2147483648.0, -2147483904.0, 2147483392.0, 0.5)]
+	for i: int in edges.size():
+		for j: int in [0, 1, 4, 7]:
+			var s: Array = scalars[(i + j) % scalars.size()]
+			failures += _check_vectori_case(b2, edges[i], edges[(i + j) % edges.size()],
+				edges[(i + j + 3) % edges.size()], s[0], s[1], floats[(i + j) % floats.size()])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261113
+	for round: int in 2000:
+		var v: Array[Vector4i] = []
+		for k: int in 3:
+			var e := Vector4i()
+			for m: int in 4:
+				match rng.randi_range(0, 4):
+					0: e[m] = rng.randi_range(-2147483648, 2147483647)
+					1: e[m] = [top, low, 0][rng.randi_range(0, 2)]
+					_: e[m] = rng.randi_range(-9, 9)
+			v.append(e)
+		var f := Vector4(rng.randf_range(-20, 20), rng.randf_range(-3e9, 3e9), rng.randf_range(-1, 1), rng.randf_range(-1e5, 1e5))
+		failures += _check_vectori_case(b2, v[0], v[1], v[2], rng.randi_range(-9, 9), rng.randi_range(-9, 9), f)
 	return failures
 
 

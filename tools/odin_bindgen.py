@@ -73,9 +73,10 @@ REPLACED = {
     ("String", "split"),
 }
 
-# Builtins whose methods and constructors all live in place: godot/vector.odin computes each in
-# single precision as the engine does, under the generated name and signature.
-REPLACED_TYPES = {"Vector2", "Vector3", "Vector4"}
+# Builtins whose methods and constructors all live in place under the generated name and
+# signature: godot/vector.odin computes the float vectors in single precision as the engine does,
+# and godot/vectori.odin the int vectors.
+REPLACED_TYPES = {"Vector2", "Vector3", "Vector4", "Vector2i", "Vector3i", "Vector4i"}
 
 class Interface:
     """The C interface: types, then one proc variable per interface function and a loader."""

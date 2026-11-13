@@ -117,6 +117,12 @@ func _initialize() -> void:
 	_report("Odin vector3_dot", func() -> float: return b.vector_ns(5, N))
 	_report("Engine Vector3.lerp call", func() -> float: return b.vector_ns(6, N))
 	_report("Odin vector3_lerp", func() -> float: return b.vector_ns(7, N))
+	_report("Engine Vector3i.length call", func() -> float: return b.vectori_ns(0, N))
+	_report("Odin vector3i_length", func() -> float: return b.vectori_ns(1, N))
+	_report("Engine Vector3i.distance_squared_to call", func() -> float: return b.vectori_ns(2, N))
+	_report("Odin vector3i_distance_squared_to", func() -> float: return b.vectori_ns(3, N))
+	_report("Engine Vector3i.snapped call", func() -> float: return b.vectori_ns(4, N))
+	_report("Odin vector3i_snapped", func() -> float: return b.vectori_ns(5, N))
 	_report("GDScript -> Odin, typed, String param", func() -> float: return _string_param(b, false))
 	_report("GDScript -> Odin, typed, string param", func() -> float: return _string_param(b, true))
 	var table: Dictionary = {}

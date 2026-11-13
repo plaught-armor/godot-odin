@@ -124,6 +124,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_ops", bag_replaced_ops, {"s", "part", "from", "to"})
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
+	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1190,4 +1191,93 @@ bump_from_task :: proc(t: ^gde.ObjectPtr) {
 tally_bump :: proc(self: ^Tally) -> i64 {
 	self.calls += 1
 	return self.calls
+}
+
+// Integers gathered for bag_replaced_vectorsi, in call order.
+Vectori_Results :: struct {
+	v: [200]i64,
+	n: int,
+}
+
+// Appends `v` to `o` as integers: a vector by component, a double as its bits, an int as itself.
+put_int_result :: proc(o: ^Vectori_Results, v: $T) {
+	when intrinsics.type_is_array(T) {
+		for e in v { put_int_result(o, i64(e)) }
+	} else when T == f64 {
+		put_int_result(o, transmute(i64)v)
+	} else {
+		o.v[o.n] = i64(v)
+		o.n += 1
+	}
+}
+
+// Every Vector2i, Vector3i and Vector4i proc on `a` and the other arguments, in the order
+// _vectori_results in test.gd calls the engine's methods.
+bag_replaced_vectorsi :: proc(self: ^Bag, a, b, c: godot.Vector4i, x, y: i64, f: godot.Vector4) -> godot.PackedInt64Array {
+	o: Vectori_Results
+	a2, b2, c2 := godot.Vector2i(a.xy), godot.Vector2i(b.xy), godot.Vector2i(c.xy)
+	put_int_result(&o, godot.vector2i_new())
+	put_int_result(&o, godot.vector2i_new_from_vector2i(a2))
+	put_int_result(&o, godot.vector2i_new_from_vector2(godot.Vector2(f.xy)))
+	put_int_result(&o, godot.vector2i_new_from_int_int(x, y))
+	put_int_result(&o, godot.vector2i_aspect(&a2))
+	put_int_result(&o, godot.vector2i_max_axis_index(&a2))
+	put_int_result(&o, godot.vector2i_min_axis_index(&a2))
+	put_int_result(&o, godot.vector2i_distance_to(&a2, b2))
+	put_int_result(&o, godot.vector2i_distance_squared_to(&a2, b2))
+	put_int_result(&o, godot.vector2i_length(&a2))
+	put_int_result(&o, godot.vector2i_length_squared(&a2))
+	put_int_result(&o, godot.vector2i_sign(&a2))
+	put_int_result(&o, godot.vector2i_abs(&a2))
+	put_int_result(&o, godot.vector2i_clamp(&a2, b2, c2))
+	put_int_result(&o, godot.vector2i_clampi(&a2, x, y))
+	put_int_result(&o, godot.vector2i_snapped(&a2, b2))
+	put_int_result(&o, godot.vector2i_snappedi(&a2, x))
+	put_int_result(&o, godot.vector2i_min(&a2, b2))
+	put_int_result(&o, godot.vector2i_mini(&a2, x))
+	put_int_result(&o, godot.vector2i_max(&a2, b2))
+	put_int_result(&o, godot.vector2i_maxi(&a2, x))
+	a3, b3, c3 := godot.Vector3i(a.xyz), godot.Vector3i(b.xyz), godot.Vector3i(c.xyz)
+	put_int_result(&o, godot.vector3i_new())
+	put_int_result(&o, godot.vector3i_new_from_vector3i(a3))
+	put_int_result(&o, godot.vector3i_new_from_vector3(godot.Vector3(f.xyz)))
+	put_int_result(&o, godot.vector3i_new_from_int_int_int(x, y, x))
+	put_int_result(&o, godot.vector3i_max_axis_index(&a3))
+	put_int_result(&o, godot.vector3i_min_axis_index(&a3))
+	put_int_result(&o, godot.vector3i_distance_to(&a3, b3))
+	put_int_result(&o, godot.vector3i_distance_squared_to(&a3, b3))
+	put_int_result(&o, godot.vector3i_length(&a3))
+	put_int_result(&o, godot.vector3i_length_squared(&a3))
+	put_int_result(&o, godot.vector3i_sign(&a3))
+	put_int_result(&o, godot.vector3i_abs(&a3))
+	put_int_result(&o, godot.vector3i_clamp(&a3, b3, c3))
+	put_int_result(&o, godot.vector3i_clampi(&a3, x, y))
+	put_int_result(&o, godot.vector3i_snapped(&a3, b3))
+	put_int_result(&o, godot.vector3i_snappedi(&a3, x))
+	put_int_result(&o, godot.vector3i_min(&a3, b3))
+	put_int_result(&o, godot.vector3i_mini(&a3, x))
+	put_int_result(&o, godot.vector3i_max(&a3, b3))
+	put_int_result(&o, godot.vector3i_maxi(&a3, x))
+	a4 := a
+	put_int_result(&o, godot.vector4i_new())
+	put_int_result(&o, godot.vector4i_new_from_vector4i(a))
+	put_int_result(&o, godot.vector4i_new_from_vector4(f))
+	put_int_result(&o, godot.vector4i_new_from_int_int_int_int(x, y, y, x))
+	put_int_result(&o, godot.vector4i_max_axis_index(&a4))
+	put_int_result(&o, godot.vector4i_min_axis_index(&a4))
+	put_int_result(&o, godot.vector4i_distance_to(&a4, b))
+	put_int_result(&o, godot.vector4i_distance_squared_to(&a4, b))
+	put_int_result(&o, godot.vector4i_length(&a4))
+	put_int_result(&o, godot.vector4i_length_squared(&a4))
+	put_int_result(&o, godot.vector4i_sign(&a4))
+	put_int_result(&o, godot.vector4i_abs(&a4))
+	put_int_result(&o, godot.vector4i_clamp(&a4, b, c))
+	put_int_result(&o, godot.vector4i_clampi(&a4, x, y))
+	put_int_result(&o, godot.vector4i_snapped(&a4, b))
+	put_int_result(&o, godot.vector4i_snappedi(&a4, x))
+	put_int_result(&o, godot.vector4i_min(&a4, b))
+	put_int_result(&o, godot.vector4i_mini(&a4, x))
+	put_int_result(&o, godot.vector4i_max(&a4, b))
+	put_int_result(&o, godot.vector4i_maxi(&a4, x))
+	return godot.packed_of_int64(o.v[:o.n])
 }
