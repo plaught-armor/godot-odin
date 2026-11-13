@@ -222,6 +222,12 @@
 		<method name="replaced_strs">
 			<description>The String procs that replace engine methods and make Strings: replace and replacen of [code]part[/code] by [code]with[/code] in [code]s[/code], then the parts of split on [code]part[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
+		<method name="replaced_name_ops">
+			<description>bag_replaced_ops through the StringName methods on [code]n[/code], then its length, is_empty as 0 or 1 and hash. test.gd builds the same array from the engine's StringName methods.</description>
+		</method>
+		<method name="replaced_name_strs">
+			<description>bag_replaced_strs through the StringName methods on [code]n[/code].</description>
+		</method>
 		<method name="replaced_vectors">
 			<description>The Vector2, Vector3 and Vector4 procs that replace engine methods (godot/vector.odin), each on the leading components of [code]a[/code] to [code]d[/code], with [code]n2[/code] and [code]n3[/code] the normals and rotation axis, [code]w[/code] the weight and [code]x[/code], [code]y[/code] and [code]z[/code] the other scalars. test.gd's _vector_results calls the engine's own methods in the same order.</description>
 		</method>

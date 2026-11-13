@@ -570,6 +570,12 @@ Ident :: enum i64 {
 	NOCASE_CALL,       // the engine's String.nocasecmp_to the same way
 	REPLACE_CALL,      // the engine's String.replace the same way
 	SPLIT_CALL,        // the engine's String.split the same way
+	NAME_LENGTH_CALL,  // the engine's StringName.length on the identifier, called as the bindings did before
+	NAME_LENGTH,       // the generated string_name_length, read from the interned name
+	NAME_HASH_CALL,    // the engine's StringName.hash the same way
+	NAME_HASH,         // the generated string_name_hash, read from the interned name
+	NAME_FIND_CALL,    // the engine's StringName.find of a cached String in the sentence as a StringName
+	NAME_FIND,         // the generated string_name_find of the same
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -751,6 +757,47 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		}
 	case .FIND_CALL:
 		sum += call_find_method("find", "lazy", 0, n)
+	case .NAME_LENGTH_CALL, .NAME_HASH_CALL:
+		name := godot.name_of(text)
+		defer godot.destroy[.STRING_NAME](&name)
+		r := &name
+		fn := godot.builtin_method(.STRING_NAME, "length" if kind == .NAME_LENGTH_CALL else "hash", 3173160232)
+		for _ in 0 ..< n {
+			v: i64
+			fn(intrinsics.volatile_load(&r), nil, &v, 0)
+			sum += v
+		}
+	case .NAME_LENGTH:
+		name := godot.name_of(text)
+		defer godot.destroy[.STRING_NAME](&name)
+		r := &name
+		for _ in 0 ..< n { sum += godot.string_name_length(intrinsics.volatile_load(&r)) }
+	case .NAME_HASH:
+		name := godot.name_of(text)
+		defer godot.destroy[.STRING_NAME](&name)
+		r := &name
+		for _ in 0 ..< n { sum += godot.string_name_hash(intrinsics.volatile_load(&r)) }
+	case .NAME_FIND_CALL:
+		hay := godot.name_of(FIND_HAY)
+		defer godot.destroy[.STRING_NAME](&hay)
+		h := &hay
+		needle := godot.intern_text("lazy")
+		fn := godot.builtin_method(.STRING_NAME, "find", 1760645412)
+		from := i64(0)
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&needle, &from}
+			r: i64
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 2)
+			sum += r
+		}
+	case .NAME_FIND:
+		hay := godot.name_of(FIND_HAY)
+		defer godot.destroy[.STRING_NAME](&hay)
+		h := &hay
+		needle := godot.intern_text("lazy")
+		for _ in 0 ..< n {
+			sum += godot.string_name_find(intrinsics.volatile_load(&h), needle, 0)
+		}
 	case .RFIND_CALL:
 		sum += call_find_method("rfind", "quick", -1, n)
 	case .FINDN_CALL:

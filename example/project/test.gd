@@ -606,7 +606,9 @@ func _check_extras() -> int:
 # Untyped calls and property writes arrive as Variants, and an int, float or bool converts to the
 # parameter's or field's type as the engine's own would.
 # The String procs that replace engine methods, from Bag.replaced_ops, against the engine's own
-# methods called from GDScript, which do not go through the bindings. Returns 1 on a mismatch.
+# methods called from GDScript, which do not go through the bindings, then the same through the
+# StringName methods with its length, is_empty and hash, from Bag.replaced_name_ops. Returns 1 on a
+# mismatch.
 func _check_replaced_ops(b2: Bag, s: String, part: String, from: int, to: int) -> int:
 	var want := PackedInt64Array([s.find(part, from), s.rfind(part, from), s.findn(part, from),
 		s.rfindn(part, from), int(s.contains(part)), int(s.containsn(part)), s.count(part, from, to),
@@ -616,17 +618,34 @@ func _check_replaced_ops(b2: Bag, s: String, part: String, from: int, to: int) -
 	if got != want:
 		print("FAIL: Bag.replaced_ops(%s, %s, %d, %d) gave %s, not %s" % [s, part, from, to, got, want])
 		return 1
+	var n := StringName(s)
+	want = PackedInt64Array([n.find(part, from), n.rfind(part, from), n.findn(part, from),
+		n.rfindn(part, from), int(n.contains(part)), int(n.containsn(part)), n.count(part, from, to),
+		n.countn(part, from, to), int(n.begins_with(part)), int(n.ends_with(part)), n.casecmp_to(part),
+		n.nocasecmp_to(part), n.length(), int(n.is_empty()), n.hash()])
+	got = b2.replaced_name_ops(n, part, from, to)
+	if got != want:
+		print("FAIL: Bag.replaced_name_ops(%s, %s, %d, %d) gave %s, not %s" % [n, part, from, to, got, want])
+		return 1
 	return 0
 
 
 # The String procs that replace engine methods and make Strings, from Bag.replaced_strs: replace and
-# replacen of `part` by `with`, then the parts of split on `part`. Returns 1 on a mismatch.
+# replacen of `part` by `with`, then the parts of split on `part`, then the same through the
+# StringName methods from Bag.replaced_name_strs. Returns 1 on a mismatch.
 func _check_replaced_strs(b2: Bag, s: String, part: String, with: String, allow_empty: bool, maxsplit: int) -> int:
 	var want := PackedStringArray([s.replace(part, with), s.replacen(part, with)])
 	want.append_array(s.split(part, allow_empty, maxsplit))
 	var got: PackedStringArray = b2.replaced_strs(s, part, with, allow_empty, maxsplit)
 	if got != want:
 		print("FAIL: Bag.replaced_strs(%s, %s, %s, %s, %d) gave %s, not %s" % [s, part, with, allow_empty, maxsplit, got, want])
+		return 1
+	var n := StringName(s)
+	want = PackedStringArray([n.replace(part, with), n.replacen(part, with)])
+	want.append_array(n.split(part, allow_empty, maxsplit))
+	got = b2.replaced_name_strs(n, part, with, allow_empty, maxsplit)
+	if got != want:
+		print("FAIL: Bag.replaced_name_strs(%s, %s, %s, %s, %d) gave %s, not %s" % [n, part, with, allow_empty, maxsplit, got, want])
 		return 1
 	return 0
 

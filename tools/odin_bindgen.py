@@ -78,6 +78,22 @@ IN_PLACE = {
     ("Dictionary", "find_key"): "\tif k, ok := dict_stored_find_key(self, value); ok { return k }\n",
     ("Dictionary", "keys"): "\tif a, ok := dict_stored_list(self, false); ok { return a }\n",
     ("Dictionary", "values"): "\tif a, ok := dict_stored_list(self, true); ok { return a }\n",
+    # godot/dictionary.odin: a StringName keeps its name String and hash in its interned data, which
+    # check_dict_layout proves before it sets dict_layout_known. The engine converts a StringName
+    # to that String and calls the String method, so each delegates to the String proc.
+    ("StringName", "length"): "\tif dict_layout_known { return string_stored_length(name_text(self)) }\n",
+    ("StringName", "is_empty"): "\tif dict_layout_known { return string_stored_length(name_text(self)) == 0 }\n",
+    ("StringName", "hash"): "\tif dict_layout_known { return i64(name_stored_hash(self)) }\n",
+    **{("StringName", m): f"\tif dict_layout_known {{ return string_{m}(name_text(self), {args}) }}\n"
+       for m, args in (
+           ("find", "what, from"), ("findn", "what, from"),
+           ("rfind", "what, from"), ("rfindn", "what, from"),
+           ("contains", "what"), ("containsn", "what"),
+           ("count", "what, from, to"), ("countn", "what, from, to"),
+           ("begins_with", "text"), ("ends_with", "text"),
+           ("casecmp_to", "to"), ("nocasecmp_to", "to"),
+           ("replace", "what, forwhat"), ("replacen", "what, forwhat"),
+           ("split", "delimiter, allow_empty, maxsplit"))},
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the

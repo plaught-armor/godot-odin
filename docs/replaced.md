@@ -536,3 +536,29 @@ values, and ones with typed values; and on 300 seeded random sets of three Dicti
 Timings are from `bench/build.sh`: `has` and `get` of 40 in a Dictionary mapping the ints 0 to 63
 to three times themselves, `find_key` of 120 in it, `keys` and `values` of it, and `has` of "12" in
 one of the Strings "0" to "15".
+
+## StringName
+
+The generated StringName reads `length`, `is_empty`, `hash`, `find`, `findn`, `rfind`, `rfindn`,
+`contains`, `containsn`, `count`, `countn`, `begins_with`, `ends_with`, `casecmp_to`,
+`nocasecmp_to`, `replace`, `replacen` and `split` read the interned name in place. A StringName
+points at the engine's shared `StringName::_Data`, which keeps the name String at byte 8 and the
+hash after it, and is nil for the empty name. The engine binds every one of these but `hash` by
+converting the StringName to that String and calling the String method, so each passes the String
+it keeps to the String proc of the same name above; the empty name reads as the empty String.
+`hash` returns the stored hash, and for the empty name the hash of the empty String, as
+`StringName::hash` does. `check_dict_layout` proves both offsets at load; when it fails, every read
+falls back to the engine call.
+
+Checked against Godot 4.7-stable by `_check_replaced_ops` and `_check_replaced_strs`, which repeat
+each case through `Bag.replaced_name_ops` and `Bag.replaced_name_strs` on the StringName of the
+same text, against the engine's StringName methods called from GDScript.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `StringName.length` | 5.43 ns | 0.47 ns |
+| `StringName.hash` | 2.30 ns | 1.16 ns |
+| `StringName.find` | 76 ns | 10.6 ns |
+
+Timings are from `bench/build.sh`: `length` and `hash` of "player_jump", and `find` of a cached
+"lazy" in the 43-character sentence as a StringName.

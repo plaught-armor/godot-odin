@@ -123,6 +123,8 @@ register_extras :: proc() {
 	godot.method(b, "which_name", bag_which_name, {"name"})
 	godot.method(b, "replaced_ops", bag_replaced_ops, {"s", "part", "from", "to"})
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
+	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
+	godot.method(b, "replaced_name_strs", bag_replaced_name_strs, {"n", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
 	godot.method(b, "replaced_colors", bag_replaced_colors, {"a", "b", "c", "x", "n"})
@@ -649,6 +651,48 @@ bag_replaced_strs :: proc(self: ^Bag, s: godot.String, part: godot.String, with:
 	godot.packed_string_array_append(&out, r)
 	godot.destroy[.STRING](&r)
 	parts := godot.string_split(&s, part, allow_empty, maxsplit)
+	godot.packed_string_array_append_array(&out, parts)
+	godot.destroy[.PACKED_STRING_ARRAY](&parts)
+	return out
+}
+
+// bag_replaced_ops through the StringName methods on `n`, then its length, is_empty as 0 or 1 and
+// hash. test.gd builds the same array from the engine's StringName methods.
+bag_replaced_name_ops :: proc(self: ^Bag, n: godot.StringName, part: godot.String, from: i64, to: i64) -> godot.PackedInt64Array {
+	n := n
+	r := [15]i64{
+		godot.string_name_find(&n, part, from),
+		godot.string_name_rfind(&n, part, from),
+		godot.string_name_findn(&n, part, from),
+		godot.string_name_rfindn(&n, part, from),
+		i64(godot.string_name_contains(&n, part)),
+		i64(godot.string_name_containsn(&n, part)),
+		godot.string_name_count(&n, part, from, to),
+		godot.string_name_countn(&n, part, from, to),
+		i64(godot.string_name_begins_with(&n, part)),
+		i64(godot.string_name_ends_with(&n, part)),
+		godot.string_name_casecmp_to(&n, part),
+		godot.string_name_nocasecmp_to(&n, part),
+		godot.string_name_length(&n),
+		i64(godot.string_name_is_empty(&n)),
+		godot.string_name_hash(&n),
+	}
+	out := godot.packed_int64_array_new()
+	for v in r { godot.packed_int64_array_append(&out, v) }
+	return out
+}
+
+// bag_replaced_strs through the StringName methods on `n`.
+bag_replaced_name_strs :: proc(self: ^Bag, n: godot.StringName, part: godot.String, with: godot.String, allow_empty: bool, maxsplit: i64) -> godot.PackedStringArray {
+	n := n
+	out := godot.packed_string_array_new()
+	r := godot.string_name_replace(&n, part, with)
+	godot.packed_string_array_append(&out, r)
+	godot.destroy[.STRING](&r)
+	r = godot.string_name_replacen(&n, part, with)
+	godot.packed_string_array_append(&out, r)
+	godot.destroy[.STRING](&r)
+	parts := godot.string_name_split(&n, part, allow_empty, maxsplit)
 	godot.packed_string_array_append_array(&out, parts)
 	godot.destroy[.PACKED_STRING_ARRAY](&parts)
 	return out

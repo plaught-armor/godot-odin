@@ -174,13 +174,19 @@ dict_key_hash :: #force_inline proc "contextless" (k: ^Variant) -> (u32, bool) {
 	case .FLOAT:       h = murmur3_one_double((^f64)(at)^)
 	case .STRING:      h = string_djb2((^String)(at))
 	case .STRING_NAME:
-		p := (^rawptr)(at)^
-		// The empty StringName hashes as the empty String does.
-		h = 5381 if p == nil else (^u32)(uintptr(p) + name_hash_offset)^
+		h = name_stored_hash((^StringName)(at))
 	case:
 		return 0, false
 	}
 	return max(h, 1), true
+}
+
+// The hash StringName `n` keeps in its data: the engine's StringName::hash. The empty StringName,
+// which has no data, hashes as the empty String does. Only when `dict_layout_known`.
+@(private)
+name_stored_hash :: #force_inline proc "contextless" (n: ^StringName) -> u32 {
+	p := (^rawptr)(n)^
+	return 5381 if p == nil else (^u32)(uintptr(p) + name_hash_offset)^
 }
 
 // The text of StringName `n`, borrowed, empty when `n` is.

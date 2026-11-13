@@ -889,6 +889,7 @@ string_name_destroy :: proc "contextless" (self: ^StringName) {
 	__fn(self)
 }
 string_name_casecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
+	if dict_layout_known { return string_casecmp_to(name_text(self), to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "casecmp_to", 2920860731) }
 	__a_to := to
@@ -898,6 +899,7 @@ string_name_casecmp_to :: proc "contextless" (self: ^StringName, to: String) -> 
 	return __ret
 }
 string_name_nocasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
+	if dict_layout_known { return string_nocasecmp_to(name_text(self), to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "nocasecmp_to", 2920860731) }
 	__a_to := to
@@ -943,6 +945,7 @@ string_name_filenocasecmp_to :: proc "contextless" (self: ^StringName, to: Strin
 	return __ret
 }
 string_name_length :: proc "contextless" (self: ^StringName) -> i64 {
+	if dict_layout_known { return string_stored_length(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "length", 3173160232) }
 	__ret: i64
@@ -989,6 +992,7 @@ string_name_get_slice_count :: proc "contextless" (self: ^StringName, delimiter:
 	return __ret
 }
 string_name_find :: proc "contextless" (self: ^StringName, what: String, from: i64) -> i64 {
+	if dict_layout_known { return string_find(name_text(self), what, from) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "find", 1760645412) }
 	__a_what := what
@@ -999,6 +1003,7 @@ string_name_find :: proc "contextless" (self: ^StringName, what: String, from: i
 	return __ret
 }
 string_name_findn :: proc "contextless" (self: ^StringName, what: String, from: i64) -> i64 {
+	if dict_layout_known { return string_findn(name_text(self), what, from) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "findn", 1760645412) }
 	__a_what := what
@@ -1009,6 +1014,7 @@ string_name_findn :: proc "contextless" (self: ^StringName, what: String, from: 
 	return __ret
 }
 string_name_count :: proc "contextless" (self: ^StringName, what: String, from: i64, to: i64) -> i64 {
+	if dict_layout_known { return string_count(name_text(self), what, from, to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "count", 2343087891) }
 	__a_what := what
@@ -1020,6 +1026,7 @@ string_name_count :: proc "contextless" (self: ^StringName, what: String, from: 
 	return __ret
 }
 string_name_countn :: proc "contextless" (self: ^StringName, what: String, from: i64, to: i64) -> i64 {
+	if dict_layout_known { return string_countn(name_text(self), what, from, to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "countn", 2343087891) }
 	__a_what := what
@@ -1031,6 +1038,7 @@ string_name_countn :: proc "contextless" (self: ^StringName, what: String, from:
 	return __ret
 }
 string_name_rfind :: proc "contextless" (self: ^StringName, what: String, from: i64) -> i64 {
+	if dict_layout_known { return string_rfind(name_text(self), what, from) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rfind", 1760645412) }
 	__a_what := what
@@ -1041,6 +1049,7 @@ string_name_rfind :: proc "contextless" (self: ^StringName, what: String, from: 
 	return __ret
 }
 string_name_rfindn :: proc "contextless" (self: ^StringName, what: String, from: i64) -> i64 {
+	if dict_layout_known { return string_rfindn(name_text(self), what, from) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rfindn", 1760645412) }
 	__a_what := what
@@ -1069,6 +1078,7 @@ string_name_matchn :: proc "contextless" (self: ^StringName, expr: String) -> bo
 	return __ret != 0
 }
 string_name_begins_with :: proc "contextless" (self: ^StringName, text: String) -> bool {
+	if dict_layout_known { return string_begins_with(name_text(self), text) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "begins_with", 2566493496) }
 	__a_text := text
@@ -1078,6 +1088,7 @@ string_name_begins_with :: proc "contextless" (self: ^StringName, text: String) 
 	return __ret != 0
 }
 string_name_ends_with :: proc "contextless" (self: ^StringName, text: String) -> bool {
+	if dict_layout_known { return string_ends_with(name_text(self), text) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "ends_with", 2566493496) }
 	__a_text := text
@@ -1131,6 +1142,7 @@ string_name_format :: proc "contextless" (self: ^StringName, values: Variant, pl
 	return __ret
 }
 string_name_replace :: proc "contextless" (self: ^StringName, what: String, forwhat: String) -> String {
+	if dict_layout_known { return string_replace(name_text(self), what, forwhat) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "replace", 1340436205) }
 	__a_what := what
@@ -1141,6 +1153,7 @@ string_name_replace :: proc "contextless" (self: ^StringName, what: String, forw
 	return __ret
 }
 string_name_replacen :: proc "contextless" (self: ^StringName, what: String, forwhat: String) -> String {
+	if dict_layout_known { return string_replacen(name_text(self), what, forwhat) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "replacen", 1340436205) }
 	__a_what := what
@@ -1260,6 +1273,7 @@ string_name_to_kebab_case :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_split :: proc "contextless" (self: ^StringName, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
+	if dict_layout_known { return string_split(name_text(self), delimiter, allow_empty, maxsplit) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "split", 1252735785) }
 	__a_delimiter := delimiter
@@ -1458,6 +1472,7 @@ string_name_sha256_buffer :: proc "contextless" (self: ^StringName) -> PackedByt
 	return __ret
 }
 string_name_is_empty :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return string_stored_length(name_text(self)) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_empty", 3918633141) }
 	__ret: u8
@@ -1465,6 +1480,7 @@ string_name_is_empty :: proc "contextless" (self: ^StringName) -> bool {
 	return __ret != 0
 }
 string_name_contains :: proc "contextless" (self: ^StringName, what: String) -> bool {
+	if dict_layout_known { return string_contains(name_text(self), what) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "contains", 2566493496) }
 	__a_what := what
@@ -1474,6 +1490,7 @@ string_name_contains :: proc "contextless" (self: ^StringName, what: String) -> 
 	return __ret != 0
 }
 string_name_containsn :: proc "contextless" (self: ^StringName, what: String) -> bool {
+	if dict_layout_known { return string_containsn(name_text(self), what) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "containsn", 2566493496) }
 	__a_what := what
@@ -1790,6 +1807,7 @@ string_name_hex_decode :: proc "contextless" (self: ^StringName) -> PackedByteAr
 	return __ret
 }
 string_name_hash :: proc "contextless" (self: ^StringName) -> i64 {
+	if dict_layout_known { return i64(name_stored_hash(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "hash", 3173160232) }
 	__ret: i64
