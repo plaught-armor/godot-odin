@@ -44,6 +44,9 @@ its own two entry points that call the proc directly:
   method with no Array or packed array parameter gets a leaner entry point, since none of its
   arguments can need a new value built.
 
+Debug builds count each Variant call, method or field, in `variant_calls`, so a test can check that
+a typed call site took ptrcall. Release builds skip the count.
+
 A property read or write from GDScript, such as `b.rate` or `b.rate = x`, takes a slower path
 than either. In Godot 4.7 the GDScript compiler has no fast path for properties of engine or
 extension objects. Every access goes through `Object::get` or `Object::set`, which by default

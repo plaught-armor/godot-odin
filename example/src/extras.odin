@@ -107,6 +107,7 @@ register_extras :: proc() {
 	godot.method(b, "slot_adder", bag_slot_adder, {"slot"})
 	godot.method(b, "bumper", bag_bumper)
 	godot.method(b, "ticker", bag_ticker)
+	godot.method(b, "variant_calls", bag_variant_calls)
 	godot.method(b, "defer", bag_defer, {"n"})
 	godot.method(b, "proc_total", bag_proc_total)
 	godot.method(b, "dict_squares", bag_dict_squares, {"n"})
@@ -1454,6 +1455,11 @@ bag_ticker :: proc(self: ^Bag) -> godot.Callable {
 bag_defer :: proc(self: ^Bag, n: i64) {
 	godot.call_deferred(add_scaled, godot.variant(n), godot.variant(i64(1)))
 	godot.call_deferred(self, bag_add_to_slot, godot.variant(n), godot.variant(i64(2)))
+}
+
+// `godot.variant_calls`, a static method: how many calls took the Variant path, in a debug build.
+bag_variant_calls :: proc() -> i64 {
+	return godot.variant_calls
 }
 
 // `proc_total`, a static method.

@@ -26,6 +26,11 @@ library: gde.ClassLibraryPtr
 // The context every call from the engine runs in: methods, notifications and callables may allocate.
 ctx: runtime.Context
 
+// Calls that entered a registered method or struct field through the Variant path since load,
+// counted in debug builds only and 0 in release builds. A typed GDScript call site arrives by
+// ptrcall and leaves it unchanged, so a rise in a test shows an untyped call.
+variant_calls: i64
+
 // Most parameters a registered method takes, not counting `self`.
 MAX_ARGS :: 13
 
@@ -607,6 +612,7 @@ method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defa
 	call :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 		context = ctx
 		enter()
+		when ODIN_DEBUG { variant_calls += 1 }
 		m := (^Method)(userdata)
 		// fill_args writes `filled` for every parameter and `made[i]` only where it sets `built[i]`,
 		// so only `built` needs zeroing.
@@ -625,6 +631,7 @@ method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defa
 	call_plain :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 		context = ctx
 		enter()
+		when ODIN_DEBUG { variant_calls += 1 }
 		m := (^Method)(userdata)
 		filled: [MAX_ARGS + 1]gde.ConstVariantPtr = ---
 		if !fill_args(m, args, count, &filled[0], nil, nil, err, true) { return }
@@ -636,6 +643,7 @@ method :: proc(c: ^Class($T), name: cstring, $f: $P, args: []cstring = nil, defa
 	call_vararg :: proc "c" (userdata: rawptr, instance: gde.ClassInstancePtr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {
 		context = ctx
 		enter()
+		when ODIN_DEBUG { variant_calls += 1 }
 		m := (^Method)(userdata)
 		filled: [MAX_ARGS + 1]gde.ConstVariantPtr = ---
 		made: [MAX_ARGS + 1]Variant = ---

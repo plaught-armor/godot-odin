@@ -590,6 +590,29 @@ func _check_extras() -> int:
 	if b2.get(&"slot_0") != slot_0 + 1 or Bag.proc_total() != ticks + 2 or bump.get_argument_count() != 0 or tick.get_argument_count() != 0:
 		print("FAIL: Bag's no-parameter Callables gave %s and %d, not %d and %d" % [b2.get(&"slot_0"), Bag.proc_total(), slot_0 + 1, ticks + 2])
 		failures += 1
+	# A typed call arrives by ptrcall, an untyped one by Variant, which the debug build counts.
+	var calls: int = Bag.variant_calls()
+	var typed_bump: Callable = b2.bumper()
+	var typed_calls: int = Bag.variant_calls()
+	var loose_bump: Variant = b2.call(&"bumper")
+	if typed_calls != calls or Bag.variant_calls() != calls + 1 or not typed_bump.is_valid() or not (loose_bump as Callable).is_valid():
+		print("FAIL: Bag counted %d typed and %d untyped Variant calls, not 0 and 1" % [typed_calls - calls, Bag.variant_calls() - typed_calls])
+		failures += 1
+	# Each Variant entry point counts once: a method with a packed array parameter, a vararg method,
+	# and a struct field's getter and setter.
+	var counts: Array[int] = []
+	var start: int = Bag.variant_calls()
+	b2.call(&"total", PackedInt64Array([1, 2]))
+	counts.append(Bag.variant_calls() - start)
+	b2.call(&"count", 1, 2)
+	counts.append(Bag.variant_calls() - start)
+	var note: Variant = b2.call(&"get_note")
+	counts.append(Bag.variant_calls() - start)
+	b2.call(&"set_note", note)
+	counts.append(Bag.variant_calls() - start)
+	if counts != [1, 2, 3, 4]:
+		print("FAIL: Bag's Variant entry points counted %s, not [1, 2, 3, 4]" % [counts])
+		failures += 1
 	var squares: Dictionary = b2.dict_squares(4)
 	if squares != {0: 0.0, 1: 1.0, 2: 4.0, 3: 9.0} or squares.is_typed() or typeof(squares[3]) != TYPE_FLOAT or not b2.dict_squares(0).is_empty():
 		print("FAIL: Bag.dict_squares gave %s" % squares)
