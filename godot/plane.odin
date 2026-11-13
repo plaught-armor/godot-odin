@@ -23,17 +23,6 @@ import gde "../gdextension"
 	return v_dot(p.normal, point) - p.d
 }
 
-// The Variant the engine's binds return: a Vector3 when `found`, else nil. A Vector3 needs no
-// construction, so it is written in place in the layout `check_borrow_layout` proves: the type
-// tag in the first 4 bytes, the value at byte 8, the rest zero. A zeroed Variant is nil.
-@(private) plane_hit :: #force_inline proc "contextless" (found: bool, v: Vector3) -> (out: Variant) {
-	if found {
-		(^u32)(&out._opaque[0])^ = u32(gde.VariantType.VECTOR3)
-		(^Vector3)(&out._opaque[8])^ = v
-	}
-	return
-}
-
 plane_new :: proc "contextless" () -> (__r: Plane) { return }
 plane_new_from_plane :: proc "contextless" (from: Plane) -> (__r: Plane) { return from }
 plane_new_from_vector3 :: proc "contextless" (normal: Vector3) -> (__r: Plane) { return {normal, 0} }
@@ -85,7 +74,7 @@ plane_intersect_3 :: proc "contextless" (self: ^Plane, b: Plane, c: Plane) -> Va
 	n01 := v3_cross(n0, n1)
 	denom := v_dot(n01, n2)
 	if m_is_zero_approx(denom) { return {} }
-	return plane_hit(true, (v3_cross(n1, n2) * self.d + v3_cross(n2, n0) * b.d + n01 * c.d) / denom)
+	return vector3_hit(true, (v3_cross(n1, n2) * self.d + v3_cross(n2, n0) * b.d + n01 * c.d) / denom)
 }
 
 // Plane::intersects_ray: none when the ray runs parallel to the plane or starts more than
@@ -94,7 +83,7 @@ plane_intersects_ray :: proc "contextless" (self: ^Plane, from: Vector3, dir: Ve
 	den := v_dot(self.normal, dir)
 	if m_is_zero_approx(den) { return {} }
 	dist := plane_distance(self^, from) / den
-	return plane_hit(!(dist > CMP_EPSILON), from + dir * -dist)
+	return vector3_hit(!(dist > CMP_EPSILON), from + dir * -dist)
 }
 
 // Plane::intersects_segment, with `begin - end` as the segment: none when it runs parallel to the
@@ -104,5 +93,5 @@ plane_intersects_segment :: proc "contextless" (self: ^Plane, from: Vector3, to:
 	den := v_dot(self.normal, segment)
 	if m_is_zero_approx(den) { return {} }
 	dist := plane_distance(self^, from) / den
-	return plane_hit(!(dist < -CMP_EPSILON || dist > PLANE_SEGMENT_END), from + segment * -dist)
+	return vector3_hit(!(dist < -CMP_EPSILON || dist > PLANE_SEGMENT_END), from + segment * -dist)
 }

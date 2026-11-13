@@ -63,6 +63,7 @@ register :: proc() {
 	godot.method(c, "transform_ns", transform_ns, {"kind", "n"})
 	godot.method(c, "quaternion_ns", quaternion_ns, {"kind", "n"})
 	godot.method(c, "plane_ns", plane_ns, {"kind", "n"})
+	godot.method(c, "aabb_ns", aabb_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1391,6 +1392,79 @@ plane_ns :: proc(self: ^Bench, kind: Plane_Op, n: i64) -> f64 {
 	case .INTERSECTS_RAY:
 		for _ in 0 ..< n {
 			r := godot.plane_intersects_ray(intrinsics.volatile_load(&ref), point, dir)
+			sum += f32(r._opaque[8])
+		}
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
+	return ns
+}
+
+// The AABB methods `aabb_ns` times, paired the same way as Vector_Op.
+AABB_Op :: enum i64 {
+	MERGE_CALL,            // the engine's AABB.merge
+	MERGE,                 // aabb_merge
+	INTERSECTS_CALL,       // the engine's AABB.intersects
+	INTERSECTS,            // aabb_intersects
+	INTERSECTS_PLANE_CALL, // the engine's AABB.intersects_plane
+	INTERSECTS_PLANE,      // aabb_intersects_plane
+	INTERSECTS_RAY_CALL,   // the engine's AABB.intersects_ray
+	INTERSECTS_RAY,        // aabb_intersects_ray
+}
+
+// Nanoseconds per `kind` round on a box reread through a volatile load each round, as in
+// vector_ns. The tests all pass, and the ray hits from outside, so it returns a Vector3 Variant.
+aabb_ns :: proc(self: ^Bench, kind: AABB_Op, n: i64) -> f64 {
+	a := godot.AABB{{-1, -2, -3}, {2, 4, 6}}
+	b := godot.AABB{{0.5, 0.5, 0.5}, {3, 1, 2}}
+	plane := godot.Plane{{0.48, 0.6, 0.64}, 0.5}
+	from := godot.Vector3{-4, 0.5, 1}
+	dir := godot.Vector3{1, 0.1, -0.2}
+	ref := &a
+	merge_fn := godot.builtin_method(.AABB, "merge", 1271470306)
+	intersects_fn := godot.builtin_method(.AABB, "intersects", 299946684)
+	plane_fn := godot.builtin_method(.AABB, "intersects_plane", 1150170233)
+	ray_fn := godot.builtin_method(.AABB, "intersects_ray", 2048133369)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .MERGE_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&b}
+			r: godot.AABB
+			merge_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += r.size.x
+		}
+	case .MERGE:
+		for _ in 0 ..< n { sum += godot.aabb_merge(intrinsics.volatile_load(&ref), b).size.x }
+	case .INTERSECTS_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&b}
+			r: bool
+			intersects_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += f32(int(r))
+		}
+	case .INTERSECTS:
+		for _ in 0 ..< n { sum += f32(int(godot.aabb_intersects(intrinsics.volatile_load(&ref), b))) }
+	case .INTERSECTS_PLANE_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&plane}
+			r: bool
+			plane_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += f32(int(r))
+		}
+	case .INTERSECTS_PLANE:
+		for _ in 0 ..< n { sum += f32(int(godot.aabb_intersects_plane(intrinsics.volatile_load(&ref), plane))) }
+	case .INTERSECTS_RAY_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&from, &dir}
+			r: godot.Variant
+			ray_fn(intrinsics.volatile_load(&ref), &args[0], &r, 2)
+			sum += f32(r._opaque[8])
+		}
+	case .INTERSECTS_RAY:
+		for _ in 0 ..< n {
+			r := godot.aabb_intersects_ray(intrinsics.volatile_load(&ref), from, dir)
 			sum += f32(r._opaque[8])
 		}
 	}

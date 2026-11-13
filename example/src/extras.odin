@@ -131,6 +131,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_transforms3d", bag_replaced_transforms3d, {"a", "b", "v", "w", "m", "x"})
 	godot.method(b, "replaced_quaternions", bag_replaced_quaternions, {"a", "b", "c", "d", "m", "v", "w", "x", "n"})
 	godot.method(b, "replaced_planes", bag_replaced_planes, {"a", "b", "c", "v", "w", "u", "x"})
+	godot.method(b, "replaced_aabbs", bag_replaced_aabbs, {"a", "b", "p", "v", "w", "x", "n"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1360,6 +1361,9 @@ put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 		put_basis_result(o, v.origin)
 	} else when T == godot.Transform2D {
 		for e in ([3]godot.Vector2{v.x, v.y, v.origin}) { put_basis_result(o, e) }
+	} else when T == godot.AABB {
+		put_basis_result(o, v.position)
+		put_basis_result(o, v.size)
 	} else when T == godot.Plane {
 		put_basis_result(o, v.normal)
 		put_basis_result(o, f64(v.d))
@@ -1544,5 +1548,42 @@ bag_replaced_planes :: proc(self: ^Bag, a, b, c: godot.Plane, v, w, u: godot.Vec
 	put_basis_result(&o, godot.plane_intersect_3(&a, b, c))
 	put_basis_result(&o, godot.plane_intersects_ray(&a, v, w))
 	put_basis_result(&o, godot.plane_intersects_segment(&a, v, w))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The AABB procs that replace engine methods (godot/aabb.odin) on `a` and `b`, with `p` the plane,
+// `v` and `w` the vector arguments, `x` the growth and `n` the endpoint index. test.gd's
+// _aabb_results calls the engine's own methods in the same order.
+bag_replaced_aabbs :: proc(self: ^Bag, a, b: godot.AABB, p: godot.Plane, v, w: godot.Vector3, x: f64, n: i64) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	put_basis_result(&o, godot.aabb_new())
+	put_basis_result(&o, godot.aabb_new_from_aabb(a))
+	put_basis_result(&o, godot.aabb_new_from_vector3_vector3(v, w))
+	put_basis_result(&o, godot.aabb_abs(&a))
+	put_basis_result(&o, godot.aabb_get_center(&a))
+	put_basis_result(&o, godot.aabb_get_volume(&a))
+	put_basis_result(&o, godot.aabb_has_volume(&a))
+	put_basis_result(&o, godot.aabb_has_surface(&a))
+	put_basis_result(&o, godot.aabb_has_point(&a, v))
+	put_basis_result(&o, godot.aabb_is_equal_approx(&a, b))
+	put_basis_result(&o, godot.aabb_is_finite(&a))
+	put_basis_result(&o, godot.aabb_intersects(&a, b))
+	put_basis_result(&o, godot.aabb_encloses(&a, b))
+	put_basis_result(&o, godot.aabb_intersects_plane(&a, p))
+	put_basis_result(&o, godot.aabb_intersection(&a, b))
+	put_basis_result(&o, godot.aabb_merge(&a, b))
+	put_basis_result(&o, godot.aabb_expand(&a, v))
+	put_basis_result(&o, godot.aabb_grow(&a, x))
+	put_basis_result(&o, godot.aabb_get_support(&a, w))
+	put_basis_result(&o, godot.aabb_get_longest_axis(&a))
+	put_basis_result(&o, godot.aabb_get_longest_axis_index(&a))
+	put_basis_result(&o, godot.aabb_get_longest_axis_size(&a))
+	put_basis_result(&o, godot.aabb_get_shortest_axis(&a))
+	put_basis_result(&o, godot.aabb_get_shortest_axis_index(&a))
+	put_basis_result(&o, godot.aabb_get_shortest_axis_size(&a))
+	put_basis_result(&o, godot.aabb_get_endpoint(&a, n))
+	put_basis_result(&o, godot.aabb_intersects_segment(&a, v, w))
+	put_basis_result(&o, godot.aabb_intersects_ray(&a, v, w))
 	return godot.packed_of_int64(o.v[:o.n])
 }

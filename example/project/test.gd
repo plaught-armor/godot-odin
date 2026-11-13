@@ -520,6 +520,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_transforms(b2)
 	failures += _check_replaced_quaternions(b2)
 	failures += _check_replaced_planes(b2)
+	failures += _check_replaced_aabbs(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -961,6 +962,9 @@ func _put_basis_result(out: PackedInt64Array, v: Variant) -> void:
 		TYPE_BASIS:
 			for e: Vector3 in [v.x, v.y, v.z]:
 				_put_basis_result(out, e)
+		TYPE_AABB:
+			_put_basis_result(out, v.position)
+			_put_basis_result(out, v.size)
 		TYPE_TRANSFORM3D:
 			_put_basis_result(out, v.basis)
 			_put_basis_result(out, v.origin)
@@ -1456,6 +1460,120 @@ func _check_replaced_planes(b2: Bag) -> int:
 			planes.append(Plane(_random_plane_vector(rng), rng.randf_range(-3, 3)))
 		failures += _check_plane_case(b2, planes[0], planes[1], planes[2], _random_plane_vector(rng),
 			_random_plane_vector(rng), _random_plane_vector(rng), rng.randf_range(-0.5, 2))
+	return failures
+
+
+# The engine's AABB methods in the order Bag.replaced_aabbs calls the Odin procs. An AABB goes in
+# as its position and then its size, an intersection as its type and then the Vector3 it holds.
+func _aabb_results(a: AABB, b: AABB, p: Plane, v: Vector3, w: Vector3, x: float, n: int) -> PackedInt64Array:
+	var vs: Array = [AABB(), AABB(a), AABB(v, w), a.abs(), a.get_center(), a.get_volume(), a.has_volume(),
+		a.has_surface(), a.has_point(v), a.is_equal_approx(b), a.is_finite(), a.intersects(b), a.encloses(b),
+		a.intersects_plane(p), a.intersection(b), a.merge(b), a.expand(v), a.grow(x), a.get_support(w),
+		a.get_longest_axis(), a.get_longest_axis_index(), a.get_longest_axis_size(), a.get_shortest_axis(),
+		a.get_shortest_axis_index(), a.get_shortest_axis_size(), a.get_endpoint(n)]
+	for hit: Variant in [a.intersects_segment(v, w), a.intersects_ray(v, w)]:
+		vs.append(typeof(hit))
+		if hit != null:
+			vs.append(hit)
+	var o: PackedInt64Array = PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+func _check_aabb_case(b2: Bag, a: AABB, b: AABB, p: Plane, v: Vector3, w: Vector3, x: float, n: int) -> int:
+	var want: PackedInt64Array = _aabb_results(a, b, p, v, w, x, n)
+	var got: PackedInt64Array = b2.replaced_aabbs(a, b, p, v, w, x, n)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_aabbs(%s, %s, %s, %s, %s, %s, %d) differs at %d of %d: %s, not %s" % [a, b, p, v, w, x, n, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# A random point near a box in [-3, 3]: on a face of `a` a third of the time, so the boundary
+# comparisons meet equal values, and with a zeroed axis a quarter of the time, so rays run parallel
+# to a slab.
+func _random_aabb_vector(rng: RandomNumberGenerator, a: AABB) -> Vector3:
+	var v: Vector3 = Vector3(rng.randf_range(-4, 4), rng.randf_range(-4, 4), rng.randf_range(-4, 4))
+	var k: int = rng.randi_range(0, 2)
+	if rng.randi_range(0, 2) == 0:
+		v[k] = a.position[k] + a.size[k] * rng.randi_range(0, 1)
+	elif rng.randi_range(0, 3) == 0:
+		v[k] = 0.0
+	return v
+
+
+# A random box in [-3, 3] with a size in [0, 3], a size axis zero a sixth of the time.
+func _random_aabb(rng: RandomNumberGenerator) -> AABB:
+	var s: Vector3 = Vector3(rng.randf_range(0, 3), rng.randf_range(0, 3), rng.randf_range(0, 3))
+	if rng.randi_range(0, 5) == 0:
+		s[rng.randi_range(0, 2)] = 0.0
+	return AABB(Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3)), s)
+
+
+# The AABB procs that replace engine methods, on edge cases (empty, flat, negative-size, signed-zero,
+# infinite and NaN boxes, touching and nested pairs, rays and segments along faces and axes, every
+# endpoint index and ones out of range), then on seeded random boxes.
+func _check_replaced_aabbs(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var edges: Array[AABB] = [AABB(), AABB(Vector3.ZERO, Vector3.ONE), AABB(Vector3(-1, -2, -3), Vector3(2, 4, 6)),
+		AABB(Vector3(1, 0, 0), Vector3.ONE), AABB(Vector3(0.5, 0.5, 0.5), Vector3(0.25, 0.25, 0.25)),
+		AABB(Vector3.ZERO, Vector3(2, 0, 1)), AABB(Vector3(1, 1, 1), Vector3(-1, 2, 1)),
+		AABB(Vector3(nz, nz, nz), Vector3(nz, 1, nz)), AABB(Vector3(-INF, 0, 0), Vector3(INF, 1, 1)),
+		AABB(Vector3(0, NAN, 0), Vector3.ONE), AABB(Vector3.ZERO, Vector3(1, 1, NAN)),
+		AABB(Vector3(1e30, -1e30, 0), Vector3(1e30, 1e30, 1e-30)), AABB(Vector3(0.1, 0.2, 0.3), Vector3(3, 3, 3))]
+	var vs: PackedVector3Array = PackedVector3Array([Vector3.ZERO, Vector3.ONE, Vector3(0.5, 0.5, 0.5), Vector3(-1, 0.5, 0.5),
+		Vector3(1, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, -1), Vector3(2, 2, 2), Vector3(INF, 0, 0), Vector3(NAN, 1, 0),
+		Vector3(nz, nz, 1), Vector3(-0.5, -0.5, -0.5), Vector3(0.3, -1.2, 2.0), Vector3(1e30, 0, 1e-30)])
+	var planes: Array[Plane] = [Plane.PLANE_XY, Plane(Vector3.UP, 0.5), Plane(0.6, 0, 0.8, -1), Plane(0, 1, 0, 1),
+		Plane(0, 0, 1, NAN), Plane(1, 1, 1, 10)]
+	var xs: PackedFloat64Array = PackedFloat64Array([0.0, 1.0, 0.5, -0.25, PI, -3.0, INF, NAN, nz, 1e-7])
+	var ns: PackedInt64Array = PackedInt64Array([0, 1, 2, 3, 4, 5, 6, 7, 8, -1, 4294967299])
+	for i: int in edges.size():
+		for j: int in [0, 1, 3, 5, 8, 11]:
+			var e: int = edges.size()
+			failures += _check_aabb_case(b2, edges[i], edges[(i + j) % e], planes[(i + j) % planes.size()],
+				vs[(i + j) % vs.size()], vs[(i + 2 * j + 1) % vs.size()], xs[(i + j) % xs.size()], ns[(i + j) % ns.size()])
+	# Every endpoint index on a box, and segments and rays along each axis from just outside each
+	# face, inward and outward, so the slab tests meet equal values.
+	var box: AABB = AABB(Vector3(-1, -2, -3), Vector3(2, 4, 6))
+	for k: int in 3:
+		for side: int in 2:
+			for dirn: float in [-1.0, 1.0, 0.0]:
+				var v: Vector3 = box.get_center()
+				v[k] = box.position[k] + box.size[k] * side + (dirn if dirn != 0.0 else 1.0) * 0.5
+				var w: Vector3 = Vector3.ZERO
+				w[k] = -dirn
+				failures += _check_aabb_case(b2, box, box, planes[0], v, w, 1.0, k * 2 + side)
+				failures += _check_aabb_case(b2, box, box, planes[0], v, v + w * 3, 1.0, k * 2 + side)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261116
+	for round: int in 1500:
+		var a: AABB = _random_aabb(rng)
+		var b: AABB = _random_aabb(rng)
+		if rng.randi_range(0, 3) == 0:
+			b = AABB(a.position + a.size * rng.randi_range(0, 1), b.size)
+		var p: Plane = Plane(Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1), rng.randf_range(-1, 1)).normalized(),
+			rng.randf_range(-3, 3))
+		failures += _check_aabb_case(b2, a, b, p, _random_aabb_vector(rng, a), _random_aabb_vector(rng, a),
+			rng.randf_range(-0.5, 2), rng.randi_range(0, 7))
+	# A ray start just outside a slab with a tiny inward direction on that axis: only an exact zero
+	# test treats the axis as parallel and misses.
+	var unit: AABB = AABB(Vector3.ZERO, Vector3.ONE)
+	for d: float in [1e-31, 1e-35, 1e-38]:
+		failures += _check_aabb_case(b2, unit, unit, planes[0], Vector3(-d * 0.1, -1, 0.5), Vector3(d, 1, 0), 1.0, 0)
+		failures += _check_aabb_case(b2, unit, unit, planes[0], Vector3(0.5, -1, -d * 0.1), Vector3(0, 1, d), 1.0, 0)
+	# Rays aimed at a corner with a scaled direction, so the entry distances of two or three axes
+	# tie or differ by a rounding, and the tie decides which face the point is set onto.
+	for round: int in 500:
+		var a: AABB = _random_aabb(rng)
+		var from: Vector3 = Vector3(rng.randf_range(-4, 4), rng.randf_range(-4, 4), rng.randf_range(-4, 4))
+		var dir: Vector3 = (a.get_endpoint(rng.randi_range(0, 7)) - from) * rng.randf_range(0.3, 3)
+		failures += _check_aabb_case(b2, a, a, planes[0], from, dir, 1.0, 0)
 	return failures
 
 func _check_untyped() -> int:

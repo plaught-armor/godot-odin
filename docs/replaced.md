@@ -261,3 +261,37 @@ cases.
 The intersection replacements also skip the engine's Variant construction and assignment of the
 result. `normalized` reproduces the engine's `MATH_CHECKS` warning for a non-finite plane, and the
 three-point constructor the Vector3 warning for a normal that cannot be normalized.
+
+## AABB
+
+The `AABB` methods and constructors are defined in `godot/aabb.odin` under the same names and
+signatures: the constructors (empty, from an AABB, from a position and a size), `abs`,
+`get_center`, `get_volume`, `has_volume`, `has_surface`, `has_point`, `is_equal_approx`,
+`is_finite`, `intersects`, `encloses`, `intersects_plane`, `intersection`, `merge`, `expand`,
+`grow`, `get_support`, the longest and shortest axis, index and size, `get_endpoint`,
+`intersects_segment` and `intersects_ray`. Each follows `core/math/aabb.cpp` and `aabb.h` of Godot
+4.7-stable with the same single-precision operation order and the same comparisons, so ties and
+NaNs fall the same way: the longest and shortest axis keep the first of equal sizes, the ray test
+treats only an exact zero direction component as parallel and lets a later axis win a tie in entry
+distance, and it sets the entry point exactly onto the face it crosses. `get_endpoint` reads its
+index as the engine's 32-bit `int`. The segment and ray tests return a Variant holding the Vector3
+found, written in place as the Plane intersections are, or a nil Variant when there is none; the
+ray returns its start when it begins inside the box, as the engine's bind does. Checked against
+Godot 4.7-stable by `_check_replaced_aabbs`, which compares every result from GDScript and from
+`Bag.replaced_aabbs` on edge cases (empty, flat, negative-size, signed-zero, huge and tiny,
+infinite and NaN boxes, touching and nested pairs, every endpoint index and ones out of range,
+segments and rays along each axis from just outside each face, and ray directions with a
+component as small as 1e-38), on 1500 seeded random cases with points often on a face, and on 500
+rays aimed at a box corner, where the axes' entry distances tie.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `AABB.merge` | 4.1 ns | 1.0 ns |
+| `AABB.intersects` | 3.1 ns | 1.9 ns |
+| `AABB.intersects_plane` | 7.9 ns | 3.2 ns |
+| `AABB.intersects_ray` | 11.9 ns | 5.1 ns |
+
+The ray replacement also skips the engine's Variant construction and assignment of the result.
+The error the engine prints under `MATH_CHECKS` for a negative size is printed by the same methods
+here (once for a two-box method, whichever box is negative), as is `get_endpoint`'s error for an
+index outside 0 to 7.

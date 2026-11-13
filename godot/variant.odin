@@ -252,6 +252,18 @@ scalar_into :: #force_inline proc "contextless" (out: ^Variant, type: gde.Varian
 	w[2] = 0
 }
 
+// The Variant the engine's Plane and AABB intersection binds return: a Vector3 when `found`, else
+// nil. A Vector3 needs no construction, so it is written in place in the layout
+// `check_borrow_layout` proves: the type tag in the first 4 bytes, the value at byte 8, the rest
+// zero. A zeroed Variant is nil.
+@(private) vector3_hit :: #force_inline proc "contextless" (found: bool, v: Vector3) -> (out: Variant) {
+	if found {
+		(^u32)(&out._opaque[0])^ = u32(gde.VariantType.VECTOR3)
+		(^Vector3)(&out._opaque[8])^ = v
+	}
+	return
+}
+
 // The type of the Variant at `v`, read from its tag as `gde.variant_get_type` answers it, with no
 // call. `check_borrow_layout` proves the layout at load.
 variant_tag :: #force_inline proc "contextless" (v: gde.ConstVariantPtr) -> gde.VariantType {
