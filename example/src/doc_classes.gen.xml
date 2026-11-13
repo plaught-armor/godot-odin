@@ -261,6 +261,9 @@
 		<method name="replaced_projections">
 			<description>Each Projection proc that replaces an engine method, in the order test.gd calls the engine's.</description>
 		</method>
+		<method name="replaced_packed">
+			<description>The packed array reads of godot/packed.odin on [code]arrays[/code], one array of each packed type in the order of their Variant types, each with the value at the same place in [code]values[/code]: size, is_empty, get at [code]index[/code], has, find and rfind from [code]from[/code], count and bsearch with [code]before[/code], as integers.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>

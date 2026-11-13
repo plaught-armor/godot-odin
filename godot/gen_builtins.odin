@@ -3070,15 +3070,6 @@ packed_byte_array_destroy :: proc "contextless" (self: ^PackedByteArray) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_BYTE_ARRAY) }
 	__fn(self)
 }
-packed_byte_array_get :: proc "contextless" (self: ^PackedByteArray, index: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "get", 4103005248) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_byte_array_set :: proc "contextless" (self: ^PackedByteArray, index: i64, value: i64) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "set", 3638975848) }
@@ -3088,6 +3079,7 @@ packed_byte_array_set :: proc "contextless" (self: ^PackedByteArray, index: i64,
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_size :: proc "contextless" (self: ^PackedByteArray) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -3095,6 +3087,7 @@ packed_byte_array_size :: proc "contextless" (self: ^PackedByteArray) -> i64 {
 	return __ret
 }
 packed_byte_array_is_empty :: proc "contextless" (self: ^PackedByteArray) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -3164,15 +3157,6 @@ packed_byte_array_clear :: proc "contextless" (self: ^PackedByteArray) {
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_byte_array_has :: proc "contextless" (self: ^PackedByteArray, value: i64) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "has", 931488181) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_byte_array_reverse :: proc "contextless" (self: ^PackedByteArray) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "reverse", 3218959716) }
@@ -3193,50 +3177,11 @@ packed_byte_array_sort :: proc "contextless" (self: ^PackedByteArray) {
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_byte_array_bsearch :: proc "contextless" (self: ^PackedByteArray, value: i64, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "bsearch", 954237325) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_byte_array_duplicate :: proc "contextless" (self: ^PackedByteArray) -> PackedByteArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "duplicate", 247621236) }
 	__ret: PackedByteArray
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_byte_array_find :: proc "contextless" (self: ^PackedByteArray, value: i64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "find", 2984303840) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_byte_array_rfind :: proc "contextless" (self: ^PackedByteArray, value: i64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "rfind", 2984303840) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_byte_array_count :: proc "contextless" (self: ^PackedByteArray, value: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "count", 4103005248) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_byte_array_erase :: proc "contextless" (self: ^PackedByteArray, value: i64) -> bool {
@@ -3663,15 +3608,6 @@ packed_int32_array_destroy :: proc "contextless" (self: ^PackedInt32Array) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_INT32_ARRAY) }
 	__fn(self)
 }
-packed_int32_array_get :: proc "contextless" (self: ^PackedInt32Array, index: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "get", 4103005248) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_int32_array_set :: proc "contextless" (self: ^PackedInt32Array, index: i64, value: i64) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "set", 3638975848) }
@@ -3681,6 +3617,7 @@ packed_int32_array_set :: proc "contextless" (self: ^PackedInt32Array, index: i6
 	__fn(self, &__args[0], nil, 2)
 }
 packed_int32_array_size :: proc "contextless" (self: ^PackedInt32Array) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -3688,6 +3625,7 @@ packed_int32_array_size :: proc "contextless" (self: ^PackedInt32Array) -> i64 {
 	return __ret
 }
 packed_int32_array_is_empty :: proc "contextless" (self: ^PackedInt32Array) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -3757,15 +3695,6 @@ packed_int32_array_clear :: proc "contextless" (self: ^PackedInt32Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_int32_array_has :: proc "contextless" (self: ^PackedInt32Array, value: i64) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "has", 931488181) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_int32_array_reverse :: proc "contextless" (self: ^PackedInt32Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "reverse", 3218959716) }
@@ -3793,50 +3722,11 @@ packed_int32_array_sort :: proc "contextless" (self: ^PackedInt32Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_int32_array_bsearch :: proc "contextless" (self: ^PackedInt32Array, value: i64, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "bsearch", 954237325) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_int32_array_duplicate :: proc "contextless" (self: ^PackedInt32Array) -> PackedInt32Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "duplicate", 3158844420) }
 	__ret: PackedInt32Array
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_int32_array_find :: proc "contextless" (self: ^PackedInt32Array, value: i64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "find", 2984303840) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_int32_array_rfind :: proc "contextless" (self: ^PackedInt32Array, value: i64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "rfind", 2984303840) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_int32_array_count :: proc "contextless" (self: ^PackedInt32Array, value: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "count", 4103005248) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_int32_array_erase :: proc "contextless" (self: ^PackedInt32Array, value: i64) -> bool {
@@ -3875,15 +3765,6 @@ packed_int64_array_destroy :: proc "contextless" (self: ^PackedInt64Array) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_INT64_ARRAY) }
 	__fn(self)
 }
-packed_int64_array_get :: proc "contextless" (self: ^PackedInt64Array, index: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "get", 4103005248) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_int64_array_set :: proc "contextless" (self: ^PackedInt64Array, index: i64, value: i64) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "set", 3638975848) }
@@ -3893,6 +3774,7 @@ packed_int64_array_set :: proc "contextless" (self: ^PackedInt64Array, index: i6
 	__fn(self, &__args[0], nil, 2)
 }
 packed_int64_array_size :: proc "contextless" (self: ^PackedInt64Array) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -3900,6 +3782,7 @@ packed_int64_array_size :: proc "contextless" (self: ^PackedInt64Array) -> i64 {
 	return __ret
 }
 packed_int64_array_is_empty :: proc "contextless" (self: ^PackedInt64Array) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -3969,15 +3852,6 @@ packed_int64_array_clear :: proc "contextless" (self: ^PackedInt64Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_int64_array_has :: proc "contextless" (self: ^PackedInt64Array, value: i64) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "has", 931488181) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_int64_array_reverse :: proc "contextless" (self: ^PackedInt64Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "reverse", 3218959716) }
@@ -4005,50 +3879,11 @@ packed_int64_array_sort :: proc "contextless" (self: ^PackedInt64Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_int64_array_bsearch :: proc "contextless" (self: ^PackedInt64Array, value: i64, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "bsearch", 954237325) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_int64_array_duplicate :: proc "contextless" (self: ^PackedInt64Array) -> PackedInt64Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "duplicate", 1961294120) }
 	__ret: PackedInt64Array
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_int64_array_find :: proc "contextless" (self: ^PackedInt64Array, value: i64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "find", 2984303840) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_int64_array_rfind :: proc "contextless" (self: ^PackedInt64Array, value: i64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "rfind", 2984303840) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_int64_array_count :: proc "contextless" (self: ^PackedInt64Array, value: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "count", 4103005248) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_int64_array_erase :: proc "contextless" (self: ^PackedInt64Array, value: i64) -> bool {
@@ -4087,15 +3922,6 @@ packed_float32_array_destroy :: proc "contextless" (self: ^PackedFloat32Array) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_FLOAT32_ARRAY) }
 	__fn(self)
 }
-packed_float32_array_get :: proc "contextless" (self: ^PackedFloat32Array, index: i64) -> f64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "get", 1401583798) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: f64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_float32_array_set :: proc "contextless" (self: ^PackedFloat32Array, index: i64, value: f64) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "set", 1113000516) }
@@ -4105,6 +3931,7 @@ packed_float32_array_set :: proc "contextless" (self: ^PackedFloat32Array, index
 	__fn(self, &__args[0], nil, 2)
 }
 packed_float32_array_size :: proc "contextless" (self: ^PackedFloat32Array) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -4112,6 +3939,7 @@ packed_float32_array_size :: proc "contextless" (self: ^PackedFloat32Array) -> i
 	return __ret
 }
 packed_float32_array_is_empty :: proc "contextless" (self: ^PackedFloat32Array) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -4181,15 +4009,6 @@ packed_float32_array_clear :: proc "contextless" (self: ^PackedFloat32Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_float32_array_has :: proc "contextless" (self: ^PackedFloat32Array, value: f64) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "has", 1296369134) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_float32_array_reverse :: proc "contextless" (self: ^PackedFloat32Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "reverse", 3218959716) }
@@ -4217,50 +4036,11 @@ packed_float32_array_sort :: proc "contextless" (self: ^PackedFloat32Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_float32_array_bsearch :: proc "contextless" (self: ^PackedFloat32Array, value: f64, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "bsearch", 1175118842) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_float32_array_duplicate :: proc "contextless" (self: ^PackedFloat32Array) -> PackedFloat32Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "duplicate", 3575107827) }
 	__ret: PackedFloat32Array
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_float32_array_find :: proc "contextless" (self: ^PackedFloat32Array, value: f64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "find", 1343150241) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_float32_array_rfind :: proc "contextless" (self: ^PackedFloat32Array, value: f64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "rfind", 1343150241) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_float32_array_count :: proc "contextless" (self: ^PackedFloat32Array, value: f64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "count", 2859915090) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_float32_array_erase :: proc "contextless" (self: ^PackedFloat32Array, value: f64) -> bool {
@@ -4299,15 +4079,6 @@ packed_float64_array_destroy :: proc "contextless" (self: ^PackedFloat64Array) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_FLOAT64_ARRAY) }
 	__fn(self)
 }
-packed_float64_array_get :: proc "contextless" (self: ^PackedFloat64Array, index: i64) -> f64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "get", 1401583798) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: f64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_float64_array_set :: proc "contextless" (self: ^PackedFloat64Array, index: i64, value: f64) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "set", 1113000516) }
@@ -4317,6 +4088,7 @@ packed_float64_array_set :: proc "contextless" (self: ^PackedFloat64Array, index
 	__fn(self, &__args[0], nil, 2)
 }
 packed_float64_array_size :: proc "contextless" (self: ^PackedFloat64Array) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -4324,6 +4096,7 @@ packed_float64_array_size :: proc "contextless" (self: ^PackedFloat64Array) -> i
 	return __ret
 }
 packed_float64_array_is_empty :: proc "contextless" (self: ^PackedFloat64Array) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -4393,15 +4166,6 @@ packed_float64_array_clear :: proc "contextless" (self: ^PackedFloat64Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_float64_array_has :: proc "contextless" (self: ^PackedFloat64Array, value: f64) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "has", 1296369134) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_float64_array_reverse :: proc "contextless" (self: ^PackedFloat64Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "reverse", 3218959716) }
@@ -4429,50 +4193,11 @@ packed_float64_array_sort :: proc "contextless" (self: ^PackedFloat64Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_float64_array_bsearch :: proc "contextless" (self: ^PackedFloat64Array, value: f64, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "bsearch", 1175118842) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_float64_array_duplicate :: proc "contextless" (self: ^PackedFloat64Array) -> PackedFloat64Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "duplicate", 1627308337) }
 	__ret: PackedFloat64Array
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_float64_array_find :: proc "contextless" (self: ^PackedFloat64Array, value: f64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "find", 1343150241) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_float64_array_rfind :: proc "contextless" (self: ^PackedFloat64Array, value: f64, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "rfind", 1343150241) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_float64_array_count :: proc "contextless" (self: ^PackedFloat64Array, value: f64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "count", 2859915090) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_float64_array_erase :: proc "contextless" (self: ^PackedFloat64Array, value: f64) -> bool {
@@ -4511,15 +4236,6 @@ packed_string_array_destroy :: proc "contextless" (self: ^PackedStringArray) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_STRING_ARRAY) }
 	__fn(self)
 }
-packed_string_array_get :: proc "contextless" (self: ^PackedStringArray, index: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "get", 2162347432) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_string_array_set :: proc "contextless" (self: ^PackedStringArray, index: i64, value: String) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "set", 725585539) }
@@ -4529,6 +4245,7 @@ packed_string_array_set :: proc "contextless" (self: ^PackedStringArray, index: 
 	__fn(self, &__args[0], nil, 2)
 }
 packed_string_array_size :: proc "contextless" (self: ^PackedStringArray) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -4536,6 +4253,7 @@ packed_string_array_size :: proc "contextless" (self: ^PackedStringArray) -> i64
 	return __ret
 }
 packed_string_array_is_empty :: proc "contextless" (self: ^PackedStringArray) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -4605,15 +4323,6 @@ packed_string_array_clear :: proc "contextless" (self: ^PackedStringArray) {
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_string_array_has :: proc "contextless" (self: ^PackedStringArray, value: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "has", 2566493496) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_string_array_reverse :: proc "contextless" (self: ^PackedStringArray) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "reverse", 3218959716) }
@@ -4641,50 +4350,11 @@ packed_string_array_sort :: proc "contextless" (self: ^PackedStringArray) {
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_string_array_bsearch :: proc "contextless" (self: ^PackedStringArray, value: String, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "bsearch", 1171495151) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_string_array_duplicate :: proc "contextless" (self: ^PackedStringArray) -> PackedStringArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "duplicate", 747180633) }
 	__ret: PackedStringArray
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_string_array_find :: proc "contextless" (self: ^PackedStringArray, value: String, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "find", 1760645412) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_string_array_rfind :: proc "contextless" (self: ^PackedStringArray, value: String, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "rfind", 1760645412) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_string_array_count :: proc "contextless" (self: ^PackedStringArray, value: String) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "count", 2920860731) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_string_array_erase :: proc "contextless" (self: ^PackedStringArray, value: String) -> bool {
@@ -4723,15 +4393,6 @@ packed_vector2_array_destroy :: proc "contextless" (self: ^PackedVector2Array) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_VECTOR2_ARRAY) }
 	__fn(self)
 }
-packed_vector2_array_get :: proc "contextless" (self: ^PackedVector2Array, index: i64) -> Vector2 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "get", 2609058838) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: Vector2
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_vector2_array_set :: proc "contextless" (self: ^PackedVector2Array, index: i64, value: Vector2) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "set", 635767250) }
@@ -4741,6 +4402,7 @@ packed_vector2_array_set :: proc "contextless" (self: ^PackedVector2Array, index
 	__fn(self, &__args[0], nil, 2)
 }
 packed_vector2_array_size :: proc "contextless" (self: ^PackedVector2Array) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -4748,6 +4410,7 @@ packed_vector2_array_size :: proc "contextless" (self: ^PackedVector2Array) -> i
 	return __ret
 }
 packed_vector2_array_is_empty :: proc "contextless" (self: ^PackedVector2Array) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -4817,15 +4480,6 @@ packed_vector2_array_clear :: proc "contextless" (self: ^PackedVector2Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_vector2_array_has :: proc "contextless" (self: ^PackedVector2Array, value: Vector2) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "has", 3190634762) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_vector2_array_reverse :: proc "contextless" (self: ^PackedVector2Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "reverse", 3218959716) }
@@ -4853,50 +4507,11 @@ packed_vector2_array_sort :: proc "contextless" (self: ^PackedVector2Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_vector2_array_bsearch :: proc "contextless" (self: ^PackedVector2Array, value: Vector2, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "bsearch", 3341588170) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_vector2_array_duplicate :: proc "contextless" (self: ^PackedVector2Array) -> PackedVector2Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "duplicate", 1660374357) }
 	__ret: PackedVector2Array
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_vector2_array_find :: proc "contextless" (self: ^PackedVector2Array, value: Vector2, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "find", 1469606149) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_vector2_array_rfind :: proc "contextless" (self: ^PackedVector2Array, value: Vector2, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "rfind", 1469606149) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_vector2_array_count :: proc "contextless" (self: ^PackedVector2Array, value: Vector2) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "count", 2798848307) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_vector2_array_erase :: proc "contextless" (self: ^PackedVector2Array, value: Vector2) -> bool {
@@ -4935,15 +4550,6 @@ packed_vector3_array_destroy :: proc "contextless" (self: ^PackedVector3Array) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_VECTOR3_ARRAY) }
 	__fn(self)
 }
-packed_vector3_array_get :: proc "contextless" (self: ^PackedVector3Array, index: i64) -> Vector3 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "get", 1394941017) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: Vector3
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_vector3_array_set :: proc "contextless" (self: ^PackedVector3Array, index: i64, value: Vector3) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "set", 3975343409) }
@@ -4953,6 +4559,7 @@ packed_vector3_array_set :: proc "contextless" (self: ^PackedVector3Array, index
 	__fn(self, &__args[0], nil, 2)
 }
 packed_vector3_array_size :: proc "contextless" (self: ^PackedVector3Array) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -4960,6 +4567,7 @@ packed_vector3_array_size :: proc "contextless" (self: ^PackedVector3Array) -> i
 	return __ret
 }
 packed_vector3_array_is_empty :: proc "contextless" (self: ^PackedVector3Array) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -5029,15 +4637,6 @@ packed_vector3_array_clear :: proc "contextless" (self: ^PackedVector3Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_vector3_array_has :: proc "contextless" (self: ^PackedVector3Array, value: Vector3) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "has", 1749054343) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_vector3_array_reverse :: proc "contextless" (self: ^PackedVector3Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "reverse", 3218959716) }
@@ -5065,50 +4664,11 @@ packed_vector3_array_sort :: proc "contextless" (self: ^PackedVector3Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_vector3_array_bsearch :: proc "contextless" (self: ^PackedVector3Array, value: Vector3, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "bsearch", 1259277637) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_vector3_array_duplicate :: proc "contextless" (self: ^PackedVector3Array) -> PackedVector3Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "duplicate", 4171207452) }
 	__ret: PackedVector3Array
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_vector3_array_find :: proc "contextless" (self: ^PackedVector3Array, value: Vector3, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "find", 3718155780) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_vector3_array_rfind :: proc "contextless" (self: ^PackedVector3Array, value: Vector3, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "rfind", 3718155780) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_vector3_array_count :: proc "contextless" (self: ^PackedVector3Array, value: Vector3) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "count", 194580386) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_vector3_array_erase :: proc "contextless" (self: ^PackedVector3Array, value: Vector3) -> bool {
@@ -5147,15 +4707,6 @@ packed_color_array_destroy :: proc "contextless" (self: ^PackedColorArray) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_COLOR_ARRAY) }
 	__fn(self)
 }
-packed_color_array_get :: proc "contextless" (self: ^PackedColorArray, index: i64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "get", 2972831132) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: Color
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_color_array_set :: proc "contextless" (self: ^PackedColorArray, index: i64, value: Color) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "set", 1444096570) }
@@ -5165,6 +4716,7 @@ packed_color_array_set :: proc "contextless" (self: ^PackedColorArray, index: i6
 	__fn(self, &__args[0], nil, 2)
 }
 packed_color_array_size :: proc "contextless" (self: ^PackedColorArray) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -5172,6 +4724,7 @@ packed_color_array_size :: proc "contextless" (self: ^PackedColorArray) -> i64 {
 	return __ret
 }
 packed_color_array_is_empty :: proc "contextless" (self: ^PackedColorArray) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -5241,15 +4794,6 @@ packed_color_array_clear :: proc "contextless" (self: ^PackedColorArray) {
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_color_array_has :: proc "contextless" (self: ^PackedColorArray, value: Color) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "has", 3167426256) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_color_array_reverse :: proc "contextless" (self: ^PackedColorArray) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "reverse", 3218959716) }
@@ -5277,50 +4821,11 @@ packed_color_array_sort :: proc "contextless" (self: ^PackedColorArray) {
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_color_array_bsearch :: proc "contextless" (self: ^PackedColorArray, value: Color, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "bsearch", 2639732838) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_color_array_duplicate :: proc "contextless" (self: ^PackedColorArray) -> PackedColorArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "duplicate", 3072026941) }
 	__ret: PackedColorArray
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_color_array_find :: proc "contextless" (self: ^PackedColorArray, value: Color, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "find", 3156095363) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_color_array_rfind :: proc "contextless" (self: ^PackedColorArray, value: Color, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "rfind", 3156095363) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_color_array_count :: proc "contextless" (self: ^PackedColorArray, value: Color) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "count", 1682108616) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_color_array_erase :: proc "contextless" (self: ^PackedColorArray, value: Color) -> bool {
@@ -5359,15 +4864,6 @@ packed_vector4_array_destroy :: proc "contextless" (self: ^PackedVector4Array) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.PACKED_VECTOR4_ARRAY) }
 	__fn(self)
 }
-packed_vector4_array_get :: proc "contextless" (self: ^PackedVector4Array, index: i64) -> Vector4 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "get", 1227817084) }
-	__a_index := index
-	__args := [1]gde.ConstTypePtr{&__a_index}
-	__ret: Vector4
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 packed_vector4_array_set :: proc "contextless" (self: ^PackedVector4Array, index: i64, value: Vector4) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "set", 1350366223) }
@@ -5377,6 +4873,7 @@ packed_vector4_array_set :: proc "contextless" (self: ^PackedVector4Array, index
 	__fn(self, &__args[0], nil, 2)
 }
 packed_vector4_array_size :: proc "contextless" (self: ^PackedVector4Array) -> i64 {
+	if packed_layout_known { return packed_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "size", 3173160232) }
 	__ret: i64
@@ -5384,6 +4881,7 @@ packed_vector4_array_size :: proc "contextless" (self: ^PackedVector4Array) -> i
 	return __ret
 }
 packed_vector4_array_is_empty :: proc "contextless" (self: ^PackedVector4Array) -> bool {
+	if packed_layout_known { return packed_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "is_empty", 3918633141) }
 	__ret: u8
@@ -5453,15 +4951,6 @@ packed_vector4_array_clear :: proc "contextless" (self: ^PackedVector4Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "clear", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_vector4_array_has :: proc "contextless" (self: ^PackedVector4Array, value: Vector4) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "has", 88913544) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 packed_vector4_array_reverse :: proc "contextless" (self: ^PackedVector4Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "reverse", 3218959716) }
@@ -5489,50 +4978,11 @@ packed_vector4_array_sort :: proc "contextless" (self: ^PackedVector4Array) {
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "sort", 3218959716) }
 	__fn(self, nil, nil, 0)
 }
-packed_vector4_array_bsearch :: proc "contextless" (self: ^PackedVector4Array, value: Vector4, before: bool) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "bsearch", 1822067054) }
-	__a_value := value
-	__a_before := u8(before)
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 packed_vector4_array_duplicate :: proc "contextless" (self: ^PackedVector4Array) -> PackedVector4Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "duplicate", 146203628) }
 	__ret: PackedVector4Array
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-packed_vector4_array_find :: proc "contextless" (self: ^PackedVector4Array, value: Vector4, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "find", 3091171314) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_vector4_array_rfind :: proc "contextless" (self: ^PackedVector4Array, value: Vector4, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "rfind", 3091171314) }
-	__a_value := value
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_value, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-packed_vector4_array_count :: proc "contextless" (self: ^PackedVector4Array, value: Vector4) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "count", 3956594488) }
-	__a_value := value
-	__args := [1]gde.ConstTypePtr{&__a_value}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 packed_vector4_array_erase :: proc "contextless" (self: ^PackedVector4Array, value: Vector4) -> bool {

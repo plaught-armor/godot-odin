@@ -404,3 +404,42 @@ The errors the engine prints when it refuses a frustum (`p_right <= p_left`, `p_
 `p_far <= p_near`) or meets a zero pivot in `inverse` (`0.0 == r0[0]` to `0.0 == r3[3]`) are
 printed by the same methods here, and the result is then what the engine returns: the matrix as
 it stood before the frustum was set, or the matrix itself for a singular inverse.
+
+## Packed arrays
+
+The reads of all ten packed array types are defined in `godot/packed.odin` under the same names
+and signatures: `get`, `has`, `find`, `rfind`, `count` and `bsearch`. Each reads the array's
+storage in place through `packed_read`, following `core/templates/vector.h` and `span.h` of Godot
+4.7-stable: `find` and `rfind` count a negative `from` back from the end and answer -1 for a start
+still outside the array, `has` is `find` from 0, and `bsearch` is the engine's bisection, before or
+after the elements equal to the value. Elements compare as the engine's `==` and `<` do: floats by
+IEEE rules, so -0 equals 0 and NaN equals nothing; vectors and Colors per component, a later
+component deciding `<` only when the earlier ones are equal; Strings by character code. Arguments
+are converted as the ptrcall converts them, so a byte array searched for 300 looks for 44, an
+`int32` one keeps the low 32 bits, and a `float32` one rounds the double to float. `get` out of
+range prints the engine's `Index p_index = ... is out of bounds (p_instance->size() = ...).` error
+and returns the type's default: zero, an empty String, or opaque black for a Color, as `Color()`
+is. A String result is a new reference the caller destroys.
+
+The generated `size` and `is_empty` of the packed types read the element count from the storage
+header, as the String `length` does. `check_packed_layout`, run at load, proves that header on a
+shared array, a pushed one whose capacity differs from its size, and an emptied one; when it fails,
+these and `packed_read` fall back to engine calls.
+
+`find` and `rfind` test whole blocks of eight elements with no branch per element, so the
+compares vectorize, and search the block holding a match one by one. Checked against Godot
+4.7-stable by `_check_replaced_packed`, which compares every read of every type from GDScript and
+from `Bag.replaced_packed`, the out-of-range errors included, on empty, sorted and unsorted arrays
+holding repeats, NaN, -0 and the extremes; on values that hit, miss, or hit only after the ptrcall
+conversion; on indices and starts either side of 0, of each end, and the `int64` extremes; on 600
+seeded random sets, half of them of up to 40 elements with a value set at random places.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `PackedInt64Array.size` | 2.4 ns | 1.2 ns |
+| `PackedInt64Array.get` | 1.8 ns | 1.4 ns |
+| `PackedInt64Array.find` | 12.0 ns | 5.1 ns |
+| `PackedStringArray.find` | 13.3 ns | 11.7 ns |
+
+Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an array of 0 to 63,
+and `find` of "12" in a PackedStringArray of "0" to "15".

@@ -525,6 +525,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_rect2s(b2)
 	failures += _check_replaced_rect2is(b2)
 	failures += _check_replaced_projections(b2)
+	failures += _check_replaced_packed(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -1902,6 +1903,137 @@ func _random_projection(rng: RandomNumberGenerator) -> Projection:
 				e[i] = 0.0 if rng.randi_range(0, 3) == 0 else rng.randf_range(-3, 3)
 		c.append(e)
 	return Projection(c[0], c[1], c[2], c[3])
+
+
+# The engine's packed array reads in the order Bag.replaced_packed calls the Odin procs: per array,
+# size, is_empty, get (a String by its hash), has, find, rfind, count and bsearch.
+func _packed_read_results(arrays: Array, values: Array, index: int, from: int, before: bool) -> PackedInt64Array:
+	var out: PackedInt64Array = PackedInt64Array()
+	for k: int in arrays.size():
+		var a: Variant = arrays[k]
+		var v: Variant = values[k]
+		out.append(a.size())
+		out.append(1 if a.is_empty() else 0)
+		var g: Variant = a.get(index)
+		if g is String:
+			out.append(g.hash())
+		elif g is Color:
+			_put_basis_result(out, Vector4(g.r, g.g, g.b, g.a))
+		else:
+			_put_basis_result(out, g)
+		out.append(1 if a.has(v) else 0)
+		out.append(a.find(v, from))
+		out.append(a.rfind(v, from))
+		out.append(a.count(v))
+		out.append(a.bsearch(v, before))
+	return out
+
+
+func _check_packed_case(b2: Bag, arrays: Array, values: Array, index: int, from: int, before: bool) -> int:
+	var want: PackedInt64Array = _packed_read_results(arrays, values, index, from, before)
+	var got: PackedInt64Array = b2.replaced_packed(arrays, values, index, from, before)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_packed(%s, %s, %d, %d, %s) differs at %d of %d: %s, not %s" % [arrays, values, index, from, before, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# One packed array of each type, in the order of their Variant types, each of up to `most` elements
+# drawn from `pools`, sorted when `sorted`.
+func _random_packed_set(rng: RandomNumberGenerator, pools: Array, most: int, sorted: bool) -> Array:
+	var arrays: Array = [PackedByteArray(), PackedInt32Array(), PackedInt64Array(), PackedFloat32Array(),
+		PackedFloat64Array(), PackedStringArray(), PackedVector2Array(), PackedVector3Array(), PackedColorArray(),
+		PackedVector4Array()]
+	for k: int in arrays.size():
+		var pool: Array = pools[k]
+		var a: Variant = arrays[k]
+		for i: int in rng.randi_range(0, most):
+			a.append(pool[rng.randi() % pool.size()])
+		if sorted:
+			a.sort()
+		arrays[k] = a
+	return arrays
+
+
+# The packed array reads of godot/packed.odin (get, has, find, rfind, count, bsearch, and the
+# generated size and is_empty reading the stored size) against the engine's, on every packed type
+# at once. Arrays: empty, sorted with repeats, and unsorted with NaN, -0 and the extremes, then
+# seeded random ones, sorted and not, and long ones of up to 40 with a value at random places, so
+# find and rfind scan whole blocks. Values: hits, misses, NaN, -0, and integers and doubles that
+# the ptrcall converts into a hit (300 to byte 44, 2^32 + 3 to int32 3, 1e300 to float32 INF, the
+# double 0.1 to float32 0.1). Indices and starts: either side of 0, of each end, and the int64
+# extremes; bsearch both before and after.
+func _check_replaced_packed(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var lowest: int = -9223372036854775807 - 1
+	var empty: Array = [PackedByteArray(), PackedInt32Array(), PackedInt64Array(), PackedFloat32Array(),
+		PackedFloat64Array(), PackedStringArray(), PackedVector2Array(), PackedVector3Array(), PackedColorArray(),
+		PackedVector4Array()]
+	var sorted: Array = [PackedByteArray([1, 3, 3, 7, 44, 200]), PackedInt32Array([-5, 0, 3, 3, 7, 2147483647]),
+		PackedInt64Array([-4611686018427387904, 0, 3, 3, 7, 4611686018427387904]),
+		PackedFloat32Array([-INF, -1.5, 0.0, 0.1, 0.1, 7.0]), PackedFloat64Array([-INF, -1.5, 0.0, 0.1, 0.1, 7.0]),
+		PackedStringArray(["", "A", "a", "ab", "ab", "bé", "\U01F600"]),
+		PackedVector2Array([Vector2(0, 0), Vector2(0, 1), Vector2(1, -1), Vector2(1, -1), Vector2(2, 0)]),
+		PackedVector3Array([Vector3(0, 0, 0), Vector3(0, 0, 1), Vector3(0, 1, -1), Vector3(0, 1, -1), Vector3(1, 0, 0)]),
+		PackedColorArray([Color(0, 0, 0, 0), Color(0, 0, 0, 1), Color(0, 0, 1, 0), Color(0, 0, 1, 0), Color(0, 1, 0, 0),
+			Color(1, 0, 0, 0)]),
+		PackedVector4Array([Vector4(0, 0, 0, 0), Vector4(0, 0, 0, 1), Vector4(0, 0, 1, 0), Vector4(0, 0, 1, 0),
+			Vector4(0, 1, 0, 0), Vector4(1, 0, 0, 0)])]
+	var odd: Array = [PackedByteArray([44, 0, 255, 44, 3]), PackedInt32Array([3, -1, 3, 0, -2147483648]),
+		PackedInt64Array([3, -1, 3, 0, lowest]), PackedFloat32Array([NAN, nz, 0.1, NAN, 0.0, INF]),
+		PackedFloat64Array([NAN, nz, 0.1, NAN, 0.0, INF]), PackedStringArray(["b", "ab", "aB", "", "ab", "é"]),
+		PackedVector2Array([Vector2(NAN, 0), Vector2(nz, 1), Vector2(0, 1), Vector2(0, NAN), Vector2(0, 1)]),
+		PackedVector3Array([Vector3(nz, 0, 0), Vector3(0, NAN, 0), Vector3(0, 0, 0), Vector3(0, 0, NAN), Vector3(0, 0, 0)]),
+		PackedColorArray([Color(0, 0, 0, NAN), Color(nz, 0, 0, 0), Color(0, 0, 0, 0), Color(0, 0, NAN, 0), Color(1, 1, 1, 1)]),
+		PackedVector4Array([Vector4(0, 0, 0, NAN), Vector4(0, nz, 0, 0), Vector4(0, 0, 0, 0), Vector4(NAN, 0, 0, 0),
+			Vector4(0, 0, 0, 0)])]
+	var value_sets: Array[Array] = [
+		[3, 3, 3, 0.1, 0.1, "ab", Vector2(1, -1), Vector3(0, 1, -1), Color(0, 0, 1, 0), Vector4(0, 0, 1, 0)],
+		[0, 0, 0, nz, nz, "", Vector2(nz, 1), Vector3(0, 0, nz), Color(nz, 0, 0, 0), Vector4(0, 0, 0, nz)],
+		[300, 4294967299, lowest, NAN, NAN, "A", Vector2(NAN, 0), Vector3(0, NAN, 0), Color(0, 0, 0, NAN),
+			Vector4(NAN, 0, 0, 0)],
+		[2, 2, 2, 1e300, 7.5, "zz", Vector2(5, 5), Vector3(5, 5, 5), Color(5, 5, 5, 5), Vector4(5, 5, 5, 5)],
+		[-253, -2147483648, 4611686018427387904, -INF, -1.5, "\U01F600", Vector2(nz, nz), Vector3(nz, 1, -1),
+			Color(0, 0, nz, 0), Vector4(0, 0, nz, 0)]]
+	var indices: Array[int] = [-1, 0, 1, 4, 5, 6, 7, 100, lowest, 9223372036854775807]
+	var froms: Array[int] = [-100, -7, -6, -5, -1, 0, 1, 3, 5, 6, 100, lowest, 9223372036854775807]
+	for arrays: Array in [empty, sorted, odd]:
+		for vi: int in value_sets.size():
+			for fi: int in froms.size():
+				failures += _check_packed_case(b2, arrays, value_sets[vi], indices[(fi + vi) % indices.size()], froms[fi], true)
+				failures += _check_packed_case(b2, arrays, value_sets[vi], 0, froms[fi], false)
+	var pools: Array = [[0, 3, 44, 255, 7], [-1, 0, 3, 2147483647, -2147483648], [-1, 0, 3, 4611686018427387904, lowest],
+		[0.0, nz, 0.1, NAN, -INF, 1.5], [0.0, nz, 0.1, NAN, -INF, 1.5], ["", "a", "A", "ab", "b", "é"],
+		[Vector2(0, 0), Vector2(nz, 1), Vector2(0, 1), Vector2(NAN, 0), Vector2(1, -1)],
+		[Vector3(0, 0, 0), Vector3(0, nz, 1), Vector3(0, 0, 1), Vector3(0, NAN, 0), Vector3(1, -1, 0)],
+		[Color(0, 0, 0, 0), Color(0, 0, nz, 1), Color(0, 0, 0, 1), Color(0, 0, NAN, 0), Color(1, 0, 0, 0)],
+		[Vector4(0, 0, 0, 0), Vector4(0, 0, nz, 1), Vector4(0, 0, 0, 1), Vector4(0, NAN, 0, 0), Vector4(1, 0, 0, 0)]]
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261113
+	for i: int in 300:
+		var arrays: Array = _random_packed_set(rng, pools, 9, i % 2 == 0)
+		var values: Array = []
+		for k: int in pools.size():
+			var pool: Array = pools[k]
+			values.append(pool[rng.randi() % pool.size()])
+		failures += _check_packed_case(b2, arrays, values, rng.randi_range(-2, 10), rng.randi_range(-11, 11), rng.randi() % 2 == 0)
+	# Arrays of up to 40, so find and rfind scan whole blocks: a value outside the pools, absent or
+	# set at up to two random places, and starts anywhere.
+	var outside: Array = [9, 9, 9, 9.5, 9.5, "zz", Vector2(9, 9), Vector3(9, 9, 9), Color(9, 9, 9, 9), Vector4(9, 9, 9, 9)]
+	for i: int in 300:
+		var arrays: Array = _random_packed_set(rng, pools, 40, false)
+		for k: int in arrays.size():
+			var a: Variant = arrays[k]
+			for t: int in rng.randi_range(0, 2):
+				if not a.is_empty():
+					a[rng.randi() % a.size()] = outside[k]
+			arrays[k] = a
+		failures += _check_packed_case(b2, arrays, outside, rng.randi_range(-2, 41), rng.randi_range(-42, 42), rng.randi() % 2 == 0)
+	return failures
 
 
 # The Projection procs that replace engine methods, on edge cases (the identity, singular matrices

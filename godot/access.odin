@@ -26,16 +26,16 @@ packed_write :: proc {
 	packed_write_string, packed_write_vector2, packed_write_vector3, packed_write_vector4, packed_write_color,
 }
 
-packed_read_byte :: proc "contextless" (a: ^PackedByteArray) -> []u8 { return packed_slice(u8, a, packed_byte_array_size(a), gde.packed_byte_array_operator_index_const) }
-packed_read_int32 :: proc "contextless" (a: ^PackedInt32Array) -> []i32 { return packed_slice(i32, a, packed_int32_array_size(a), gde.packed_int32_array_operator_index_const) }
-packed_read_int64 :: proc "contextless" (a: ^PackedInt64Array) -> []i64 { return packed_slice(i64, a, packed_int64_array_size(a), gde.packed_int64_array_operator_index_const) }
-packed_read_float32 :: proc "contextless" (a: ^PackedFloat32Array) -> []f32 { return packed_slice(f32, a, packed_float32_array_size(a), gde.packed_float32_array_operator_index_const) }
-packed_read_float64 :: proc "contextless" (a: ^PackedFloat64Array) -> []f64 { return packed_slice(f64, a, packed_float64_array_size(a), gde.packed_float64_array_operator_index_const) }
-packed_read_string :: proc "contextless" (a: ^PackedStringArray) -> []String { return packed_slice(String, a, packed_string_array_size(a), gde.packed_string_array_operator_index_const) }
-packed_read_vector2 :: proc "contextless" (a: ^PackedVector2Array) -> []Vector2 { return packed_slice(Vector2, a, packed_vector2_array_size(a), gde.packed_vector2_array_operator_index_const) }
-packed_read_vector3 :: proc "contextless" (a: ^PackedVector3Array) -> []Vector3 { return packed_slice(Vector3, a, packed_vector3_array_size(a), gde.packed_vector3_array_operator_index_const) }
-packed_read_vector4 :: proc "contextless" (a: ^PackedVector4Array) -> []Vector4 { return packed_slice(Vector4, a, packed_vector4_array_size(a), gde.packed_vector4_array_operator_index_const) }
-packed_read_color :: proc "contextless" (a: ^PackedColorArray) -> []Color { return packed_slice(Color, a, packed_color_array_size(a), gde.packed_color_array_operator_index_const) }
+packed_read_byte :: proc "contextless" (a: ^PackedByteArray) -> []u8 { if packed_layout_known { return packed_stored(u8, a) }; return packed_slice(u8, a, packed_byte_array_size(a), gde.packed_byte_array_operator_index_const) }
+packed_read_int32 :: proc "contextless" (a: ^PackedInt32Array) -> []i32 { if packed_layout_known { return packed_stored(i32, a) }; return packed_slice(i32, a, packed_int32_array_size(a), gde.packed_int32_array_operator_index_const) }
+packed_read_int64 :: proc "contextless" (a: ^PackedInt64Array) -> []i64 { if packed_layout_known { return packed_stored(i64, a) }; return packed_slice(i64, a, packed_int64_array_size(a), gde.packed_int64_array_operator_index_const) }
+packed_read_float32 :: proc "contextless" (a: ^PackedFloat32Array) -> []f32 { if packed_layout_known { return packed_stored(f32, a) }; return packed_slice(f32, a, packed_float32_array_size(a), gde.packed_float32_array_operator_index_const) }
+packed_read_float64 :: proc "contextless" (a: ^PackedFloat64Array) -> []f64 { if packed_layout_known { return packed_stored(f64, a) }; return packed_slice(f64, a, packed_float64_array_size(a), gde.packed_float64_array_operator_index_const) }
+packed_read_string :: proc "contextless" (a: ^PackedStringArray) -> []String { if packed_layout_known { return packed_stored(String, a) }; return packed_slice(String, a, packed_string_array_size(a), gde.packed_string_array_operator_index_const) }
+packed_read_vector2 :: proc "contextless" (a: ^PackedVector2Array) -> []Vector2 { if packed_layout_known { return packed_stored(Vector2, a) }; return packed_slice(Vector2, a, packed_vector2_array_size(a), gde.packed_vector2_array_operator_index_const) }
+packed_read_vector3 :: proc "contextless" (a: ^PackedVector3Array) -> []Vector3 { if packed_layout_known { return packed_stored(Vector3, a) }; return packed_slice(Vector3, a, packed_vector3_array_size(a), gde.packed_vector3_array_operator_index_const) }
+packed_read_vector4 :: proc "contextless" (a: ^PackedVector4Array) -> []Vector4 { if packed_layout_known { return packed_stored(Vector4, a) }; return packed_slice(Vector4, a, packed_vector4_array_size(a), gde.packed_vector4_array_operator_index_const) }
+packed_read_color :: proc "contextless" (a: ^PackedColorArray) -> []Color { if packed_layout_known { return packed_stored(Color, a) }; return packed_slice(Color, a, packed_color_array_size(a), gde.packed_color_array_operator_index_const) }
 
 packed_write_byte :: proc "contextless" (a: ^PackedByteArray) -> []u8 { return packed_slice(u8, a, packed_byte_array_size(a), gde.packed_byte_array_operator_index) }
 packed_write_int32 :: proc "contextless" (a: ^PackedInt32Array) -> []i32 { return packed_slice(i32, a, packed_int32_array_size(a), gde.packed_int32_array_operator_index) }

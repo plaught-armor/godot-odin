@@ -136,6 +136,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_rect2s", bag_replaced_rect2s, {"a", "b", "c", "v", "w", "x", "n"})
 	godot.method(b, "replaced_rect2is", bag_replaced_rect2is, {"a", "b", "v", "w", "n", "m"})
 	godot.method(b, "replaced_projections", bag_replaced_projections, {"a", "t", "r", "box", "w", "q", "x", "y", "z", "u", "n", "m", "flip"})
+	godot.method(b, "replaced_packed", bag_replaced_packed, {"arrays", "values", "index", "from", "before"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1346,6 +1347,52 @@ bag_replaced_colors :: proc(self: ^Bag, a, b, c: godot.Color, x: f64, n: i64) ->
 	put_color_result(&o, godot.color_from_rgbe9995(n))
 	put_color_result(&o, godot.color_from_rgba8(n, n >> 40, n % 300, -n))
 	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The packed array reads of godot/packed.odin on `arrays`, one array of each packed type in the
+// order of their Variant types, each with the value at the same place in `values`: size, is_empty,
+// get at `index`, has, find and rfind from `from`, count and bsearch with `before`, as integers.
+bag_replaced_packed :: proc(self: ^Bag, arrays: godot.Array, values: godot.Array, index, from: i64, before: bool) -> godot.PackedInt64Array {
+	o: Basis_Results
+	arrays, values := arrays, values
+	as, vs := godot.array_read(&arrays), godot.array_read(&values)
+	if len(as) != 10 || len(vs) != 10 { return {} }
+	put_packed_reads(&o, godot.PackedByteArray, i64, &as[0], &vs[0], index, from, before, godot.packed_byte_array_size, godot.packed_byte_array_is_empty, godot.packed_byte_array_get, godot.packed_byte_array_has, godot.packed_byte_array_find, godot.packed_byte_array_rfind, godot.packed_byte_array_count, godot.packed_byte_array_bsearch)
+	put_packed_reads(&o, godot.PackedInt32Array, i64, &as[1], &vs[1], index, from, before, godot.packed_int32_array_size, godot.packed_int32_array_is_empty, godot.packed_int32_array_get, godot.packed_int32_array_has, godot.packed_int32_array_find, godot.packed_int32_array_rfind, godot.packed_int32_array_count, godot.packed_int32_array_bsearch)
+	put_packed_reads(&o, godot.PackedInt64Array, i64, &as[2], &vs[2], index, from, before, godot.packed_int64_array_size, godot.packed_int64_array_is_empty, godot.packed_int64_array_get, godot.packed_int64_array_has, godot.packed_int64_array_find, godot.packed_int64_array_rfind, godot.packed_int64_array_count, godot.packed_int64_array_bsearch)
+	put_packed_reads(&o, godot.PackedFloat32Array, f64, &as[3], &vs[3], index, from, before, godot.packed_float32_array_size, godot.packed_float32_array_is_empty, godot.packed_float32_array_get, godot.packed_float32_array_has, godot.packed_float32_array_find, godot.packed_float32_array_rfind, godot.packed_float32_array_count, godot.packed_float32_array_bsearch)
+	put_packed_reads(&o, godot.PackedFloat64Array, f64, &as[4], &vs[4], index, from, before, godot.packed_float64_array_size, godot.packed_float64_array_is_empty, godot.packed_float64_array_get, godot.packed_float64_array_has, godot.packed_float64_array_find, godot.packed_float64_array_rfind, godot.packed_float64_array_count, godot.packed_float64_array_bsearch)
+	put_packed_reads(&o, godot.PackedStringArray, godot.String, &as[5], &vs[5], index, from, before, godot.packed_string_array_size, godot.packed_string_array_is_empty, godot.packed_string_array_get, godot.packed_string_array_has, godot.packed_string_array_find, godot.packed_string_array_rfind, godot.packed_string_array_count, godot.packed_string_array_bsearch)
+	put_packed_reads(&o, godot.PackedVector2Array, godot.Vector2, &as[6], &vs[6], index, from, before, godot.packed_vector2_array_size, godot.packed_vector2_array_is_empty, godot.packed_vector2_array_get, godot.packed_vector2_array_has, godot.packed_vector2_array_find, godot.packed_vector2_array_rfind, godot.packed_vector2_array_count, godot.packed_vector2_array_bsearch)
+	put_packed_reads(&o, godot.PackedVector3Array, godot.Vector3, &as[7], &vs[7], index, from, before, godot.packed_vector3_array_size, godot.packed_vector3_array_is_empty, godot.packed_vector3_array_get, godot.packed_vector3_array_has, godot.packed_vector3_array_find, godot.packed_vector3_array_rfind, godot.packed_vector3_array_count, godot.packed_vector3_array_bsearch)
+	put_packed_reads(&o, godot.PackedColorArray, godot.Color, &as[8], &vs[8], index, from, before, godot.packed_color_array_size, godot.packed_color_array_is_empty, godot.packed_color_array_get, godot.packed_color_array_has, godot.packed_color_array_find, godot.packed_color_array_rfind, godot.packed_color_array_count, godot.packed_color_array_bsearch)
+	put_packed_reads(&o, godot.PackedVector4Array, godot.Vector4, &as[9], &vs[9], index, from, before, godot.packed_vector4_array_size, godot.packed_vector4_array_is_empty, godot.packed_vector4_array_get, godot.packed_vector4_array_has, godot.packed_vector4_array_find, godot.packed_vector4_array_rfind, godot.packed_vector4_array_count, godot.packed_vector4_array_bsearch)
+	return godot.packed_of(o.v[:o.n])
+}
+
+// Appends the eight reads of `bag_replaced_packed` on the array `a` holds, with the value `v` holds.
+// A String from `get` goes in by its hash, a Color by its components.
+put_packed_reads :: proc(o: ^Basis_Results, $A, $V: typeid, a, v: ^godot.Variant, index, from: i64, before: bool,
+	size: proc "contextless" (^A) -> i64, empty: proc "contextless" (^A) -> bool, get: proc "contextless" (^A, i64) -> $G,
+	has: proc "contextless" (^A, V) -> bool, find, rfind: proc "contextless" (^A, V, i64) -> i64,
+	count: proc "contextless" (^A, V) -> i64, bsearch: proc "contextless" (^A, V, bool) -> i64) {
+	x, y := godot.from_variant(A, a), godot.from_variant(V, v)
+	put_basis_result(o, size(&x))
+	put_basis_result(o, empty(&x))
+	g := get(&x, index)
+	when G == godot.String {
+		put_basis_result(o, godot.string_hash(&g))
+		godot.destroy[.STRING](&g)
+	} else when G == godot.Color {
+		put_basis_result(o, godot.Vector4(g))
+	} else {
+		put_basis_result(o, g)
+	}
+	put_basis_result(o, has(&x, y))
+	put_basis_result(o, find(&x, y, from))
+	put_basis_result(o, rfind(&x, y, from))
+	put_basis_result(o, count(&x, y))
+	put_basis_result(o, bsearch(&x, y, before))
 }
 
 // The Color String procs and from_ok_hsl, then the RID procs, in the order _color_text_results

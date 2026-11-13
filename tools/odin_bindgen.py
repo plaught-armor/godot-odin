@@ -45,11 +45,18 @@ def gde_name(name):
     return name
 
 
-# Builtin methods answered from the String's storage when check_string_layout (godot/access.odin)
-# proved its header at load: a load against a builtin call. The engine call stays as the fallback.
-STRING_IN_PLACE = {
+PACKED_TYPES = ["PackedByteArray", "PackedInt32Array", "PackedInt64Array", "PackedFloat32Array",
+                "PackedFloat64Array", "PackedStringArray", "PackedVector2Array", "PackedVector3Array",
+                "PackedVector4Array", "PackedColorArray"]
+
+# Builtin methods answered from the storage when check_string_layout (godot/access.odin) or
+# check_packed_layout (godot/packed.odin) proved its header at load: a load against a builtin
+# call. The engine call stays as the fallback.
+IN_PLACE = {
     ("String", "length"): "\tif string_layout_known { return string_stored_length(self) }\n",
     ("String", "is_empty"): "\tif string_layout_known { return string_stored_length(self) == 0 }\n",
+    **{(t, "size"): "\tif packed_layout_known { return packed_stored_size(self) }\n" for t in PACKED_TYPES},
+    **{(t, "is_empty"): "\tif packed_layout_known { return packed_stored_size(self) == 0 }\n" for t in PACKED_TYPES},
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
@@ -93,6 +100,8 @@ REPLACED = {
     ("Basis", "looking_at"),
     ("Basis", "from_scale"),
     ("Basis", "from_euler"),
+    # godot/packed.odin: the packed array reads.
+    *((t, m) for t in PACKED_TYPES for m in ("get", "has", "find", "rfind", "count", "bsearch")),
 }
 
 # Builtin constructors defined in place under the generated name: godot/basis.odin builds a Basis
@@ -469,7 +478,7 @@ class Api:
         vt = VARIANT_TYPE[bname]
         head = (f"\t@(static) __fn: gde.PtrBuiltInMethod\n"
                 f"\tif __fn == nil {{ __fn = builtin_method(.{vt}, \"{m['name']}\", {m['hash']}) }}\n")
-        return f"{sig} {{\n{STRING_IN_PLACE.get((bname, m['name']), '')}{head}{body}}}\n"
+        return f"{sig} {{\n{IN_PLACE.get((bname, m['name']), '')}{head}{body}}}\n"
 
     def emit_builtin_lifetime(self, bname, b):
         """Constructors by index and the destructor of a builtin with one."""

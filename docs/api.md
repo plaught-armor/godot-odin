@@ -230,9 +230,10 @@ shows as a flags checklist. Array and Dictionary fields always start empty.
 
 | Proc | Use |
 |---|---|
-| `packed_read(&a) -> []E` | A packed array's elements as a slice over its storage, read in place: about 0.05 ns per element in a sum loop, against 3.2 ns for `packed_int64_array_get`. Valid until `a` changes. Do not write through it, since the storage may be shared. |
+| `packed_read(&a) -> []E` | A packed array's elements as a slice over its storage, read in place: about 0.05 ns per element in a sum loop, against 2.8 ns for `packed_int64_array_size` and `packed_int64_array_get` each round. Valid until `a` changes. Do not write through it, since the storage may be shared. |
 | `packed_write(&a) -> []E` | The same, writable. A shared array gets storage of its own first. Use it only on an array you own, such as a copy made with `packed_<type>_array_new_from_packed_<type>_array`, never on a borrowed parameter. |
 | `packed_of(xs) -> PackedX` | A new packed array copied from an Odin slice in one resize and one copy, for any of the ten element types: about 0.14 ns per element, against 2 ns for one `set` each. A String element is copied as a new reference. You destroy it, or return it. |
+| `packed_<type>_array_get`, `_has`, `_find`, `_rfind`, `_count`, `_bsearch`, `_size`, `_is_empty` | Replace the generated bindings of the engine's packed array reads of the same names, with the same signatures and answers, out-of-range error included (see [replaced.md](replaced.md)): read in place with no engine call. `find` of an int64 among 64 takes about 5.1 ns against 12.0 for the engine call, `size` 1.2 against 2.4, `get` 1.4 against 1.8. |
 
 ## Images and files
 
