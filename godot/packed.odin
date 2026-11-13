@@ -266,6 +266,25 @@ packed_count :: proc "contextless" (xs: []$E, v: ^E) -> (c: i64) {
 			c += i64(hits)
 			rest = rest[len(part):]
 		}
+	} else when E == Vector3 {
+		// Four elements are twelve floats, read as three vectors and compared with the value's
+		// components in the order they fall there. The twelve answers make one mask, and an
+		// element counts when its three neighbouring bits are all set.
+		x, y, z := v[0], v[1], v[2]
+		first := intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{x, y, z, x}))
+		second := intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{y, z, x, y}))
+		third := intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{z, x, y, z}))
+		floats := ([^]f32)(raw_data(xs))
+		groups := len(xs) / 4
+		#no_bounds_check for g in 0 ..< groups {
+			f := floats[g * 12:]
+			a := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&f[0])), first)))
+			b := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&f[4])), second)))
+			d := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&f[8])), third)))
+			m := a | b << 4 | d << 8
+			c += i64(intrinsics.count_ones(m & (m >> 1) & (m >> 2) & 0b001001001001))
+		}
+		for &e in xs[groups * 4:] { c += i64(elem_eq(&e, v)) }
 	} else {
 		for &x in xs { if elem_eq(&x, v) { c += 1 } }
 	}

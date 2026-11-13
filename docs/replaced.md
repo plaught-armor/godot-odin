@@ -460,6 +460,7 @@ seeded random sets, half of them of up to 40 elements with a value set at random
 | `PackedByteArray.bsearch` | 5.3 ns | 3.4 ns |
 | `PackedVector2Array.rfind` | 13.4 ns | 7.1 ns |
 | `PackedVector4Array.find` | 18.3 ns | 11.9 ns |
+| `PackedVector3Array.count` | 26.0 ns | 16.0 ns |
 | `PackedVector4Array.count` | 26.2 ns | 22.6 ns |
 | `PackedVector4Array.bsearch` | 7.2 ns | 4.1 ns |
 | `PackedStringArray.bsearch` | 13.9 ns | 10.3 ns |
@@ -475,7 +476,9 @@ for every method in `REPLACED` and `REPLACED_TYPES` that `bench/project/bench.gd
 by hand, with sample arguments picked by type and argument name. Run it after adding a
 replacement, then `bench/build.sh`; a replacement slower than its engine call is a defect to fix
 or drop. On Godot 4.7-stable every pair is at or ahead of the engine within run-to-run noise of
-about 5%. A locally built 4.8 leads only on `PackedVector3Array.count`, by about 5%.
+about 5%, and so is every pair on a locally built 4.8. `PackedVector3Array.count` was the last one
+behind there: it now compares four elements as three vectors of four floats and counts the
+matches from the twelve-bit mask, 16 ns against the engine's 20 ns on 4.8.
 
 Two findings from that pass apply beyond one method. Normalizing tests the squared length alone
 when it is finite and not zero, since an infinite or NaN component cannot give such a length;
