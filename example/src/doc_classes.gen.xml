@@ -225,6 +225,9 @@
 		<method name="replaced_name_ops">
 			<description>bag_replaced_ops through the StringName methods on [code]n[/code], then its length, is_empty as 0 or 1 and hash. test.gd builds the same array from the engine's StringName methods.</description>
 		</method>
+		<method name="replaced_numbers">
+			<description>The String number reads on each of [code]texts[/code], then the same through the StringName of it: to_int, the bits of to_float, is_valid_int and is_valid_float as 0 or 1, eight per text. test.gd builds the same array from the engine's methods.</description>
+		</method>
 		<method name="replaced_name_strs">
 			<description>bag_replaced_strs through the StringName methods on [code]n[/code].</description>
 		</method>

@@ -562,3 +562,27 @@ same text, against the engine's StringName methods called from GDScript.
 
 Timings are from `bench/build.sh`: `length` and `hash` of "player_jump", and `find` of a cached
 "lazy" in the 43-character sentence as a StringName.
+
+## String and StringName number reads
+
+The generated `to_int`, `to_float`, `is_valid_int` and `is_valid_float` of String and StringName
+read the text in place and parse it with `runes_to_int`, `runes_to_float`, `runes_is_valid_int` and
+`runes_is_valid_float` in `godot/access.odin`, which follow the engine's parsers to the same value
+and bits. Where the engine prints, `to_int` on a value past the 64-bit range and `to_float` on an
+exponent past 511, the read calls the engine instead, so the print is kept; the value is the same
+either way. The String reads are gated on `string_layout_known` and the StringName reads on
+`dict_layout_known`; when the layout check fails, every read falls back to the engine call.
+
+Checked against Godot 4.7-stable by `_check_replaced_numbers`, which runs every case of the
+`to_int` and `to_float` checks plus signs, exponents, periods and spacing edge cases through
+`Bag.replaced_numbers` on both the String and the StringName of the text, against the engine's
+methods called from GDScript, comparing `to_float` by its bits.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `String.to_int` | 7.64 ns | 3.28 ns |
+| `String.to_float` | 11.0 ns | 8.06 ns |
+| `String.is_valid_float` | 8.43 ns | 6.02 ns |
+
+Timings are from `bench/build.sh` on a cached String: `to_int` of "-12345", the others of
+"-123.456e-2".

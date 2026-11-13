@@ -57,6 +57,15 @@ PACKED_TYPES = ["PackedByteArray", "PackedInt32Array", "PackedInt64Array", "Pack
 IN_PLACE = {
     ("String", "length"): "\tif string_layout_known { return string_stored_length(self) }\n",
     ("String", "is_empty"): "\tif string_layout_known { return string_stored_length(self) == 0 }\n",
+    # godot/access.odin: the number reads, the engine called where it prints an error or warning.
+    **{(t, m): f"\tif {gate} {{ {body} }}\n"
+       for t, gate, chars in (("String", "string_layout_known", "string_read(self)"),
+                              ("StringName", "dict_layout_known", "string_read(name_text(self))"))
+       for m, body in (
+           ("to_int", f"if v, over := runes_parse_int({chars}); !over {{ return v }}"),
+           ("to_float", f"if v, clipped := runes_parse_float({chars}); !clipped {{ return v }}"),
+           ("is_valid_int", f"return runes_is_valid_int({chars})"),
+           ("is_valid_float", f"return runes_is_valid_float({chars})"))},
     **{(t, "size"): "\tif packed_layout_known { return packed_stored_size(self) }\n" for t in PACKED_TYPES},
     **{(t, "is_empty"): "\tif packed_layout_known { return packed_stored_size(self) == 0 }\n" for t in PACKED_TYPES},
     # godot/array.odin: each returns false when the engine answers.

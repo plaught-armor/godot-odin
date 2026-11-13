@@ -556,9 +556,9 @@ Ident :: enum i64 {
 	SPLIT_ENGINE,      // string_split of the sentence on a cached " "
 	SPLIT_TEXT,        // string_split_text of the sentence on Odin " "
 	SPLIT_PARTS,       // string_split_parts of the same, each part read and none made
-	TO_INT_ENGINE,     // the generated string_to_int of a cached "-12345"
+	TO_INT_ENGINE,     // the generated string_to_int of a cached "-12345", which reads it in place
 	TO_INT_RUNES,      // runes_to_int of the same String's characters
-	TO_FLOAT_ENGINE,   // the generated string_to_float of a cached "-123.456e-2"
+	TO_FLOAT_ENGINE,   // the generated string_to_float of a cached "-123.456e-2", which reads it in place
 	TO_FLOAT_RUNES,    // runes_to_float of the same String's characters
 	INT_TEXT_ENGINE,   // the generated string_num_int64 of -1234567, made and destroyed
 	INT_TEXT,          // string_of_int of the same number
@@ -576,6 +576,10 @@ Ident :: enum i64 {
 	NAME_HASH,         // the generated string_name_hash, read from the interned name
 	NAME_FIND_CALL,    // the engine's StringName.find of a cached String in the sentence as a StringName
 	NAME_FIND,         // the generated string_name_find of the same
+	TO_INT_CALL,       // the engine's String.to_int of "-12345", called as the bindings did before
+	TO_FLOAT_CALL,     // the engine's String.to_float of "-123.456e-2" the same way
+	VALID_FLOAT_CALL,  // the engine's String.is_valid_float of "-123.456e-2" the same way
+	VALID_FLOAT,       // the generated string_is_valid_float of the same, which reads it in place
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -960,6 +964,41 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		defer godot.destroy[.STRING](&num)
 		p := &num
 		for _ in 0 ..< n { sum += godot.string_to_int(intrinsics.volatile_load(&p)) }
+	case .TO_INT_CALL:
+		num := godot.string_of("-12345")
+		defer godot.destroy[.STRING](&num)
+		p := &num
+		fn := godot.builtin_method(.STRING, "to_int", 3173160232)
+		for _ in 0 ..< n {
+			v: i64
+			fn(intrinsics.volatile_load(&p), nil, &v, 0)
+			sum += v
+		}
+	case .TO_FLOAT_CALL:
+		num := godot.string_of("-123.456e-2")
+		defer godot.destroy[.STRING](&num)
+		p := &num
+		fn := godot.builtin_method(.STRING, "to_float", 466405837)
+		for _ in 0 ..< n {
+			v: f64
+			fn(intrinsics.volatile_load(&p), nil, &v, 0)
+			sum += i64(v)
+		}
+	case .VALID_FLOAT_CALL:
+		num := godot.string_of("-123.456e-2")
+		defer godot.destroy[.STRING](&num)
+		p := &num
+		fn := godot.builtin_method(.STRING, "is_valid_float", 3918633141)
+		for _ in 0 ..< n {
+			v: u8
+			fn(intrinsics.volatile_load(&p), nil, &v, 0)
+			sum += i64(v)
+		}
+	case .VALID_FLOAT:
+		num := godot.string_of("-123.456e-2")
+		defer godot.destroy[.STRING](&num)
+		p := &num
+		for _ in 0 ..< n { sum += i64(godot.string_is_valid_float(intrinsics.volatile_load(&p))) }
 	case .TO_INT_RUNES:
 		num := godot.string_of("-12345")
 		defer godot.destroy[.STRING](&num)

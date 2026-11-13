@@ -624,6 +624,7 @@ string_is_valid_identifier :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_is_valid_int :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_valid_int(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_int", 3918633141) }
 	__ret: u8
@@ -631,6 +632,7 @@ string_is_valid_int :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_is_valid_float :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_valid_float(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_float", 3918633141) }
 	__ret: u8
@@ -668,6 +670,7 @@ string_is_valid_filename :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_to_int :: proc "contextless" (self: ^String) -> i64 {
+	if string_layout_known { if v, over := runes_parse_int(string_read(self)); !over { return v } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_int", 3173160232) }
 	__ret: i64
@@ -675,6 +678,7 @@ string_to_int :: proc "contextless" (self: ^String) -> i64 {
 	return __ret
 }
 string_to_float :: proc "contextless" (self: ^String) -> f64 {
+	if string_layout_known { if v, clipped := runes_parse_float(string_read(self)); !clipped { return v } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_float", 466405837) }
 	__ret: f64
@@ -1628,6 +1632,7 @@ string_name_is_valid_identifier :: proc "contextless" (self: ^StringName) -> boo
 	return __ret != 0
 }
 string_name_is_valid_int :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_valid_int(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_int", 3918633141) }
 	__ret: u8
@@ -1635,6 +1640,7 @@ string_name_is_valid_int :: proc "contextless" (self: ^StringName) -> bool {
 	return __ret != 0
 }
 string_name_is_valid_float :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_valid_float(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_float", 3918633141) }
 	__ret: u8
@@ -1672,6 +1678,7 @@ string_name_is_valid_filename :: proc "contextless" (self: ^StringName) -> bool 
 	return __ret != 0
 }
 string_name_to_int :: proc "contextless" (self: ^StringName) -> i64 {
+	if dict_layout_known { if v, over := runes_parse_int(string_read(name_text(self))); !over { return v } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_int", 3173160232) }
 	__ret: i64
@@ -1679,6 +1686,7 @@ string_name_to_int :: proc "contextless" (self: ^StringName) -> i64 {
 	return __ret
 }
 string_name_to_float :: proc "contextless" (self: ^StringName) -> f64 {
+	if dict_layout_known { if v, clipped := runes_parse_float(string_read(name_text(self))); !clipped { return v } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_float", 466405837) }
 	__ret: f64

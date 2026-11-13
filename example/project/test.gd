@@ -448,6 +448,11 @@ func _check_extras() -> int:
 	if got_floats.to_byte_array() != want_floats.to_byte_array():
 		print("FAIL: Bag.part_floats gave %s, not %s" % [got_floats, want_floats])
 		failures += 1
+	var number_texts: PackedStringArray = number_text.split(",")
+	number_texts.append_array(float_text.split(";"))
+	number_texts.append_array(["", "+", "-", "+1", "-1", "1-", "--1", "+-1", "1e5", "1e", "e5", ".e5", "1.e5",
+		"1e+5", "1e+-5", "1e5.0", "1.2.3", " 1", "1 ", "\u0661", "1E5", "-.5", "+.", "5e-", "0x1F", "1,5", "1e5-", "1e5+5", "1e-5+"])
+	failures += _check_replaced_numbers(b2, number_texts)
 	var int_values: PackedInt64Array = [0, 1, -1, 9, 10, -10, 35, 36, 255, -256, 123456789, -987654321, 9223372036854775807, -9223372036854775807 - 1]
 	for base: int in [10, 2, 7, 16, 36]:
 		for caps: bool in [false, true]:
@@ -646,6 +651,29 @@ func _check_replaced_strs(b2: Bag, s: String, part: String, with: String, allow_
 	got = b2.replaced_name_strs(n, part, with, allow_empty, maxsplit)
 	if got != want:
 		print("FAIL: Bag.replaced_name_strs(%s, %s, %s, %s, %d) gave %s, not %s" % [n, part, with, allow_empty, maxsplit, got, want])
+		return 1
+	return 0
+
+
+# The String and StringName number reads, from Bag.replaced_numbers, against the engine's methods
+# called from GDScript: to_int, the bits of to_float, is_valid_int and is_valid_float of each text
+# and of its StringName. Returns 1 on a mismatch.
+func _check_replaced_numbers(b2: Bag, texts: PackedStringArray) -> int:
+	var want: PackedInt64Array = []
+	for t: String in texts:
+		var n := StringName(t)
+		for v: Variant in [t, n]:
+			want.append(v.to_int())
+			want.append(PackedFloat64Array([v.to_float()]).to_byte_array().decode_s64(0))
+			want.append(int(v.is_valid_int()))
+			want.append(int(v.is_valid_float()))
+	var got: PackedInt64Array = b2.replaced_numbers(texts)
+	if got != want:
+		for i: int in want.size():
+			if i >= got.size() or got[i] != want[i]:
+				print("FAIL: Bag.replaced_numbers on %s, read %d, gave %s, not %d" % [texts[i / 8], i % 8, got[i] if i < got.size() else "nothing", want[i]])
+				return 1
+		print("FAIL: Bag.replaced_numbers gave %d values, not %d" % [got.size(), want.size()])
 		return 1
 	return 0
 

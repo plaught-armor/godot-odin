@@ -517,6 +517,13 @@ runes_strip_edges :: proc "contextless" (chars: []rune, left := true, right := t
 // flipping the sign. A value past the 64-bit range gives the nearest end of it, where the engine
 // also prints an error.
 runes_to_int :: proc "contextless" (chars: []rune) -> i64 {
+	v, _ := runes_parse_int(chars)
+	return v
+}
+
+// `runes_to_int`, and whether the value passed the 64-bit range, where the engine prints an error.
+@(private)
+runes_parse_int :: proc "contextless" (chars: []rune) -> (value: i64, overflow: bool) {
 	integer: u64
 	// The engine counts digits in a byte, which wraps after 255 and skips the range check again
 	// for the next 19 digits; counting the same way gives the same value then.
@@ -529,7 +536,7 @@ runes_to_int :: proc "contextless" (chars: []rune) -> i64 {
 				top := u64(max(i64) / 10)
 				// The engine lets a negative value end in '8'; that is `min(i64)`, which the clamp gives.
 				if integer > top || (integer == top && c > '7') {
-					return max(i64) if positive else min(i64)
+					return max(i64) if positive else min(i64), true
 				}
 			}
 			integer = integer * 10 + u64(c - '0')
@@ -538,7 +545,7 @@ runes_to_int :: proc "contextless" (chars: []rune) -> i64 {
 			positive = !positive
 		}
 	}
-	return i64(integer) if positive else i64(0 - integer)
+	return i64(integer) if positive else i64(0 - integer), false
 }
 
 // The powers 10^(2^k) `runes_to_float` scales by, one per exponent bit up to 511.
@@ -551,7 +558,14 @@ FLOAT_POWERS := [9]f64{1e1, 1e2, 1e4, 1e8, 1e16, 1e32, 1e64, 1e128, 1e256}
 // are dropped, an exponent past 511 is taken as 511 (the engine also prints a warning), a lone
 // sign gives zero with that sign, and an 'e' with no digits after it leaves the mantissa unscaled
 // by its '.': "1.5e" reads 15.
-runes_to_float :: proc "contextless" (chars: []rune) -> f64 #no_bounds_check {
+runes_to_float :: proc "contextless" (chars: []rune) -> f64 {
+	v, _ := runes_parse_float(chars)
+	return v
+}
+
+// `runes_to_float`, and whether the exponent passed 511, where the engine prints a warning.
+@(private)
+runes_parse_float :: proc "contextless" (chars: []rune) -> (value: f64, clipped: bool) #no_bounds_check {
 	n := len(chars)
 	p := 0
 	for ; p < n && (chars[p] == ' ' || chars[p] == '\t' || chars[p] == '\n'); p += 1 {}
@@ -571,7 +585,7 @@ runes_to_float :: proc "contextless" (chars: []rune) -> f64 #no_bounds_check {
 		dec_pt = digits
 	}
 	if dec_pt < 0 { dec_pt = digits }
-	if digits == 0 { return -0.0 if negative else 0.0 }
+	if digits == 0 { return -0.0 if negative else 0.0, false }
 	frac_exp := dec_pt - min(digits, 18)
 	// The engine sums two nine-digit halves as doubles; the high half times 1e9 is exact there, so
 	// that sum rounds once, as this conversion does.
@@ -582,7 +596,7 @@ runes_to_float :: proc "contextless" (chars: []rune) -> f64 #no_bounds_check {
 		q := p + 1
 		exp_negative := q < n && chars[q] == '-'
 		if q < n && (chars[q] == '-' || chars[q] == '+') { q += 1 }
-		if q >= n || chars[q] < '0' || chars[q] > '9' { return -fraction if negative else fraction }
+		if q >= n || chars[q] < '0' || chars[q] > '9' { return -fraction if negative else fraction, false }
 		for ; q < n && chars[q] >= '0' && chars[q] <= '9'; q += 1 {
 			// The engine's exponent is a 32-bit int: past it, it wraps there too.
 			exp = int(i32(exp) * 10 + i32(chars[q] - '0'))
@@ -591,6 +605,7 @@ runes_to_float :: proc "contextless" (chars: []rune) -> f64 #no_bounds_check {
 	}
 	exp = int(i32(frac_exp + exp))
 	scale_down := exp < 0
+	clipped = abs(exp) > 511
 	exp = min(abs(exp), 511)
 	scale := 1.0
 	for power in FLOAT_POWERS {
@@ -599,7 +614,42 @@ runes_to_float :: proc "contextless" (chars: []rune) -> f64 #no_bounds_check {
 		exp >>= 1
 	}
 	fraction = fraction / scale if scale_down else fraction * scale
-	return -fraction if negative else fraction
+	return -fraction if negative else fraction, clipped
+}
+
+// Whether `chars` spell an integer as the engine's `is_valid_int` reads a String: ASCII digits only,
+// after a '+' or '-' when there is more than it.
+runes_is_valid_int :: proc "contextless" (chars: []rune) -> bool {
+	if len(chars) == 0 { return false }
+	from := 1 if len(chars) > 1 && (chars[0] == '+' || chars[0] == '-') else 0
+	for c in chars[from:] {
+		if c < '0' || c > '9' { return false }
+	}
+	return true
+}
+
+// Whether `chars` spell a float as the engine's `is_valid_float` reads a String: after an optional
+// '+' or '-', digits with at most one '.' before any exponent, then an 'e' or 'E' after a digit
+// with an optional sign and digits. At least one mantissa digit; an exponent may have none.
+runes_is_valid_float :: proc "contextless" (chars: []rune) -> bool {
+	if len(chars) == 0 { return false }
+	from := 1 if chars[0] == '+' || chars[0] == '-' else 0
+	exponent, period, sign, exponent_digits, digits: bool
+	for c in chars[from:] {
+		switch {
+		case c >= '0' && c <= '9':
+			if exponent { exponent_digits = true } else { digits = true }
+		case digits && !exponent && (c == 'e' || c == 'E'):
+			exponent = true
+		case !period && !exponent && c == '.':
+			period = true
+		case (c == '-' || c == '+') && exponent && !exponent_digits && !sign:
+			sign = true
+		case:
+			return false
+		}
+	}
+	return digits
 }
 
 // A String holding `chars`, which the caller destroys. They are copied as they are, without the

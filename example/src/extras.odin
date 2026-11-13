@@ -124,6 +124,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_ops", bag_replaced_ops, {"s", "part", "from", "to"})
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
+	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_name_strs", bag_replaced_name_strs, {"n", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
@@ -938,6 +939,30 @@ bag_part_ints :: proc(self: ^Bag, s: godot.String, part: godot.String) -> godot.
 	parts := godot.string_split_parts(&s, text)
 	for p in godot.split_next(&parts) {
 		godot.packed_int64_array_append(&out, godot.runes_to_int(p))
+	}
+	return out
+}
+
+// The String number reads on each of `texts`, then the same through the StringName of it: to_int,
+// the bits of to_float, is_valid_int and is_valid_float as 0 or 1, eight per text. test.gd builds
+// the same array from the engine's methods.
+bag_replaced_numbers :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godot.PackedInt64Array {
+	texts := texts
+	out := godot.packed_int64_array_new()
+	for &t in godot.packed_read_string(&texts) {
+		n := godot.string_name_new_from_string(t)
+		defer godot.destroy[.STRING_NAME](&n)
+		r := [8]i64{
+			godot.string_to_int(&t),
+			transmute(i64)godot.string_to_float(&t),
+			i64(godot.string_is_valid_int(&t)),
+			i64(godot.string_is_valid_float(&t)),
+			godot.string_name_to_int(&n),
+			transmute(i64)godot.string_name_to_float(&n),
+			i64(godot.string_name_is_valid_int(&n)),
+			i64(godot.string_name_is_valid_float(&n)),
+		}
+		for v in r { godot.packed_int64_array_append(&out, v) }
 	}
 	return out
 }
