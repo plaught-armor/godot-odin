@@ -1427,29 +1427,35 @@ dict_items :: proc "contextless" (d: ^Dictionary) -> (keys, values: Array) {
 }
 
 // The value `key` maps to in `d`, and true; or a nil Variant and false when `d` has no such key.
-// `key` is a `^Variant`, a Variant, or any value `variant` converts. One hash lookup through the
-// engine's keyed get. You destroy the value.
+// `key` is a `^Variant`, a Variant, or any value `variant` converts. One hash lookup, in place in the
+// engine's hash map where `dictionary_has` would look there, else through the engine's keyed get.
+// You destroy the value.
 dict_get :: proc "contextless" (d: ^Dictionary, key: $K) -> (value: Variant, found: bool) {
 	found = dict_get_into(d, key, &value)
 	return
 }
 
 // `dict_get` writing the value to `out`, which must hold nothing to destroy: it saves copying the
-// result back, about 6 ns of the 27 a `dict_get` takes (bench/). False, with `out` nil, when `d`
-// has no such key.
+// result back (bench/). False, with `out` nil, when `d` has no such key.
 dict_get_into :: proc "contextless" (d: ^Dictionary, key: $K, out: ^Variant) -> bool {
-	self := borrowed(.DICTIONARY, d)
-	valid: gde.Bool
 	when K == ^Variant {
 		k := key
 	} else when K == Variant {
-		kv := key
-		k := &kv
+		kv := variant_reload(key)
+		k := (^Variant)(&kv)
 	} else {
 		kv := variant(key)
 		k := &kv
 		defer gde.variant_destroy(&kv)
 	}
+	e, ok := dict_lookup(d, k)
+	if ok {
+		if e == nil { return false }
+		out^ = stored_copy(&e.value)
+		return true
+	}
+	self := borrowed(.DICTIONARY, d)
+	valid: gde.Bool
 	gde.variant_get_keyed(&self, k, out, &valid)
 	return valid != 0
 }

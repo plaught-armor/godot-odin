@@ -482,3 +482,42 @@ bits and the `int64` extremes; and on 300 seeded random sets of four Arrays, hal
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an Array of the ints 0
 to 63, and `find` of "12" in an Array of the Strings "0" to "15".
+
+## Dictionary
+
+The Dictionary reads `has`, `has_all` and `get` are defined in `godot/dictionary.odin` under the
+same names and signatures, and the generated `size` and `is_empty` read the entry count from the
+storage. They read the `HashMap<Variant, Variant>` of the engine's `DictionaryPrivate` in place,
+following `core/variant/dictionary.cpp` and `core/templates/hash_map.h` of Godot 4.7-stable.
+`check_dict_layout`, run at load, proves where the map and the key type of a typed Dictionary lie,
+and where a StringName keeps its hash, on a Dictionary of ints, Strings, StringNames (the empty one
+too), floats, bools and nil, an emptied one and one typed to int, then finds every key of the first
+through the in-place lookup at the entry the engine lists it at. When any of it fails, every read
+falls back to the engine call; `layouts_proven()` tells whether it did.
+
+The lookup is the engine's: the key's hash (`Variant::recursive_hash`, with 0 made 1) picks a
+first slot, `hash % capacity` taken by the engine's division-free `fastmod`, and the probe walks
+on until an empty slot, or one whose entry lies nearer its own first slot than the probe has come.
+Only keys of the types whose hash it computes in place are looked up so: nil, bool, int, float
+(with -0 hashed as 0 and every NaN as one), String (djb2 to its first NUL), StringName and RID.
+Keys of any other type go to the engine, as does a key whose type differs from a typed
+Dictionary's, which the engine converts or rejects with its error. Keys compare as the engine's
+`StringLikeVariantComparator` compares them: of the same type by `hash_compare`, so NaN equals NaN
+and -0 equals 0, and a String and a StringName of the same text equal. `get` copies the value or
+`default`, as `Array.get` copies an element.
+
+Checked against Godot 4.7-stable by `_check_replaced_dict`, which compares every read from GDScript
+and from `Bag.replaced_dict` on empty, emptied, typed and mixed Dictionaries, one of 300 ints
+thinned by erasing, keys of every type with NaN, -0, the empty String and StringName, a String
+holding a control character, and pairs of ints, floats, Strings and StringNames whose hashes are
+equal; and on 300 seeded random sets of three Dictionaries.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Dictionary.size` | 2.49 ns | 1.41 ns |
+| `Dictionary.has` on ints | 16.3 ns | 9.3 ns |
+| `Dictionary.get` on ints | 20.6 ns | 11.8 ns |
+| `Dictionary.has` on Strings | 19.6 ns | 9.5 ns |
+
+Timings are from `bench/build.sh`: `has` and `get` of 40 in a Dictionary of the ints 0 to 63, and
+`has` of "12" in one of the Strings "0" to "15".

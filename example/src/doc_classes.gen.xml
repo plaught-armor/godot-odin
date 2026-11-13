@@ -267,6 +267,12 @@
 		<method name="replaced_array">
 			<description>The Array reads of godot/array.odin through the generated procs that try them first, in the order _array_read_results in test.gd calls the engine's: per array, size, is_empty, get(index), front and back, then per value find(value, from), rfind(value, from), count and has.</description>
 		</method>
+		<method name="replaced_dict">
+			<description>The Dictionary reads of godot/dictionary.odin on each Dictionary of [code]dicts[/code], in the order test.gd's [code]_dict_read_results[/code] makes them: size, is_empty, has_all of each Array of [code]key_sets[/code], then has, get with [code]default[/code], and the found flag and value of dict_get of each of [code]keys[/code].</description>
+		</method>
+		<method name="layouts_proven">
+			<description>Whether the layout checks at load all passed, so the in-place reads are on.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>

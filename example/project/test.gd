@@ -527,6 +527,10 @@ func _check_extras() -> int:
 	failures += _check_replaced_projections(b2)
 	failures += _check_replaced_packed(b2)
 	failures += _check_replaced_array(b2)
+	failures += _check_replaced_dict(b2)
+	if not b2.layouts_proven():
+		print("FAIL: a layout check at load failed, so the in-place String, packed array, Array or Dictionary reads are off")
+		failures += 1
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -2061,6 +2065,97 @@ func _check_array_case(b2: Bag, arrays: Array, values: Array, index: int, from: 
 		at += 1
 	print("FAIL: Bag.replaced_array(%s, %s, %d, %d) differs at %d of %d: %s, not %s" % [arrays, values, index, from, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
 	return 1
+
+
+# The engine's Dictionary reads, in the order Bag.replaced_dict makes them.
+func _dict_read_results(dicts: Array, keys: Array, key_sets: Array, default: Variant) -> Array:
+	var out: Array = []
+	for d: Dictionary in dicts:
+		out.append_array([d.size(), d.is_empty()])
+		for ks: Array in key_sets:
+			out.append(d.has_all(ks))
+		for k: Variant in keys:
+			out.append_array([d.has(k), d.get(k, default), d.has(k), d.get(k)])
+	return out
+
+
+# 1 and a message when Bag.replaced_dict differs from the engine on the case, compared by their
+# encoding, so a NaN matches a NaN, -0 differs from 0 and a StringName from a String.
+func _check_dict_case(b2: Bag, dicts: Array, keys: Array, key_sets: Array, default: Variant) -> int:
+	var want: Array = _dict_read_results(dicts, keys, key_sets, default)
+	var got: Array = b2.replaced_dict(dicts, keys, key_sets, default)
+	if var_to_bytes(got) == var_to_bytes(want):
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and var_to_bytes(got[at]) == var_to_bytes(want[at]):
+		at += 1
+	print("FAIL: Bag.replaced_dict(%s, %s, %s, %s) differs at %d of %d: %s, not %s" % [dicts, keys, key_sets, default, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# The Dictionary reads of godot/dictionary.odin (has, has_all, get, and the generated size and
+# is_empty reading the stored size), and dict_get, against the engine's. Keys of every type the in-place lookup
+# hashes (nil, bools, ints, floats with NaN and -0, Strings and StringNames of the same texts, which
+# find each other, RIDs, and pairs of ints, floats, Strings and StringNames with equal hashes) and of
+# types the engine hashes (vectors, arrays, objects, callables).
+# Dictionaries: empty, emptied by erasing, one of every key, one of 300 ints grown through several
+# capacities and then thinned by erasing, which shifts later keys back in their probe runs, and
+# typed ones, whose keys the engine converts (an int into a float key, a StringName into a String
+# key) or rejects with its error. Then seeded random Dictionaries.
+func _check_replaced_dict(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var lowest: int = -9223372036854775807 - 1
+	var pool: Array = [null, true, false, 0, 1, -1, 3, 100, lowest, 0.0, nz, 1.0, 1.5, NAN, INF, "", "a", "ab",
+		"100", "\u0001x", &"", &"a", &"ab", &"100", RID(), rid_from_int64(5), rid_from_int64(7), Vector2(0, 1),
+		Vector2i(0, 1), Color(1, 0, 0, 1), [1], {1: 2}, b2, Callable(b2, &"count")]
+	var everything: Dictionary = {}
+	for i: int in pool.size():
+		everything[pool[i]] = i
+	var emptied: Dictionary = {1: 2, "a": 3}
+	emptied.erase(1)
+	emptied.erase("a")
+	var ints: Dictionary = {}
+	for i: int in 300:
+		ints[i * 7919 - 1000] = i
+	for i: int in range(0, 300, 3):
+		ints.erase(i * 7919 - 1000)
+	var typed_int: Dictionary[int, int] = {1: 2, 3: 4}
+	var typed_float: Dictionary[float, String] = {1.0: "x", NAN: "n"}
+	var typed_string: Dictionary[String, int] = {"a": 1, "ab": 2}
+	var typed_name: Dictionary[StringName, int] = {&"a": 1, &"ab": 2}
+	# Pairs of keys of one type whose hashes are equal, so only the comparison tells them apart.
+	var colliding: Array = [27006, 122826, 145746.5, 524372.25, "aB", "b!"]
+	var colliding_names: Dictionary = {&"aB": 1, &"b!": 2}
+	var collisions: Dictionary = {}
+	for i: int in colliding.size():
+		collisions[colliding[i]] = i
+	var dicts: Array = [{}, emptied, everything, ints, typed_int, typed_float, typed_string, typed_name,
+		{"a": 1, &"ab": 2}, {&"a": 1, "ab": 2}, collisions, colliding_names]
+	var keys: Array = pool.duplicate()
+	keys.append_array([1001, 6919, 7919 * 299 - 1000, 7919 * 3 - 1000, &"aB", &"b!"])
+	keys.append_array(colliding)
+	var key_sets: Array = [[], [1], [1, 3], [1, "a"], ["a", &"ab"], [0, Vector2(0, 1)], [Vector2(0, 1), 9],
+		[9, Vector2(0, 1)], pool]
+	failures += _check_dict_case(b2, dicts, keys, key_sets, "default")
+	failures += _check_dict_case(b2, dicts, keys, key_sets, Vector2(1, 2))
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261114
+	for i: int in 300:
+		var some: Array = []
+		for k: int in 3:
+			var d: Dictionary = {}
+			for j: int in rng.randi_range(0, 40):
+				var key: Variant = pool[rng.randi() % pool.size()] if rng.randi() % 2 == 0 else rng.randi_range(-60, 60)
+				d[key] = pool[rng.randi() % pool.size()]
+			for j: int in rng.randi_range(0, 8):
+				d.erase(rng.randi_range(-60, 60))
+			some.append(d)
+		var some_keys: Array = []
+		for k: int in 12:
+			some_keys.append(pool[rng.randi() % pool.size()] if rng.randi() % 2 == 0 else rng.randi_range(-60, 60))
+		failures += _check_dict_case(b2, some, some_keys, [some_keys.slice(0, 3), some_keys.slice(3, 5)], pool[rng.randi() % pool.size()])
+	return failures
 
 
 # Up to `most` elements drawn from `pool`, as an untyped Array, or one typed as its first element's

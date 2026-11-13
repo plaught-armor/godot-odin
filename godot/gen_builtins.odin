@@ -2266,6 +2266,7 @@ dictionary_destroy :: proc "contextless" (self: ^Dictionary) {
 	__fn(self)
 }
 dictionary_size :: proc "contextless" (self: ^Dictionary) -> i64 {
+	if dict_layout_known { return dict_stored_size(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "size", 3173160232) }
 	__ret: i64
@@ -2273,6 +2274,7 @@ dictionary_size :: proc "contextless" (self: ^Dictionary) -> i64 {
 	return __ret
 }
 dictionary_is_empty :: proc "contextless" (self: ^Dictionary) -> bool {
+	if dict_layout_known { return dict_stored_size(self) == 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_empty", 3918633141) }
 	__ret: u8
@@ -2315,6 +2317,7 @@ dictionary_merged :: proc "contextless" (self: ^Dictionary, dictionary: Dictiona
 	return __ret
 }
 dictionary_has :: proc "contextless" (self: ^Dictionary, key: Variant) -> bool {
+	if r, ok := dict_stored_has(self, key); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "has", 3680194679) }
 	__a_key := key
@@ -2324,6 +2327,7 @@ dictionary_has :: proc "contextless" (self: ^Dictionary, key: Variant) -> bool {
 	return __ret != 0
 }
 dictionary_has_all :: proc "contextless" (self: ^Dictionary, keys: Array) -> bool {
+	if r, ok := dict_stored_has_all(self, keys); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "has_all", 2988181878) }
 	__a_keys := keys
@@ -2390,6 +2394,7 @@ dictionary_duplicate_deep :: proc "contextless" (self: ^Dictionary, deep_subreso
 	return __ret
 }
 dictionary_get :: proc "contextless" (self: ^Dictionary, key: Variant, default: Variant) -> Variant {
+	if v, ok := dict_stored_get(self, key, default); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "get", 2205440559) }
 	__a_key := key

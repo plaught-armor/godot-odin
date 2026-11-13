@@ -138,6 +138,8 @@ register_extras :: proc() {
 	godot.method(b, "replaced_projections", bag_replaced_projections, {"a", "t", "r", "box", "w", "q", "x", "y", "z", "u", "n", "m", "flip"})
 	godot.method(b, "replaced_packed", bag_replaced_packed, {"arrays", "values", "index", "from", "before"})
 	godot.method(b, "replaced_array", bag_replaced_array, {"arrays", "values", "index", "from"})
+	godot.method(b, "replaced_dict", bag_replaced_dict, {"dicts", "keys", "key_sets", "default"})
+	godot.method(b, "layouts_proven", bag_layouts_proven)
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1391,6 +1393,38 @@ bag_replaced_array :: proc(self: ^Bag, arrays: godot.Array, values: godot.Array,
 			godot.array_push_back(&out, godot.variant(godot.array_rfind(&a, v, from)))
 			godot.array_push_back(&out, godot.variant(godot.array_count(&a, v)))
 			godot.array_push_back(&out, godot.variant(godot.array_has(&a, v)))
+		}
+	}
+	return out
+}
+
+// Whether the layout checks at load all passed, so the in-place reads are on.
+bag_layouts_proven :: proc(self: ^Bag) -> bool {
+	return godot.layouts_proven()
+}
+
+// The Dictionary reads of godot/dictionary.odin on each Dictionary of `dicts`, in the order
+// test.gd's `_dict_read_results` makes them: size, is_empty, has_all of each Array of `key_sets`,
+// then has, get with `default`, and the found flag and value of dict_get of each of `keys`.
+bag_replaced_dict :: proc(self: ^Bag, dicts: godot.Array, keys: godot.Array, key_sets: godot.Array, default: godot.Variant) -> godot.Array {
+	dicts, keys, key_sets := dicts, keys, key_sets
+	out := godot.array_new()
+	for &e in godot.array_read(&dicts) {
+		d := godot.from_variant(godot.Dictionary, &e)
+		godot.array_push_back(&out, godot.variant(godot.dictionary_size(&d)))
+		godot.array_push_back(&out, godot.variant(godot.dictionary_is_empty(&d)))
+		for &ks in godot.array_read(&key_sets) {
+			godot.array_push_back(&out, godot.variant(godot.dictionary_has_all(&d, godot.from_variant(godot.Array, &ks))))
+		}
+		for &k in godot.array_read(&keys) {
+			godot.array_push_back(&out, godot.variant(godot.dictionary_has(&d, k)))
+			got := godot.dictionary_get(&d, k, default)
+			godot.array_push_back(&out, got)
+			gde.variant_destroy(&got)
+			value, found := godot.dict_get(&d, k)
+			godot.array_push_back(&out, godot.variant(found))
+			godot.array_push_back(&out, value)
+			gde.variant_destroy(&value)
 		}
 	}
 	return out

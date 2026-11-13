@@ -28,6 +28,14 @@ load_variants :: proc "contextless" () {
 	check_string_layout()
 	check_packed_layout()
 	check_array_layout()
+	check_dict_layout()
+}
+
+// Whether every layout check at load passed: those of String, the packed arrays, Array and
+// Dictionary, whose reads otherwise call the engine. The answers are the same either way, so this
+// is the only sign that a new engine build left the in-place reads off.
+layouts_proven :: proc "contextless" () -> bool {
+	return string_layout_known && packed_layout_known && array_layout_known && dict_layout_known
 }
 
 // The Variant type an Odin type crosses as: bool, any integer, enum or bit_set, any float, a builtin struct,
@@ -264,6 +272,25 @@ scalar_into :: #force_inline proc "contextless" (out: ^Variant, type: gde.Varian
 		(^Vector3)(&out._opaque[8])^ = v
 	}
 	return
+}
+
+// A Variant as the words it is made of: its type tag, the padding after it, and its value.
+Variant_Words :: struct {
+	tag:   u32,
+	pad:   u32,
+	words: [2]u64,
+}
+
+#assert(size_of(Variant_Words) == size_of(Variant))
+
+// A copy of `v` made of a 4-byte read of its tag and 8-byte reads of the rest, the padding zeroed,
+// in the layout `check_borrow_layout` proves; read it through `(^Variant)(&copy)`. A plain copy of
+// a Variant parameter reads 16 bytes at once and writes them back a byte at a time, and a CPU
+// cannot forward either from the narrower writes of a caller that has just built the Variant: it
+// stalls for about 5 ns per copy.
+variant_reload :: #force_inline proc "contextless" (v: Variant) -> Variant_Words {
+	words := transmute([3]u64)v
+	return {tag = (transmute([6]u32)v)[0], words = {words[1], words[2]}}
 }
 
 // The type of the Variant at `v`, read from its tag as `gde.variant_get_type` answers it, with no

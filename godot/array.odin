@@ -279,12 +279,18 @@ array_stored_get :: #force_inline proc "contextless" (a: ^Array, index: i64) -> 
 	if !array_layout_known { return }
 	xs := array_stored(a)
 	if index < 0 || index >= i64(len(xs)) { return }
-	x := &xs[index]
+	return stored_copy(&xs[index]), true
+}
+
+// A copy of `x`, its value copied as is when it holds nothing counted or allocated and through the
+// engine's Variant copy otherwise. You destroy it.
+@(private)
+stored_copy :: #force_inline proc "contextless" (x: ^Variant) -> (out: Variant) {
 	switch array_elem(variant_tag(x)) {
 	case .ENGINE, .STRING, .NAME: gde.variant_new_copy(&out, x)
 	case .NIL, .BOOL, .WORD, .DOUBLE, .REAL_2, .REAL_3, .REAL_4, .INT_2, .INT_3, .INT_4: out = x^
 	}
-	return out, true
+	return
 }
 
 // Array.front in place: a copy of the first element. False when the engine answers, as it does for

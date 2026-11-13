@@ -68,6 +68,7 @@ register :: proc() {
 	godot.method(c, "projection_ns", projection_ns, {"kind", "n"})
 	godot.method(c, "packed_ns", packed_ns, {"kind", "n"})
 	godot.method(c, "array_ns", array_ns, {"kind", "n"})
+	godot.method(c, "dict_ns", dict_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1750,6 +1751,92 @@ array_ns :: proc(self: ^Bench, kind: Array_Op, n: i64) -> f64 {
 		}
 	case .STRING_FIND:
 		for _ in 0 ..< n { sum += godot.array_find(&sa, kv, intrinsics.volatile_load(&from)) }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += sum
+	return ns
+}
+
+// The Dictionary reads `dict_ns` times, paired the same way as Vector_Op.
+Dict_Op :: enum i64 {
+	SIZE_CALL,       // the engine's Dictionary.size
+	SIZE,            // dictionary_size
+	HAS_CALL,        // the engine's Dictionary.has, on ints
+	HAS,             // dictionary_has, on ints
+	GET_CALL,        // the engine's Dictionary.get, on ints
+	GET,             // dictionary_get, on ints
+	STRING_HAS_CALL, // the engine's Dictionary.has, on Strings
+	STRING_HAS,      // dictionary_has, on Strings
+}
+
+// Nanoseconds per `kind` round on a Dictionary of the ints 0 to 63, each mapped to three times
+// itself, and one of the Strings "0" to "15": has and get look up 40 and "12", the key reread
+// through a volatile load each round, as in packed_ns.
+dict_ns :: proc(self: ^Bench, kind: Dict_Op, n: i64) -> f64 {
+	d := godot.dictionary_new()
+	defer godot.destroy[.DICTIONARY](&d)
+	for i in 0 ..< i64(64) { godot.dict_set(&d, i, i * 3) }
+	sd := godot.dictionary_new()
+	defer godot.destroy[.DICTIONARY](&sd)
+	for i in 0 ..< i64(16) {
+		w := godot.string_of_int(i)
+		godot.dict_set(&sd, w, i)
+		godot.destroy[.STRING](&w)
+	}
+	key := godot.string_of_int(12)
+	defer godot.destroy[.STRING](&key)
+	kv := godot.variant(key)
+	defer gde.variant_destroy(&kv)
+	skey := &kv
+	ref := &d
+	at := i64(40)
+	nothing: godot.Variant
+	size_fn := godot.builtin_method(.DICTIONARY, "size", 3173160232)
+	has_fn := godot.builtin_method(.DICTIONARY, "has", 3680194679)
+	get_fn := godot.builtin_method(.DICTIONARY, "get", 2205440559)
+	sum: i64
+	start := time.tick_now()
+	switch kind {
+	case .SIZE_CALL:
+		for _ in 0 ..< n {
+			r: i64
+			size_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r
+		}
+	case .SIZE:
+		for _ in 0 ..< n { sum += godot.dictionary_size(intrinsics.volatile_load(&ref)) }
+	case .HAS_CALL:
+		for _ in 0 ..< n {
+			v := godot.variant(intrinsics.volatile_load(&at))
+			args := [1]gde.ConstTypePtr{&v}
+			r: bool
+			has_fn(&d, &args[0], &r, 1)
+			sum += i64(r)
+		}
+	case .HAS:
+		for _ in 0 ..< n { sum += i64(godot.dictionary_has(&d, godot.variant(intrinsics.volatile_load(&at)))) }
+	case .GET_CALL:
+		for _ in 0 ..< n {
+			v := godot.variant(intrinsics.volatile_load(&at))
+			args := [2]gde.ConstTypePtr{&v, &nothing}
+			r: godot.Variant
+			get_fn(&d, &args[0], &r, 2)
+			sum += godot.from_variant(i64, &r)
+		}
+	case .GET:
+		for _ in 0 ..< n {
+			r := godot.dictionary_get(&d, godot.variant(intrinsics.volatile_load(&at)), nothing)
+			sum += godot.from_variant(i64, &r)
+		}
+	case .STRING_HAS_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{intrinsics.volatile_load(&skey)}
+			r: bool
+			has_fn(&sd, &args[0], &r, 1)
+			sum += i64(r)
+		}
+	case .STRING_HAS:
+		for _ in 0 ..< n { sum += i64(godot.dictionary_has(&sd, intrinsics.volatile_load(&skey)^)) }
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += sum

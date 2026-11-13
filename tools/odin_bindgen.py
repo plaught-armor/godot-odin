@@ -50,7 +50,8 @@ PACKED_TYPES = ["PackedByteArray", "PackedInt32Array", "PackedInt64Array", "Pack
                 "PackedVector4Array", "PackedColorArray"]
 
 # Builtin methods answered from the storage when check_string_layout (godot/access.odin),
-# check_packed_layout (godot/packed.odin) or check_array_layout (godot/array.odin) proved its
+# check_packed_layout (godot/packed.odin), check_array_layout (godot/array.odin) or
+# check_dict_layout (godot/dictionary.odin) proved its
 # layout at load: a load against a builtin
 # call. The engine call stays as the fallback.
 IN_PLACE = {
@@ -68,6 +69,12 @@ IN_PLACE = {
     ("Array", "rfind"): "\tif r, ok := array_stored_rfind(self, what, from); ok { return r }\n",
     ("Array", "count"): "\tif r, ok := array_stored_count(self, value); ok { return r }\n",
     ("Array", "has"): "\tif r, ok := array_stored_has(self, value); ok { return r }\n",
+    # godot/dictionary.odin, the same way.
+    ("Dictionary", "size"): "\tif dict_layout_known { return dict_stored_size(self) }\n",
+    ("Dictionary", "is_empty"): "\tif dict_layout_known { return dict_stored_size(self) == 0 }\n",
+    ("Dictionary", "has"): "\tif r, ok := dict_stored_has(self, key); ok { return r }\n",
+    ("Dictionary", "has_all"): "\tif r, ok := dict_stored_has_all(self, keys); ok { return r }\n",
+    ("Dictionary", "get"): "\tif v, ok := dict_stored_get(self, key, default); ok { return v }\n",
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
