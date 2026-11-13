@@ -229,3 +229,35 @@ the inlined Basis round trips. The replacements reproduce the engine's `MATH_CHE
 the identity when not normalized, `get_euler` gives a zero vector, `Quaternion(axis, angle)` with an
 unnormalized axis gives the identity, the shortest arc from or to a zero vector prints an error and
 gives the identity, and an arc that cannot be normalized prints the engine's warning.
+
+## Plane
+
+The `Plane` methods and constructors are defined in `godot/plane.odin` under the same names and
+signatures: the constructors (empty, from a Plane, a normal, a normal and distance, a normal and a
+point, three points, four components), `normalized`, `get_center`, `is_equal_approx`, `is_finite`,
+`is_point_over`, `distance_to`, `has_point`, `project`, `intersect_3`, `intersects_ray` and
+`intersects_segment`. Each follows `core/math/plane.cpp` and `plane.h` of Godot 4.7-stable with the
+same single-precision operation order. `normalized` divides the normal and the distance by the
+normal's length, as the engine does, rather than multiplying by a reciprocal. The three-point
+constructor takes the clockwise cross product and normalizes it as `Vector3::normalize` does. The
+ray and segment tests compare against `CMP_EPSILON` and `1 + CMP_EPSILON` in single precision, and a
+NaN distance passes them, as in the engine. The intersection methods return a Variant holding the
+Vector3 found, written in place in the layout `check_borrow_layout` proves at load, or a nil
+Variant when there is none. Checked against Godot 4.7-stable by `_check_replaced_planes`, which
+compares every result from GDScript and from `Bag.replaced_planes` on edge cases (zero, unnormalized
+and axis planes, signed zeros, huge and tiny components, infinities and NaNs, collinear and
+coincident points, a ray start and a segment crossing a float either side of `CMP_EPSILON`,
+`-CMP_EPSILON` and `1 + CMP_EPSILON`, denominators a float either side of `is_zero_approx`'s bound,
+and a `has_point` tolerance equal to the distance and a float either side) and on 1500 seeded random
+cases.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Plane.distance_to` | 2.8 ns | 0.6 ns |
+| `Plane.intersects_ray` | 5.0 ns | 1.4 ns |
+| `Plane.intersect_3` | 7.0 ns | 2.3 ns |
+| `Plane.normalized` | 14.5 ns | 1.7 ns |
+
+The intersection replacements also skip the engine's Variant construction and assignment of the
+result. `normalized` reproduces the engine's `MATH_CHECKS` warning for a non-finite plane, and the
+three-point constructor the Vector3 warning for a normal that cannot be normalized.

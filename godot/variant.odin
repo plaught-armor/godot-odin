@@ -266,8 +266,9 @@ variant_value :: #force_inline proc "contextless" ($A: typeid, v: gde.ConstVaria
 }
 
 // Stops the load when the engine's Variant layout is not the one `borrowed`, `scalar_into`,
-// `variant_tag` and `variant_value` read: the type tag first, an int's, a float's and a bool's
-// value at byte 8, and a Callable's, a Signal's, a Dictionary's and an Array's value at byte 8.
+// `variant_tag` and `variant_value` read, and plane.odin writes: the type tag first, an int's, a
+// float's, a bool's and a Vector3's value at byte 8, and a Callable's, a Signal's, a Dictionary's
+// and an Array's value at byte 8.
 @(private)
 check_borrow_layout :: proc "contextless" () {
 	n := i64(0x0123_4567_89ab_cdef)
@@ -287,6 +288,11 @@ check_borrow_layout :: proc "contextless" () {
 		if variant_tag(&v) != .BOOL || variant_value(u8, &v) != u8(b) {
 			fail("odin: unexpected Variant layout", "BOOL")
 		}
+	}
+	p := Vector3{1.5, -2.25, 3.125}
+	from_type[.VECTOR3](&v, &p)
+	if variant_tag(&v) != .VECTOR3 || variant_value(Vector3, &v) != p {
+		fail("odin: unexpected Variant layout", "VECTOR3")
 	}
 	for type in ([4]gde.VariantType{.CALLABLE, .SIGNAL, .DICTIONARY, .ARRAY}) {
 		e: Variant

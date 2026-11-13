@@ -130,6 +130,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_transforms2d", bag_replaced_transforms2d, {"a", "b", "p", "q", "x", "y"})
 	godot.method(b, "replaced_transforms3d", bag_replaced_transforms3d, {"a", "b", "v", "w", "m", "x"})
 	godot.method(b, "replaced_quaternions", bag_replaced_quaternions, {"a", "b", "c", "d", "m", "v", "w", "x", "n"})
+	godot.method(b, "replaced_planes", bag_replaced_planes, {"a", "b", "c", "v", "w", "u", "x"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1350,7 +1351,7 @@ Basis_Results :: struct {
 
 // Appends `v` to `o` as integers: floats by their bits with NaNs made one quiet NaN, a Basis by
 // its columns (the axes GDScript indexes), a transform by its basis columns and then its origin,
-// a vector or quaternion by component.
+// a vector or quaternion by component, a Plane by its normal and then its distance as a double.
 put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 	when T == godot.Basis {
 		for c in 0 ..< 3 { put_basis_result(o, godot.Vector3{v.x[c], v.y[c], v.z[c]}) }
@@ -1359,6 +1360,14 @@ put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 		put_basis_result(o, v.origin)
 	} else when T == godot.Transform2D {
 		for e in ([3]godot.Vector2{v.x, v.y, v.origin}) { put_basis_result(o, e) }
+	} else when T == godot.Plane {
+		put_basis_result(o, v.normal)
+		put_basis_result(o, f64(v.d))
+	} else when T == godot.Variant {
+		// An intersection result: its type tag, then the Vector3 it holds, if any.
+		v := v
+		put_basis_result(o, i64(godot.variant_tag(&v)))
+		if godot.variant_tag(&v) == .VECTOR3 { put_basis_result(o, (^godot.Vector3)(&v._opaque[8])^) }
 	} else when T == godot.Vector2 || T == godot.Vector3 || T == godot.Quaternion {
 		for e in v { put_basis_result(o, e) }
 	} else when T == f32 {
@@ -1507,5 +1516,33 @@ bag_replaced_quaternions :: proc(self: ^Bag, a, b, c, d: godot.Quaternion, m: go
 	put_basis_result(&o, godot.quaternion_from_euler(v))
 	put_basis_result(&o, godot.quaternion_get_axis(&a))
 	put_basis_result(&o, godot.quaternion_get_angle(&a))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The Plane procs that replace engine methods (godot/plane.odin) on `a`, with `b` and `c` the
+// other planes, `v`, `w` and `u` the vector arguments and `x` the distance or tolerance. test.gd's
+// _plane_results calls the engine's own methods in the same order.
+bag_replaced_planes :: proc(self: ^Bag, a, b, c: godot.Plane, v, w, u: godot.Vector3, x: f64) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	put_basis_result(&o, godot.plane_new())
+	put_basis_result(&o, godot.plane_new_from_plane(a))
+	put_basis_result(&o, godot.plane_new_from_vector3(v))
+	put_basis_result(&o, godot.plane_new_from_vector3_float(v, x))
+	put_basis_result(&o, godot.plane_new_from_vector3_vector3(v, w))
+	put_basis_result(&o, godot.plane_new_from_vector3_vector3_vector3(v, w, u))
+	put_basis_result(&o, godot.plane_new_from_float_float_float_float(x, f64(v.x), f64(v.y), f64(v.z)))
+	put_basis_result(&o, godot.plane_normalized(&a))
+	put_basis_result(&o, godot.plane_get_center(&a))
+	put_basis_result(&o, godot.plane_is_equal_approx(&a, b))
+	put_basis_result(&o, godot.plane_is_finite(&a))
+	put_basis_result(&o, godot.plane_is_point_over(&a, v))
+	put_basis_result(&o, godot.plane_distance_to(&a, v))
+	put_basis_result(&o, godot.plane_has_point(&a, v, x))
+	put_basis_result(&o, godot.plane_has_point(&a, v, 1e-05))
+	put_basis_result(&o, godot.plane_project(&a, v))
+	put_basis_result(&o, godot.plane_intersect_3(&a, b, c))
+	put_basis_result(&o, godot.plane_intersects_ray(&a, v, w))
+	put_basis_result(&o, godot.plane_intersects_segment(&a, v, w))
 	return godot.packed_of_int64(o.v[:o.n])
 }

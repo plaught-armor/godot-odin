@@ -519,6 +519,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_bases(b2)
 	failures += _check_replaced_transforms(b2)
 	failures += _check_replaced_quaternions(b2)
+	failures += _check_replaced_planes(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -1362,6 +1363,100 @@ func _check_replaced_quaternions(b2: Bag) -> int:
 			_random_quaternion(rng), _random_basis(rng), v, w, rng.randf_range(-2, 2), rng.randi_range(0, 5))
 	return failures
 
+
+
+# The engine's Plane methods in the order Bag.replaced_planes calls the Odin procs. A Plane goes in
+# as its normal and then its distance, an intersection as its type and then the Vector3 it holds.
+func _plane_results(a: Plane, b: Plane, c: Plane, v: Vector3, w: Vector3, u: Vector3, x: float) -> PackedInt64Array:
+	var vs: Array = []
+	for p: Plane in [Plane(), Plane(a), Plane(v), Plane(v, x), Plane(v, w), Plane(v, w, u), Plane(x, v.x, v.y, v.z),
+			a.normalized()]:
+		vs.append_array([p.normal, p.d])
+	vs.append_array([a.get_center(), a.is_equal_approx(b), a.is_finite(), a.is_point_over(v), a.distance_to(v),
+		a.has_point(v, x), a.has_point(v), a.project(v)])
+	for hit: Variant in [a.intersect_3(b, c), a.intersects_ray(v, w), a.intersects_segment(v, w)]:
+		vs.append(typeof(hit))
+		if hit != null:
+			vs.append(hit)
+	var o: PackedInt64Array = PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+func _check_plane_case(b2: Bag, a: Plane, b: Plane, c: Plane, v: Vector3, w: Vector3, u: Vector3, x: float) -> int:
+	var want: PackedInt64Array = _plane_results(a, b, c, v, w, u, x)
+	var got: PackedInt64Array = b2.replaced_planes(a, b, c, v, w, u, x)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_planes(%s, %s, %s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, b, c, v, w, u, x, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# A random vector in [-3, 3] on each axis, normalized half the time.
+func _random_plane_vector(rng: RandomNumberGenerator) -> Vector3:
+	var v: Vector3 = Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))
+	if rng.randi_range(0, 1) == 0:
+		return v.normalized()
+	return v
+
+
+# The Plane procs that replace engine methods, on edge cases (zero, unnormalized and opposite
+# planes, signed zeros, infinities and NaNs, parallel planes, rays and segments) and exact limits,
+# then on seeded random planes.
+func _check_replaced_planes(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var edges: Array[Plane] = [Plane(), Plane.PLANE_XY, Plane.PLANE_YZ, Plane.PLANE_XZ, Plane(1, 2, 3, 4),
+		Plane(0, -1, 0, 2.5), Plane(0.6, 0, 0.8, -1), Plane(nz, nz, nz, nz), Plane(INF, 0, 0, 1), Plane(0, NAN, 0, 1),
+		Plane(0, 1, 0, INF), Plane(1e30, 1e30, 0, 1), Plane(1e-30, 0, 0, 1e-30), Plane(-0.48, 0.6, 0.64, 0.3)]
+	var vs: PackedVector3Array = PackedVector3Array([Vector3.UP, Vector3(0.6, 0, 0.8), Vector3.ZERO, Vector3(1, 2, 3),
+		Vector3(0, -2, 0), Vector3(INF, 0, 0), Vector3(NAN, 1, 0), Vector3(nz, nz, 1), Vector3(1e-30, 0, 0),
+		Vector3(-0.48, 0.6, 0.64), Vector3(0.3, -1.2, 2.0), Vector3(2, 4, 6), Vector3(1e30, 0, 1e30)])
+	var xs: PackedFloat64Array = PackedFloat64Array([0.0, 1.0, 0.5, -0.25, PI, 2.5, INF, NAN, nz, 1e-5, 1e-7, -3.0])
+	for i: int in edges.size():
+		for j: int in [0, 1, 4, 7, 11]:
+			var e: int = edges.size()
+			failures += _check_plane_case(b2, edges[i], edges[(i + j) % e], edges[(i + 2 * j + 1) % e],
+				vs[(i + j) % vs.size()], vs[(i + 2 * j + 1) % vs.size()], vs[(i + 3 * j + 2) % vs.size()],
+				xs[(i + j) % xs.size()])
+	# Exact limits, with the floats either side: the ray's start CMP_EPSILON past the plane (0x3727c5ac
+	# is CMP_EPSILON in single precision), the segment's crossing CMP_EPSILON before its start
+	# (0xb727c5ac) and past its end (0x3f800054 is 1 + CMP_EPSILON), and the denominators that
+	# is_zero_approx tests; from the origin along -Y the ray's distance is d, and to -Y the
+	# segment's is -d.
+	var o: Vector3 = Vector3.ZERO
+	for bits: int in [0x3727c5ab, 0x3727c5ac, 0x3727c5ad, 0xb727c5ab, 0xb727c5ac, 0xb727c5ad, 0x3f800053, 0x3f800054,
+			0x3f800055]:
+		var t: float = _f32_bits(bits)
+		failures += _check_plane_case(b2, Plane(Vector3.UP, t), Plane.PLANE_YZ, Plane.PLANE_XY, o, Vector3.DOWN, o, t)
+		failures += _check_plane_case(b2, Plane(Vector3.UP, -t), Plane.PLANE_YZ, Plane.PLANE_XY, o, Vector3.DOWN, o, t)
+		failures += _check_plane_case(b2, Plane.PLANE_XZ, Plane.PLANE_YZ, Plane(0, 0, t, 1), Vector3.ONE,
+			Vector3(1, t, 0), o, t)
+		failures += _check_plane_case(b2, Plane.PLANE_XZ, Plane.PLANE_YZ, Plane(0, 0, -t, 1), Vector3.ONE,
+			Vector3(1, -t, 0), o, t)
+	# has_point's tolerance equal to the distance, and a float either side of it.
+	for bits: int in [0x3effffff, 0x3f000000, 0x3f000001]:
+		failures += _check_plane_case(b2, Plane.PLANE_XZ, Plane.PLANE_YZ, Plane.PLANE_XY, Vector3(0, 0.5, 0),
+			Vector3.DOWN, o, _f32_bits(bits))
+		failures += _check_plane_case(b2, Plane.PLANE_XZ, Plane.PLANE_YZ, Plane.PLANE_XY, Vector3(0, -0.5, 0),
+			Vector3.DOWN, o, _f32_bits(bits))
+	# Collinear and coincident points for the three-point constructor.
+	for u: Vector3 in [Vector3(1, 2, 3), Vector3(2, 4, 6), Vector3.ZERO, Vector3(-1, -2, -3)]:
+		failures += _check_plane_case(b2, Plane.PLANE_XY, Plane.PLANE_XY, Plane.PLANE_XY, Vector3(1, 2, 3),
+			Vector3(2, 4, 6), u, 1.0)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261115
+	for round: int in 1500:
+		var planes: Array[Plane] = []
+		for k: int in 3:
+			planes.append(Plane(_random_plane_vector(rng), rng.randf_range(-3, 3)))
+		failures += _check_plane_case(b2, planes[0], planes[1], planes[2], _random_plane_vector(rng),
+			_random_plane_vector(rng), _random_plane_vector(rng), rng.randf_range(-0.5, 2))
+	return failures
 
 func _check_untyped() -> int:
 	var failures: int = 0

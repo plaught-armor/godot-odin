@@ -243,6 +243,9 @@
 		<method name="replaced_quaternions">
 			<description>The Quaternion procs that replace engine methods (godot/quaternion.odin) on [code]a[/code] and [code]b[/code], with [code]c[/code] and [code]d[/code] the cubic's pre and post quaternions, [code]m[/code] the basis to convert, [code]v[/code] and [code]w[/code] the vector arguments ([code]w[/code] also the cubic's three times), [code]x[/code] the angle or weight and [code]n[/code] the Euler order. test.gd's _quaternion_results calls the engine's own methods in the same order.</description>
 		</method>
+		<method name="replaced_planes">
+			<description>The Plane procs that replace engine methods (godot/plane.odin) on [code]a[/code], with [code]b[/code] and [code]c[/code] the other planes, [code]v[/code], [code]w[/code] and [code]u[/code] the vector arguments and [code]x[/code] the distance or tolerance. test.gd's _plane_results calls the engine's own methods in the same order.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>

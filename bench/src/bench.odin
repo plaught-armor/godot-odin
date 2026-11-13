@@ -62,6 +62,7 @@ register :: proc() {
 	godot.method(c, "basis_ns", basis_ns, {"kind", "n"})
 	godot.method(c, "transform_ns", transform_ns, {"kind", "n"})
 	godot.method(c, "quaternion_ns", quaternion_ns, {"kind", "n"})
+	godot.method(c, "plane_ns", plane_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1317,6 +1318,81 @@ quaternion_ns :: proc(self: ^Bench, kind: Quaternion_Op, n: i64) -> f64 {
 		}
 	case .INVERSE:
 		for _ in 0 ..< n { sum += godot.quaternion_inverse(intrinsics.volatile_load(&ref)).x }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
+	return ns
+}
+
+// The Plane methods `plane_ns` times, paired the same way as Vector_Op.
+Plane_Op :: enum i64 {
+	NORMALIZED_CALL,     // the engine's Plane.normalized
+	NORMALIZED,          // plane_normalized
+	DISTANCE_TO_CALL,    // the engine's Plane.distance_to
+	DISTANCE_TO,         // plane_distance_to
+	INTERSECT_3_CALL,    // the engine's Plane.intersect_3
+	INTERSECT_3,         // plane_intersect_3
+	INTERSECTS_RAY_CALL, // the engine's Plane.intersects_ray
+	INTERSECTS_RAY,      // plane_intersects_ray
+}
+
+// Nanoseconds per `kind` round on a plane reread through a volatile load each round, as in
+// vector_ns. The intersections hit, so each returns a Vector3 Variant.
+plane_ns :: proc(self: ^Bench, kind: Plane_Op, n: i64) -> f64 {
+	a := godot.Plane{{0.48, 0.6, 0.64}, 1.5}
+	b := godot.Plane{{0, 1, 0}, -0.5}
+	c := godot.Plane{{0.6, 0, -0.8}, 0.25}
+	point := godot.Vector3{0.3, -1.2, 2.0}
+	dir := -a.normal
+	ref := &a
+	normalized_fn := godot.builtin_method(.PLANE, "normalized", 1051796340)
+	distance_fn := godot.builtin_method(.PLANE, "distance_to", 1047977935)
+	intersect_fn := godot.builtin_method(.PLANE, "intersect_3", 2012052692)
+	ray_fn := godot.builtin_method(.PLANE, "intersects_ray", 2048133369)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .NORMALIZED_CALL:
+		for _ in 0 ..< n {
+			r: godot.Plane
+			normalized_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r.d
+		}
+	case .NORMALIZED:
+		for _ in 0 ..< n { sum += godot.plane_normalized(intrinsics.volatile_load(&ref)).d }
+	case .DISTANCE_TO_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&point}
+			r: f64
+			distance_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += f32(r)
+		}
+	case .DISTANCE_TO:
+		for _ in 0 ..< n { sum += f32(godot.plane_distance_to(intrinsics.volatile_load(&ref), point)) }
+	case .INTERSECT_3_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&b, &c}
+			r: godot.Variant
+			intersect_fn(intrinsics.volatile_load(&ref), &args[0], &r, 2)
+			sum += f32(r._opaque[8])
+		}
+	case .INTERSECT_3:
+		for _ in 0 ..< n {
+			r := godot.plane_intersect_3(intrinsics.volatile_load(&ref), b, c)
+			sum += f32(r._opaque[8])
+		}
+	case .INTERSECTS_RAY_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&point, &dir}
+			r: godot.Variant
+			ray_fn(intrinsics.volatile_load(&ref), &args[0], &r, 2)
+			sum += f32(r._opaque[8])
+		}
+	case .INTERSECTS_RAY:
+		for _ in 0 ..< n {
+			r := godot.plane_intersects_ray(intrinsics.volatile_load(&ref), point, dir)
+			sum += f32(r._opaque[8])
+		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)
