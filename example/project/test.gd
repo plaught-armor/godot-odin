@@ -517,6 +517,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_vectorsi(b2)
 	failures += _check_replaced_colors(b2)
 	failures += _check_replaced_bases(b2)
+	failures += _check_replaced_transforms(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -958,6 +959,15 @@ func _put_basis_result(out: PackedInt64Array, v: Variant) -> void:
 		TYPE_BASIS:
 			for e: Vector3 in [v.x, v.y, v.z]:
 				_put_basis_result(out, e)
+		TYPE_TRANSFORM3D:
+			_put_basis_result(out, v.basis)
+			_put_basis_result(out, v.origin)
+		TYPE_TRANSFORM2D:
+			for e: Vector2 in [v.x, v.y, v.origin]:
+				_put_basis_result(out, e)
+		TYPE_VECTOR2:
+			for e: float in [v.x, v.y]:
+				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
 		TYPE_VECTOR3:
 			for e: float in [v.x, v.y, v.z]:
 				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
@@ -1083,6 +1093,152 @@ func _check_replaced_bases(b2: Bag) -> int:
 		var w := Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))
 		failures += _check_basis_case(b2, _random_basis(rng), _random_basis(rng), v, w,
 			rng.randf_range(-2, 2), rng.randi_range(0, 5))
+	return failures
+
+
+# The engine's Transform2D methods in the order Bag.replaced_transforms2d calls the Odin procs.
+func _transform2d_results(a: Transform2D, b: Transform2D, p: Vector2, q: Vector2, x: float, y: float) -> PackedInt64Array:
+	var vs: Array = [Transform2D(), Transform2D(a), Transform2D(x, p), Transform2D(x, p, y, q), Transform2D(p, q, p),
+		a.inverse(), a.affine_inverse(), a.get_rotation(), a.get_origin(), a.get_scale(), a.get_skew(),
+		a.orthonormalized(), a.rotated(x), a.rotated_local(x), a.scaled(p), a.scaled_local(p),
+		a.translated(p), a.translated_local(p), a.determinant(), a.basis_xform(p), a.basis_xform_inv(p),
+		a.interpolate_with(b, x), a.is_conformal(), a.is_equal_approx(b), a.is_finite(), a.looking_at(p)]
+	var o: PackedInt64Array = PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+# The engine's Transform3D methods in the order Bag.replaced_transforms3d calls the Odin procs.
+func _transform3d_results(a: Transform3D, b: Transform3D, v: Vector3, w: Vector3, m: Projection, x: float) -> PackedInt64Array:
+	var vs: Array = [Transform3D(), Transform3D(a), Transform3D(b.basis, v), Transform3D(v, w, a.origin, b.origin),
+		Transform3D(m), a.inverse(), a.affine_inverse(), a.orthonormalized(), a.rotated(v, x),
+		a.rotated_local(v, x), a.scaled(v), a.scaled_local(v), a.translated(v), a.translated_local(v),
+		a.looking_at(v, w, false), a.looking_at(v, w, true), a.interpolate_with(b, x),
+		a.is_equal_approx(b), a.is_finite()]
+	var o: PackedInt64Array = PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+func _check_transform2d_case(b2: Bag, a: Transform2D, b: Transform2D, p: Vector2, q: Vector2, x: float, y: float) -> int:
+	var want: PackedInt64Array = _transform2d_results(a, b, p, q, x, y)
+	var got: PackedInt64Array = b2.replaced_transforms2d(a, b, p, q, x, y)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_transforms2d(%s, %s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, b, p, q, x, y, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+func _check_transform3d_case(b2: Bag, a: Transform3D, b: Transform3D, v: Vector3, w: Vector3, m: Projection, x: float) -> int:
+	var want: PackedInt64Array = _transform3d_results(a, b, v, w, m, x)
+	var got: PackedInt64Array = b2.replaced_transforms3d(a, b, v, w, m, x)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_transforms3d(%s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, b, v, w, x, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# A random Transform2D: a rotation, a rotation with scale and skew (flipped when a scale is
+# negative), or arbitrary columns.
+func _random_transform2d(rng: RandomNumberGenerator) -> Transform2D:
+	var o: Vector2 = Vector2(rng.randf_range(-5, 5), rng.randf_range(-5, 5))
+	var kind: int = rng.randi_range(0, 2)
+	if kind == 0:
+		return Transform2D(rng.randf_range(-7, 7), o)
+	if kind == 1:
+		return Transform2D(rng.randf_range(-7, 7), Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)),
+			rng.randf_range(-1.5, 1.5), o)
+	return Transform2D(Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)),
+		Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)), o)
+
+
+# The Transform2D and Transform3D procs that replace engine methods, on edge cases (the identity,
+# zero and singular bases, rotations by exact angles, skewed, scaled and flipped bases, signed
+# zeros, huge entries, infinities and NaNs, targets at the origin, colinear up vectors, angles a
+# whole number of turns apart) and then on seeded random transforms.
+func _check_replaced_transforms(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var t: Transform2D = Transform2D(0.7, Vector2(2, -0.5), 0.3, Vector2(1, 2))
+	var edges2: Array[Transform2D] = [Transform2D(), Transform2D(Vector2.ZERO, Vector2.ZERO, Vector2.ZERO), t,
+		Transform2D(0.7, Vector2(1, 2)), Transform2D(Vector2(1, 2), Vector2(2, 4), Vector2(3, 0)),
+		Transform2D(PI, Vector2(-1, 1), 0, Vector2.ZERO), Transform2D(PI / 2, Vector2(3, 3), 0, Vector2(0, 1)),
+		Transform2D(Vector2(nz, 1), Vector2(1, nz), Vector2(nz, nz)), Transform2D(-2.0, Vector2(0, 2), 0.5, Vector2.ONE),
+		Transform2D(Vector2(1e30, 0), Vector2(0, 1e30), Vector2(1e30, 1)), Transform2D(Vector2(INF, 0), Vector2(0, 1), Vector2.ZERO),
+		Transform2D(Vector2(1, NAN), Vector2(0, 1), Vector2.ZERO), t.rotated(1e-6), Transform2D(0.0, Vector2(1, -1), PI / 2, Vector2.ZERO),
+		Transform2D(Vector2(3, 0), Vector2(1, 2), Vector2(2, 2))]
+	var ps: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2(1, 0), Vector2(3, 4), Vector2(1, 2), Vector2(INF, 0),
+		Vector2(NAN, 1), Vector2(nz, nz), Vector2(1e-30, 0), Vector2(-2, 0.5), Vector2(0, -1)])
+	var xs: PackedFloat64Array = PackedFloat64Array([0.0, 1.0, 0.5, -0.25, PI, 2.5, INF, NAN, nz, 1e-7, TAU, -3 * TAU + 0.1, 0.999])
+	for i: int in edges2.size():
+		for j: int in [0, 1, 4, 7, 11]:
+			failures += _check_transform2d_case(b2, edges2[i], edges2[(i + j) % edges2.size()],
+				ps[(i + j) % ps.size()], ps[(i + 2 * j + 1) % ps.size()], xs[(i + j) % xs.size()],
+				xs[(i + 3 * j + 2) % xs.size()])
+	var r: Basis = Basis.from_euler(Vector3(0.3, -1.2, 2.0))
+	var edges3: Array[Transform3D] = [Transform3D(), Transform3D(Basis(), Vector3(1, 2, 3)),
+		Transform3D(r, Vector3(1, 2, 3)), Transform3D(Basis(Vector3.ZERO, Vector3.ZERO, Vector3.ZERO), Vector3.ONE),
+		Transform3D(Basis(Vector3(1, 2, 3), Vector3(2, 4, 6), Vector3(0, 1, 0)), Vector3(0, 0, -1)),
+		Transform3D(r.scaled(Vector3(2, -0.5, 3)), Vector3(nz, 0, 0)), Transform3D(r * Basis.from_scale(Vector3(-1, 1, 1)), Vector3.UP),
+		Transform3D(Basis(Vector3.UP, PI), Vector3(0, 1, 0)), Transform3D(Basis(Vector3(1e30, 1, 0), Vector3(0, 1e30, 0), Vector3(0, 0, 1e30)), Vector3.ZERO),
+		Transform3D(Basis(Vector3(INF, 0, 0), Vector3(0, NAN, 0), Vector3(0, 0, 1)), Vector3.ZERO),
+		Transform3D(r, Vector3(INF, 0, NAN)), Transform3D(r.rotated(Vector3.UP, 1e-6), Vector3(1, 2, 3.00001))]
+	var vs: PackedVector3Array = PackedVector3Array([Vector3.UP, Vector3(0.6, 0, 0.8), Vector3.ZERO, Vector3(1, 2, 3), Vector3(0, 2, 0),
+		Vector3(INF, 0, 0), Vector3(NAN, 1, 0), Vector3(nz, nz, 1), Vector3(1e-30, 0, 0), Vector3(-0.48, 0.6, 0.64)])
+	var ms: Array[Projection] = [Projection(), Projection(Transform3D(r, Vector3(1, 2, 3))),
+		Projection.create_perspective(70, 1.5, 0.1, 100), Projection(Vector4(1, 2, 3, 4), Vector4(5, 6, 7, 8),
+		Vector4(9, 10, 11, 12), Vector4(13, NAN, INF, nz))]
+	for i: int in edges3.size():
+		for j: int in [0, 1, 4, 7, 11]:
+			failures += _check_transform3d_case(b2, edges3[i], edges3[(i + j) % edges3.size()],
+				vs[(i + j) % vs.size()], vs[(i + 2 * j + 1) % vs.size()], ms[(i + j) % ms.size()],
+				xs[(i + j) % xs.size()])
+	# Exact cases: targets at, or within approximate equality of, the origin; up vectors colinear
+	# with the target; and transforms that differ in one entry only.
+	var at: Transform3D = Transform3D(r, Vector3(1, 2, 3))
+	for target: Vector3 in [Vector3(1, 2, 3), Vector3(1, 2, 3.000001), Vector3(1, 2, 4), Vector3(1, 5, 3)]:
+		failures += _check_transform3d_case(b2, at, Transform3D(r, Vector3(1, 2, 3.5)), target, Vector3.UP, ms[0], 0.25)
+	failures += _check_transform2d_case(b2, t, Transform2D(t.x, t.y, t.origin + Vector2(0, 0.5)), t.origin, Vector2.UP, 0.25, 0.1)
+	# Columns whose normalized dot rounds just past 1 and -1 in single precision, so get_skew's
+	# Math::acos clamps (the literals round to 0x3fa49248, 0x3f800001 and 0xbf7ffff9); skews of
+	# exactly -PI/2 and PI/2, a whole PI apart for lerp_angle; a determinant of -0; and
+	# non-finite origins.
+	var sx: Vector2 = Vector2(9.0 / 7.0, 1.0)
+	var clamp_hi: Transform2D = Transform2D(sx, Vector2(1.2857141, 1.0000001), Vector2.ZERO)
+	var clamp_lo: Transform2D = Transform2D(sx, Vector2(-1.2857141, -0.9999996), Vector2.ZERO)
+	var skew_neg: Transform2D = Transform2D(Vector2(1, 0), Vector2(1, 1e-20), Vector2.ZERO)
+	var skew_pos: Transform2D = Transform2D(Vector2(1, 0), Vector2(-1, 1e-20), Vector2.ZERO)
+	var pairs: Array[Array] = [[clamp_hi, clamp_lo], [clamp_lo, clamp_hi], [skew_neg, skew_pos], [skew_pos, skew_neg],
+		[Transform2D(Vector2(nz, 1), Vector2(0, 1), Vector2(1, 2)), t], [Transform2D(0.5, Vector2(NAN, 1)), t],
+		[Transform2D(0.5, Vector2(INF, 1)), t]]
+	for pair: Array in pairs:
+		failures += _check_transform2d_case(b2, pair[0], pair[1], Vector2(1, 2), Vector2(3, 4), 0.25, 0.75)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261113
+	for round: int in 1500:
+		var p: Vector2 = Vector2(rng.randf_range(-6, 6), rng.randf_range(-6, 6))
+		var q: Vector2 = Vector2(rng.randf_range(-6, 6), rng.randf_range(-6, 6))
+		failures += _check_transform2d_case(b2, _random_transform2d(rng), _random_transform2d(rng), p, q,
+			rng.randf_range(-7, 7), rng.randf_range(-2, 2))
+		var v: Vector3 = Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))
+		if rng.randi_range(0, 1) == 0:
+			v = v.normalized()
+		var w: Vector3 = Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))
+		var o: Vector3 = Vector3(rng.randf_range(-5, 5), rng.randf_range(-5, 5), rng.randf_range(-5, 5))
+		var m: Projection = Projection(Vector4(rng.randf(), rng.randf(), rng.randf(), rng.randf()),
+			Vector4(rng.randf(), rng.randf(), rng.randf(), rng.randf()),
+			Vector4(rng.randf(), rng.randf(), rng.randf(), rng.randf()),
+			Vector4(rng.randf(), rng.randf(), rng.randf(), rng.randf()))
+		failures += _check_transform3d_case(b2, Transform3D(_random_basis(rng), o), Transform3D(_random_basis(rng), -o),
+			v, w, m, rng.randf_range(-2, 2))
 	return failures
 
 

@@ -112,7 +112,7 @@ import gde "../gdextension"
 
 // Basis::get_quaternion. Under MATH_CHECKS the engine refuses a basis that is not a rotation
 // (conformal, with a determinant within UNIT_EPSILON of 1) and gives the identity quaternion.
-@(private) b_get_quaternion :: proc "contextless" (b: Basis) -> Quaternion {
+@(private) b_get_quaternion :: #force_inline proc "contextless" (b: Basis) -> Quaternion {
 	det := b_determinant(b)
 	if !(b_is_conformal(b) && (det == 1 || m_abs(det - 1) < UNIT_EPSILON)) {
 		math_error("Basis must be normalized in order to be casted to a Quaternion. Use get_rotation_quaternion() or call orthonormalized() if the Basis contains linearly independent vectors.")
@@ -185,8 +185,8 @@ basis_new_from_vector3_vector3_vector3 :: proc "contextless" (x_axis: Vector3, y
 }
 
 // Basis::invert by cofactors. A zero determinant fails the engine's check and leaves the copy as it was.
-basis_inverse :: proc "contextless" (self: ^Basis) -> Basis {
-	m := transmute(Basis_Rows)self^
+@(private) b_inverse :: #force_inline proc "contextless" (b: Basis) -> Basis {
+	m := transmute(Basis_Rows)b
 	cofac :: #force_inline proc "contextless" (m: Basis_Rows, r1, c1, r2, c2: int) -> f32 {
 		return m[r1][c1] * m[r2][c2] - m[r1][c2] * m[r2][c1]
 	}
@@ -194,7 +194,7 @@ basis_inverse :: proc "contextless" (self: ^Basis) -> Basis {
 	det := m[0][0] * co0 + m[0][1] * co1 + m[0][2] * co2
 	if det == 0 {
 		math_error("Condition \"det == 0\" is true.")
-		return self^
+		return b
 	}
 	s := 1 / det
 	return {
@@ -203,6 +203,7 @@ basis_inverse :: proc "contextless" (self: ^Basis) -> Basis {
 		{co2 * s, cofac(m, 0, 1, 2, 0) * s, cofac(m, 0, 0, 1, 1) * s},
 	}
 }
+basis_inverse :: proc "contextless" (self: ^Basis) -> Basis { return b_inverse(self^) }
 basis_transposed :: proc "contextless" (self: ^Basis) -> Basis {
 	m := transmute(Basis_Rows)self^
 	return b_from_columns(m[0], m[1], m[2])
@@ -264,9 +265,11 @@ basis_is_orthonormal :: proc "contextless" (self: ^Basis) -> bool {
 		m_is_zero_approx(v_dot(x, y)) && m_is_zero_approx(v_dot(x, z)) && m_is_zero_approx(v_dot(y, z))
 }
 
-// The orthonormalized basis, negated when it reflects, as a quaternion.
-basis_get_rotation_quaternion :: proc "contextless" (self: ^Basis) -> Quaternion {
-	m := b_orthonormalized(self^)
+basis_get_rotation_quaternion :: proc "contextless" (self: ^Basis) -> Quaternion { return b_rotation_quaternion(self^) }
+// The orthonormalized basis, negated when it reflects, as a quaternion. Inlined so a caller that
+// takes two, as Transform3D.interpolate_with does, can run their sqrt and divide chains together.
+@(private) b_rotation_quaternion :: #force_inline proc "contextless" (b: Basis) -> Quaternion {
+	m := b_orthonormalized(b)
 	if b_determinant(m) < 0 {
 		m = {m.x * -1, m.y * -1, m.z * -1}
 	}

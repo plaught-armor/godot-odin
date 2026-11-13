@@ -127,6 +127,8 @@ register_extras :: proc() {
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
 	godot.method(b, "replaced_colors", bag_replaced_colors, {"a", "b", "c", "x", "n"})
 	godot.method(b, "replaced_bases", bag_replaced_bases, {"a", "b", "v", "w", "x", "n"})
+	godot.method(b, "replaced_transforms2d", bag_replaced_transforms2d, {"a", "b", "p", "q", "x", "y"})
+	godot.method(b, "replaced_transforms3d", bag_replaced_transforms3d, {"a", "b", "v", "w", "m", "x"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1339,18 +1341,24 @@ bag_replaced_colors :: proc(self: ^Bag, a, b, c: godot.Color, x: f64, n: i64) ->
 	return godot.packed_of_int64(o.v[:o.n])
 }
 
-// Integers gathered for bag_replaced_bases, in call order.
+// Integers gathered for bag_replaced_bases and the transform bags, in call order.
 Basis_Results :: struct {
-	v: [320]i64,
+	v: [512]i64,
 	n: int,
 }
 
 // Appends `v` to `o` as integers: floats by their bits with NaNs made one quiet NaN, a Basis by
-// its columns (the axes GDScript indexes), a vector or quaternion by component.
+// its columns (the axes GDScript indexes), a transform by its basis columns and then its origin,
+// a vector or quaternion by component.
 put_basis_result :: proc(o: ^Basis_Results, v: $T) {
 	when T == godot.Basis {
 		for c in 0 ..< 3 { put_basis_result(o, godot.Vector3{v.x[c], v.y[c], v.z[c]}) }
-	} else when T == godot.Vector3 || T == godot.Quaternion {
+	} else when T == godot.Transform3D {
+		put_basis_result(o, v.basis)
+		put_basis_result(o, v.origin)
+	} else when T == godot.Transform2D {
+		for e in ([3]godot.Vector2{v.x, v.y, v.origin}) { put_basis_result(o, e) }
+	} else when T == godot.Vector2 || T == godot.Vector3 || T == godot.Quaternion {
 		for e in v { put_basis_result(o, e) }
 	} else when T == f32 {
 		put_basis_result(o, i64(0x7fc00000) if v != v else i64(transmute(u32)v))
@@ -1399,5 +1407,68 @@ bag_replaced_bases :: proc(self: ^Bag, a, b: godot.Basis, v, w: godot.Vector3, x
 	put_basis_result(&o, godot.basis_from_scale(v))
 	put_basis_result(&o, godot.basis_from_euler(v, n))
 	for k in i64(0) ..< 6 { put_basis_result(&o, godot.basis_from_euler(v, k)) }
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The Transform2D procs that replace engine methods (godot/transform.odin) on `a` and `b`, with
+// `p` and `q` the vector arguments, `x` the angle or weight and `y` the skew. test.gd's
+// _transform2d_results calls the engine's own methods in the same order.
+bag_replaced_transforms2d :: proc(self: ^Bag, a, b: godot.Transform2D, p, q: godot.Vector2, x, y: f64) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	put_basis_result(&o, godot.transform2d_new())
+	put_basis_result(&o, godot.transform2d_new_from_transform2d(a))
+	put_basis_result(&o, godot.transform2d_new_from_float_vector2(x, p))
+	put_basis_result(&o, godot.transform2d_new_from_float_vector2_float_vector2(x, p, y, q))
+	put_basis_result(&o, godot.transform2d_new_from_vector2_vector2_vector2(p, q, p))
+	put_basis_result(&o, godot.transform2d_inverse(&a))
+	put_basis_result(&o, godot.transform2d_affine_inverse(&a))
+	put_basis_result(&o, godot.transform2d_get_rotation(&a))
+	put_basis_result(&o, godot.transform2d_get_origin(&a))
+	put_basis_result(&o, godot.transform2d_get_scale(&a))
+	put_basis_result(&o, godot.transform2d_get_skew(&a))
+	put_basis_result(&o, godot.transform2d_orthonormalized(&a))
+	put_basis_result(&o, godot.transform2d_rotated(&a, x))
+	put_basis_result(&o, godot.transform2d_rotated_local(&a, x))
+	put_basis_result(&o, godot.transform2d_scaled(&a, p))
+	put_basis_result(&o, godot.transform2d_scaled_local(&a, p))
+	put_basis_result(&o, godot.transform2d_translated(&a, p))
+	put_basis_result(&o, godot.transform2d_translated_local(&a, p))
+	put_basis_result(&o, godot.transform2d_determinant(&a))
+	put_basis_result(&o, godot.transform2d_basis_xform(&a, p))
+	put_basis_result(&o, godot.transform2d_basis_xform_inv(&a, p))
+	put_basis_result(&o, godot.transform2d_interpolate_with(&a, b, x))
+	put_basis_result(&o, godot.transform2d_is_conformal(&a))
+	put_basis_result(&o, godot.transform2d_is_equal_approx(&a, b))
+	put_basis_result(&o, godot.transform2d_is_finite(&a))
+	put_basis_result(&o, godot.transform2d_looking_at(&a, p))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The Transform3D procs that replace engine methods (godot/transform.odin) on `a` and `b`, with
+// `v` and `w` the vector arguments, `m` the projection and `x` the angle or weight. test.gd's
+// _transform3d_results calls the engine's own methods in the same order.
+bag_replaced_transforms3d :: proc(self: ^Bag, a, b: godot.Transform3D, v, w: godot.Vector3, m: godot.Projection, x: f64) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	put_basis_result(&o, godot.transform3d_new())
+	put_basis_result(&o, godot.transform3d_new_from_transform3d(a))
+	put_basis_result(&o, godot.transform3d_new_from_basis_vector3(b.basis, v))
+	put_basis_result(&o, godot.transform3d_new_from_vector3_vector3_vector3_vector3(v, w, a.origin, b.origin))
+	put_basis_result(&o, godot.transform3d_new_from_projection(m))
+	put_basis_result(&o, godot.transform3d_inverse(&a))
+	put_basis_result(&o, godot.transform3d_affine_inverse(&a))
+	put_basis_result(&o, godot.transform3d_orthonormalized(&a))
+	put_basis_result(&o, godot.transform3d_rotated(&a, v, x))
+	put_basis_result(&o, godot.transform3d_rotated_local(&a, v, x))
+	put_basis_result(&o, godot.transform3d_scaled(&a, v))
+	put_basis_result(&o, godot.transform3d_scaled_local(&a, v))
+	put_basis_result(&o, godot.transform3d_translated(&a, v))
+	put_basis_result(&o, godot.transform3d_translated_local(&a, v))
+	put_basis_result(&o, godot.transform3d_looking_at(&a, v, w, false))
+	put_basis_result(&o, godot.transform3d_looking_at(&a, v, w, true))
+	put_basis_result(&o, godot.transform3d_interpolate_with(&a, b, x))
+	put_basis_result(&o, godot.transform3d_is_equal_approx(&a, b))
+	put_basis_result(&o, godot.transform3d_is_finite(&a))
 	return godot.packed_of_int64(o.v[:o.n])
 }

@@ -234,6 +234,12 @@
 		<method name="replaced_bases">
 			<description>The Basis procs that replace engine methods (godot/basis.odin) on [code]a[/code] and [code]b[/code], with [code]v[/code] and [code]w[/code] the vector arguments, [code]x[/code] the angle or weight and [code]n[/code] the Euler order. test.gd's _basis_results calls the engine's own methods in the same order.</description>
 		</method>
+		<method name="replaced_transforms2d">
+			<description>The Transform2D procs that replace engine methods (godot/transform.odin) on [code]a[/code] and [code]b[/code], with [code]p[/code] and [code]q[/code] the vector arguments, [code]x[/code] the angle or weight and [code]y[/code] the skew. test.gd's _transform2d_results calls the engine's own methods in the same order.</description>
+		</method>
+		<method name="replaced_transforms3d">
+			<description>The Transform3D procs that replace engine methods (godot/transform.odin) on [code]a[/code] and [code]b[/code], with [code]v[/code] and [code]w[/code] the vector arguments, [code]m[/code] the projection and [code]x[/code] the angle or weight. test.gd's _transform3d_results calls the engine's own methods in the same order.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>

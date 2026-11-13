@@ -135,8 +135,8 @@ REPLACED_CONSTRUCTORS = {
 
 # Builtins whose methods and constructors all live in place under the generated name and
 # signature: godot/vector.odin computes the float vectors in single precision as the engine does,
-# and godot/vectori.odin the int vectors.
-REPLACED_TYPES = {"Vector2", "Vector3", "Vector4", "Vector2i", "Vector3i", "Vector4i"}
+# godot/vectori.odin the int vectors, and godot/transform.odin Transform2D and Transform3D.
+REPLACED_TYPES = {"Vector2", "Vector3", "Vector4", "Vector2i", "Vector3i", "Vector4i", "Transform2D", "Transform3D"}
 
 class Interface:
     """The C interface: types, then one proc variable per interface function and a loader."""

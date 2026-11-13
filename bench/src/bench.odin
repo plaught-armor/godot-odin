@@ -60,6 +60,7 @@ register :: proc() {
 	godot.method(c, "vectori_ns", vectori_ns, {"kind", "n"})
 	godot.method(c, "color_ns", color_ns, {"kind", "n"})
 	godot.method(c, "basis_ns", basis_ns, {"kind", "n"})
+	godot.method(c, "transform_ns", transform_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1176,6 +1177,75 @@ basis_ns :: proc(self: ^Bench, kind: Basis_Op, n: i64) -> f64 {
 		}
 	case .SLERP:
 		for _ in 0 ..< n { sum += godot.basis_slerp(intrinsics.volatile_load(&ref), to, weight).x.x }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
+	return ns
+}
+
+// The Transform2D and Transform3D methods `transform_ns` times, paired the same way as Vector_Op.
+Transform_Op :: enum i64 {
+	T2_AFFINE_INVERSE_CALL, // the engine's Transform2D.affine_inverse
+	T2_AFFINE_INVERSE,      // transform2d_affine_inverse
+	T2_INTERPOLATE_CALL,    // the engine's Transform2D.interpolate_with at weight 0.25
+	T2_INTERPOLATE,         // transform2d_interpolate_with at weight 0.25
+	T3_AFFINE_INVERSE_CALL, // the engine's Transform3D.affine_inverse
+	T3_AFFINE_INVERSE,      // transform3d_affine_inverse
+	T3_INTERPOLATE_CALL,    // the engine's Transform3D.interpolate_with at weight 0.25
+	T3_INTERPOLATE,         // transform3d_interpolate_with at weight 0.25
+}
+
+// Nanoseconds per `kind` round on a scaled, skewed transform reread through a volatile load each
+// round, as in vector_ns.
+transform_ns :: proc(self: ^Bench, kind: Transform_Op, n: i64) -> f64 {
+	a2 := godot.transform2d_new_from_float_vector2_float_vector2(0.7, {2, -0.5}, 0.3, {1, 2})
+	b2 := godot.transform2d_new_from_float_vector2_float_vector2(-1.1, {1.5, 0.8}, -0.2, {-3, 0.5})
+	r := godot.basis_from_euler(godot.Vector3{0.3, -1.2, 2.0}, 2)
+	a3 := godot.Transform3D{godot.basis_scaled(&r, {2, 0.5, 3}), {1, 2, 3}}
+	b3 := godot.Transform3D{godot.basis_from_euler(godot.Vector3{-0.7, 0.4, 1.1}, 2), {-2, 0, 1}}
+	weight := f64(0.25)
+	ref2, ref3 := &a2, &a3
+	inv2_fn := godot.builtin_method(.TRANSFORM2D, "affine_inverse", 1420440541)
+	lerp2_fn := godot.builtin_method(.TRANSFORM2D, "interpolate_with", 359399686)
+	inv3_fn := godot.builtin_method(.TRANSFORM3D, "affine_inverse", 3816817146)
+	lerp3_fn := godot.builtin_method(.TRANSFORM3D, "interpolate_with", 1786453358)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .T2_AFFINE_INVERSE_CALL:
+		for _ in 0 ..< n {
+			t: godot.Transform2D
+			inv2_fn(intrinsics.volatile_load(&ref2), nil, &t, 0)
+			sum += t.x.x
+		}
+	case .T2_AFFINE_INVERSE:
+		for _ in 0 ..< n { sum += godot.transform2d_affine_inverse(intrinsics.volatile_load(&ref2)).x.x }
+	case .T2_INTERPOLATE_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&b2, &weight}
+			t: godot.Transform2D
+			lerp2_fn(intrinsics.volatile_load(&ref2), &args[0], &t, 2)
+			sum += t.x.x
+		}
+	case .T2_INTERPOLATE:
+		for _ in 0 ..< n { sum += godot.transform2d_interpolate_with(intrinsics.volatile_load(&ref2), b2, weight).x.x }
+	case .T3_AFFINE_INVERSE_CALL:
+		for _ in 0 ..< n {
+			t: godot.Transform3D
+			inv3_fn(intrinsics.volatile_load(&ref3), nil, &t, 0)
+			sum += t.basis.x.x
+		}
+	case .T3_AFFINE_INVERSE:
+		for _ in 0 ..< n { sum += godot.transform3d_affine_inverse(intrinsics.volatile_load(&ref3)).basis.x.x }
+	case .T3_INTERPOLATE_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&b3, &weight}
+			t: godot.Transform3D
+			lerp3_fn(intrinsics.volatile_load(&ref3), &args[0], &t, 2)
+			sum += t.basis.x.x
+		}
+	case .T3_INTERPOLATE:
+		for _ in 0 ..< n { sum += godot.transform3d_interpolate_with(intrinsics.volatile_load(&ref3), b3, weight).basis.x.x }
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)

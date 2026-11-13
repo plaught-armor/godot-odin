@@ -139,10 +139,10 @@ now builds its rotation with the same `b_axis_angle` helper.
 
 | Method | Engine call | Replacement |
 |---|---|---|
-| `Basis.inverse` | 8.5 ns | 2.3 ns |
+| `Basis.inverse` | 6.6 ns | 1.8 ns |
 | `Basis.rotated` | 16.7 ns | 4.4 ns |
 | `Basis.get_euler` | 23 to 29 ns | 17.5 ns |
-| `Basis.slerp` | 78 ns | 68 ns |
+| `Basis.slerp` | 66 ns | 45 ns |
 
 `get_euler` and `slerp` keep most of their cost in the libm calls (`atan2f`, `asinf`, `acosf`,
 `sin`). The editor and debug builds of the engine compile with `MATH_CHECKS`, and the replacements
@@ -152,3 +152,44 @@ bases that are not rotations prints an error and falls back the way the engine d
 with a zero target or up gives the identity, and an invalid Euler order prints an error and
 returns the identity or a zero vector. The `Basis.x`, `y` and `z` fields in Odin are rows, as the
 engine stores them; GDScript's `.x`, `.y` and `.z` are columns.
+
+## Transform2D and Transform3D
+
+The `Transform2D` and `Transform3D` entries in `REPLACED`, and their constructors in
+`REPLACED_CONSTRUCTORS`, are defined in `godot/transform.odin` under the same names and
+signatures. For Transform2D: the constructors (empty, from a Transform2D, a rotation and position,
+a rotation, scale, skew and position, three columns), `inverse`, `affine_inverse`,
+`get_rotation`, `get_origin`, `get_scale`, `get_skew`, `orthonormalized`, `rotated`,
+`rotated_local`, `scaled`, `scaled_local`, `translated`, `translated_local`, `determinant`,
+`basis_xform`, `basis_xform_inv`, `interpolate_with`, `is_conformal`, `is_equal_approx`,
+`is_finite` and `looking_at`. For Transform3D: the constructors (empty, from a Transform3D, a
+basis and origin, four columns, a Projection), `inverse`, `affine_inverse`, `orthonormalized`,
+`rotated`, `rotated_local`, `scaled`, `scaled_local`, `translated`, `translated_local`,
+`looking_at`, `interpolate_with`, `is_equal_approx` and `is_finite`. Each follows
+`core/math/transform_2d.cpp` and `transform_3d.cpp` of Godot 4.7-stable with the same
+single-precision operation order and libm calls, including `Math::acos`'s clamp in `get_skew` and
+the two `fmodf` calls of `Math::lerp_angle`; the Transform3D methods reuse the Basis helpers in
+`godot/basis.odin`. Checked against Godot 4.7-stable by `_check_replaced_transforms`, which
+compares every result from GDScript and from `Bag.replaced_transforms2d` and
+`Bag.replaced_transforms3d` on edge cases (the identity, zero and singular bases, exact rotations,
+skewed, scaled and flipped bases, signed zeros including a determinant of -0, huge entries,
+infinities and NaNs in the basis and the origin, columns whose normalized dot rounds past 1 and
+-1 so the acos clamp applies, skews exactly PI apart, targets at or near the origin, colinear up
+vectors) and on 1500 seeded random cases of each type.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Transform2D.affine_inverse` | 3.9 ns | 0.8 ns |
+| `Transform2D.interpolate_with` | 75 ns | 26 ns |
+| `Transform3D.affine_inverse` | 9.5 ns | 1.8 ns |
+| `Transform3D.interpolate_with` | 144 ns | 111 ns |
+
+`Transform3D.interpolate_with` keeps most of its cost in two serial chains of square roots and
+divisions, one per basis, as each is orthonormalized and turned into a quaternion, and in the
+slerp's libm calls. Both chains are inlined so they run side by side, which also speeds up
+`Basis.slerp`. The replacements reproduce the engine's `MATH_CHECKS`:
+`affine_inverse` of a singular Transform2D prints an error and returns the transform unchanged,
+that of a singular Transform3D prints an error, keeps the basis and still carries the origin
+through it, and `Transform3D.looking_at` with a target approximately at the origin prints an
+error and returns the identity. The Transform2D fields `x`, `y` and `origin` are the engine's
+columns; the Transform3D basis keeps the engine's rows, as `Basis` does.
