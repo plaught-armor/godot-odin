@@ -127,6 +127,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "name_copies_counted", bag_name_copies_counted, {"texts"})
+	godot.method(b, "string_copies_counted", bag_string_copies_counted, {"texts"})
 	godot.method(b, "replaced_name_strs", bag_replaced_name_strs, {"n", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
@@ -1057,6 +1058,80 @@ bag_name_copies_counted :: proc(self: ^Bag, texts: godot.PackedStringArray) -> b
 		godot.destroy[.ARRAY](&values)
 		ok = ok && count_of(data) == held
 		gde.variant_destroy(&nv)
+		godot.destroy[.DICTIONARY](&d)
+		godot.destroy[.ARRAY](&a)
+	}
+	return ok
+}
+
+// Whether every String copy the bindings make holds one reference of its own on the copy-on-write
+// storage, as the engine's copy constructor does, for each of `texts`: `string_copy`, a
+// `string_replace` that replaces nothing, `packed_string_array_get`, `packed_of_string`, and the
+// copies Array get, front and back and Dictionary get, find_key, keys and values return. The 64-bit
+// count at the start of the storage rises by one per live copy and falls back when it is destroyed;
+// each copy must also hold the same storage. The empty String has no storage, so its copies must
+// have none either.
+bag_string_copies_counted :: proc(self: ^Bag, texts: godot.PackedStringArray) -> bool {
+	texts := texts
+	data_of :: proc(s: ^godot.String) -> rawptr { return (^rawptr)(s)^ }
+	count_of :: proc(data: rawptr) -> u64 { return 0 if data == nil else (^u64)(uintptr(data) - 32)^ }
+	// `data` with `live` references besides `held`; the empty String's copies hold no storage.
+	counted :: proc(got, data: rawptr, held, live: u64) -> bool {
+		return got == data && (data == nil || count_of(data) == held + live)
+	}
+	variant_holds :: proc(v: ^godot.Variant, data: rawptr, held, live: u64) -> bool {
+		return gde.variant_get_type(v) == .STRING && counted((^rawptr)(&v._opaque[8])^, data, held, live)
+	}
+	array_holds :: proc(a: ^godot.Array, data: rawptr, held: u64) -> bool {
+		if godot.array_size(a) != 1 { return false }
+		v := godot.array_get(a, 0)
+		defer gde.variant_destroy(&v)
+		return variant_holds(&v, data, held, 2)
+	}
+	ok := true
+	for &text in godot.packed_read_string(&texts) {
+		// A String of its own, apart from the one `texts` holds.
+		s := godot.string_new_from_string(text)
+		defer godot.destroy[.STRING](&s)
+		data := data_of(&s)
+		sv := godot.variant(s)
+		a := godot.array_new()
+		godot.array_push_back(&a, sv)
+		d := godot.dictionary_new()
+		godot.dictionary_set(&d, sv, sv)
+		// `sv`, the Array and the Dictionary key and value hold references besides `s`'s.
+		held := count_of(data)
+		c := godot.string_copy(&s)
+		ok = ok && counted(data_of(&c), data, held, 1)
+		godot.destroy[.STRING](&c)
+		none := godot.string_of("\u0001 not in any text")
+		r := godot.string_replace(&s, none, none)
+		ok = ok && counted(data_of(&r), data, held, 1)
+		godot.destroy[.STRING](&r)
+		godot.destroy[.STRING](&none)
+		p := godot.packed_of_string({s})
+		ok = ok && counted(data_of(&godot.packed_read_string(&p)[0]), data, held, 1)
+		g := godot.packed_string_array_get(&p, 0)
+		ok = ok && counted(data_of(&g), data, held, 2)
+		godot.destroy[.STRING](&g)
+		godot.destroy[.PACKED_STRING_ARRAY](&p)
+		reads := [?]godot.Variant{
+			godot.array_get(&a, 0), godot.array_front(&a), godot.array_back(&a),
+			godot.dictionary_get(&d, sv, godot.Variant{}),
+			godot.dictionary_find_key(&d, sv),
+		}
+		for &v, k in reads {
+			ok = ok && variant_holds(&v, data, held, u64(len(reads) - k))
+			gde.variant_destroy(&v)
+		}
+		keys := godot.dictionary_keys(&d)
+		ok = ok && array_holds(&keys, data, held)
+		godot.destroy[.ARRAY](&keys)
+		values := godot.dictionary_values(&d)
+		ok = ok && array_holds(&values, data, held)
+		godot.destroy[.ARRAY](&values)
+		ok = ok && count_of(data) == held
+		gde.variant_destroy(&sv)
 		godot.destroy[.DICTIONARY](&d)
 		godot.destroy[.ARRAY](&a)
 	}

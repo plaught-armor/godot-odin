@@ -590,6 +590,10 @@ Ident :: enum i64 {
 	NAME_GET,          // the generated array_get(0) of the same, the StringName copied in place
 	NAME_COPY_CALL,    // the engine's StringName copy constructor, string_name_new_from_string_name, the copy destroyed
 	NAME_COPY,         // name_copy of the same StringName
+	STRING_GET_CALL,   // the engine's Array.get(0) of a one-String Array, the Variant destroyed, called as the bindings did before
+	STRING_GET,        // the generated array_get(0) of the same, the String copied in place
+	STRING_COPY_CALL,  // the engine's String copy constructor, string_new_from_string, the copy destroyed
+	STRING_COPY,       // string_copy of the same String
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1040,12 +1044,19 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			sum += i64(uintptr((^rawptr)(&v)^) & 1)
 			godot.destroy[.STRING_NAME](&v)
 		}
-	case .NAME_GET_CALL, .NAME_GET:
-		name := godot.name_of("player_jump")
-		defer godot.destroy[.STRING_NAME](&name)
+	case .NAME_GET_CALL, .NAME_GET, .STRING_GET_CALL, .STRING_GET:
 		a := godot.array_new()
 		defer godot.destroy[.ARRAY](&a)
-		nv := godot.variant(name)
+		nv: godot.Variant
+		if kind == .NAME_GET_CALL || kind == .NAME_GET {
+			name := godot.name_of("player_jump")
+			nv = godot.variant(name)
+			godot.destroy[.STRING_NAME](&name)
+		} else {
+			text := godot.string_of("player_jump")
+			nv = godot.variant(text)
+			godot.destroy[.STRING](&text)
+		}
 		godot.array_push_back(&a, nv)
 		gde.variant_destroy(&nv)
 		r := &a
@@ -1053,7 +1064,7 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		idx := i64(0)
 		for _ in 0 ..< n {
 			v: godot.Variant
-			if kind == .NAME_GET_CALL {
+			if kind == .NAME_GET_CALL || kind == .STRING_GET_CALL {
 				args := [1]gde.ConstTypePtr{&idx}
 				fn(intrinsics.volatile_load(&r), &args[0], &v, 1)
 			} else {
@@ -1079,6 +1090,24 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			v := godot.name_copy(intrinsics.volatile_load(&r))
 			sum += i64(uintptr((^rawptr)(&v)^) & 1)
 			godot.destroy[.STRING_NAME](&v)
+		}
+	case .STRING_COPY_CALL:
+		text := godot.string_of("player_jump")
+		defer godot.destroy[.STRING](&text)
+		r := &text
+		for _ in 0 ..< n {
+			v := godot.string_new_from_string(intrinsics.volatile_load(&r)^)
+			sum += i64(uintptr((^rawptr)(&v)^) & 1)
+			godot.destroy[.STRING](&v)
+		}
+	case .STRING_COPY:
+		text := godot.string_of("player_jump")
+		defer godot.destroy[.STRING](&text)
+		r := &text
+		for _ in 0 ..< n {
+			v := godot.string_copy(intrinsics.volatile_load(&r))
+			sum += i64(uintptr((^rawptr)(&v)^) & 1)
+			godot.destroy[.STRING](&v)
 		}
 	case .VALID_FLOAT_CALL:
 		num := godot.string_of("-123.456e-2")

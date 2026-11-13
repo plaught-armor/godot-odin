@@ -466,8 +466,8 @@ converts the value or prints its error. As in the engine, the start of `find` an
 `rfind` counts a negative start back from the end and clamps one still outside the array to the
 last element. `get`, `front` and `back` copy the element, a new reference for a String, a StringName
 or any type the engine owns, and out of range return nil after the engine prints its error. A
-StringName element is copied in place by one more reference on its interned data (see "StringName
-copies" below); the others through the engine's Variant copy.
+StringName or String element is copied in place by one more reference on its data (see "StringName
+copies" and "String copies" below); the others through the engine's Variant copy.
 
 Checked against Godot 4.7-stable by `_check_replaced_array`, which compares every read from
 GDScript and from `Bag.replaced_array`, the errors included, on empty, mixed and typed Arrays of
@@ -641,6 +641,33 @@ holds: `name_copy`, two `hold_name` writes, and the Array and Dictionary reads a
 |---|---|---|
 | StringName copy constructor | 12.7 ns | 2.8 ns |
 | `Array.get` of a StringName | 15.3 ns | 6.5 ns |
+
+Timings are from `bench/build.sh` on "player_jump", each copy destroyed: the copy alone, and `get`
+of the one element of an Array holding it.
+
+## String copies
+
+`string_copy` in `godot/access.odin` copies a String as the engine's copy constructor does
+(`CowData::_ref` in `core/templates/cowdata.h` of Godot 4.7-stable): one more reference on its
+copy-on-write storage, whose 64-bit `SafeNumeric` count sits 32 bytes before the characters, and no
+reference for the empty String, which has no storage. As with StringName, the constructor's
+conditional increment is a plain atomic add on a live String. The copies the bindings make use it:
+the String elements `array_get`, `array_front`, `array_back`, `dictionary_get`,
+`dictionary_find_key`, `dictionary_keys` and `dictionary_values` return, `packed_string_array_get`,
+each element `packed_of_string` stores, and a `string_replace` or `string_replacen` that replaces
+nothing. `check_string_layout`, run at load, also proves that an in-place copy adds one reference
+and its destroy takes it away, that a STRING Variant holds its String at byte 8 with one reference
+more, and that the empty String copies as empty; when it fails, every copy calls the engine.
+
+Checked against Godot 4.7-stable by `Bag.string_copies_counted`, which reads the reference count
+around each copy of the empty String, short, long and non-ASCII Strings: `string_copy`, a
+`string_replace` that replaces nothing, `packed_of_string`, `packed_string_array_get`, and the Array
+and Dictionary reads above.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| String copy constructor | 12.7 ns | 2.5 ns |
+| `Array.get` of a String | 14.5 ns | 5.1 ns |
 
 Timings are from `bench/build.sh` on "player_jump", each copy destroyed: the copy alone, and `get`
 of the one element of an Array holding it.

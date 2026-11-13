@@ -280,7 +280,7 @@ packed_float64_array_bsearch :: proc "contextless" (self: ^PackedFloat64Array, v
 packed_string_array_get :: proc "contextless" (self: ^PackedStringArray, index: i64) -> String {
 	v, ok := packed_at(packed_read(self), index)
 	if !ok { return {} }
-	return string_new_from_string(v)
+	return string_copy(&v)
 }
 packed_string_array_has :: proc "contextless" (self: ^PackedStringArray, value: String) -> bool { v := value; return packed_find(packed_read(self), &v, 0) != -1 }
 packed_string_array_find :: proc "contextless" (self: ^PackedStringArray, value: String, from: i64) -> i64 { v := value; return packed_find(packed_read(self), &v, from) }

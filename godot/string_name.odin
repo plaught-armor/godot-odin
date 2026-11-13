@@ -14,10 +14,6 @@ import gde "../gdextension"
 @(private)
 name_layout_known: bool
 
-// Where a STRING_NAME Variant keeps its StringName: past the 8 bytes of the type tag and padding.
-@(private)
-VARIANT_NAME_OFFSET :: 8
-
 // A copy of StringName `n`, which you destroy, made as StringName's copy constructor does: one more
 // reference on its interned data. `n` is a live StringName holding its own reference, so the count
 // is at least 1 and cannot reach 0 meanwhile, which is why the constructor's conditional increment
@@ -38,7 +34,7 @@ name_ref :: #force_inline proc "contextless" (n: ^StringName) -> StringName {
 
 // Sets `name_layout_known` from a StringName of known reference count: one engine copy and one
 // `name_ref` must each add one reference at byte 0 of its data, and each destroy take one away.
-// A STRING_NAME Variant made from it must hold the same data at `VARIANT_NAME_OFFSET`, and the empty
+// A STRING_NAME Variant made from it must hold the same data at `VARIANT_DATA_OFFSET`, and the empty
 // StringName must have no data.
 check_name_layout :: proc "contextless" () {
 	name_layout_known = false
@@ -58,8 +54,8 @@ check_name_layout :: proc "contextless" () {
 	destroy[.STRING_NAME](&c)
 	v: Variant
 	from_type[.STRING_NAME](&v, &n)
-	in_variant := internal[.STRING_NAME](&v) == rawptr(&v._opaque[VARIANT_NAME_OFFSET]) &&
-		(^rawptr)(&v._opaque[VARIANT_NAME_OFFSET])^ == data && count^ == held + 1
+	in_variant := internal[.STRING_NAME](&v) == rawptr(&v._opaque[VARIANT_DATA_OFFSET]) &&
+		(^rawptr)(&v._opaque[VARIANT_DATA_OFFSET])^ == data && count^ == held + 1
 	gde.variant_destroy(&v)
 	empty: StringName
 	empty_copy := name_ref(&empty)

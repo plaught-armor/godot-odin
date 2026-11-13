@@ -77,7 +77,7 @@ packed_of_string :: proc "contextless" (xs: []String) -> (out: PackedStringArray
 	out = packed_string_array_new()
 	packed_string_array_resize(&out, i64(len(xs)))
 	// Each new slot is an empty String, which holds nothing to release before it is overwritten.
-	for &s, i in packed_write_string(&out) { s = string_new_from_string(xs[i]) }
+	for &s, i in packed_write_string(&out) { s = string_copy(&xs[i]) }
 	return
 }
 
@@ -431,7 +431,7 @@ string_replacen_text :: proc "contextless" (s: ^String, what, forwhat: string) -
 replace_in :: proc "contextless" (s: ^String, n: $N, with: $W, $NOCASE: bool) -> (out: String) {
 	chars := string_read(s)
 	hits := int(count_in(chars, n, 0, 0, NOCASE))
-	if hits == 0 { return string_new_from_string(s^) }
+	if hits == 0 { return string_copy(s) }
 	// `with` is Odin text, decoded as it is written, or characters read from a String.
 	with_ascii: bool
 	with_count: int
@@ -1632,8 +1632,29 @@ string_stored_length :: #force_inline proc "contextless" (s: ^String) -> i64 {
 	return (^i64)(uintptr(p) - STRING_SIZE_OFFSET)^ - 1
 }
 
+// A copy of String `s`, which you destroy, made as String's copy constructor does (CowData::_ref in
+// core/templates/cowdata.h of Godot 4.7-stable): one more reference on its copy-on-write storage,
+// none for the empty String. `s` is a live String holding its own reference, so the count is at
+// least 1 and cannot reach 0 meanwhile, which is why the constructor's conditional increment is a
+// plain one here. The engine copies it before `check_string_layout` proved the layout.
+string_copy :: #force_inline proc "contextless" (s: ^String) -> String {
+	if !string_layout_known { return string_new_from_string(s^) }
+	return string_ref(s)
+}
+
+// `string_copy` without the check that the layout is proven, for `check_string_layout` to prove and
+// for callers that checked `string_layout_known` themselves.
+@(private)
+string_ref :: #force_inline proc "contextless" (s: ^String) -> String {
+	p := (^rawptr)(s)^
+	if p != nil { intrinsics.atomic_add_explicit((^u64)(uintptr(p) - STRING_DATA_OFFSET), 1, .Acq_Rel) }
+	return s^
+}
+
 // Sets `string_layout_known` from Strings of known length: one shared by two references, and one
-// grown by an append so its capacity differs from its size.
+// grown by an append so its capacity differs from its size. A `string_ref` copy must add one
+// reference and its destroy take it away, a STRING Variant made from a String must hold the same
+// storage at `VARIANT_DATA_OFFSET` with one reference more, and the empty String must copy as empty.
 check_string_layout :: proc "contextless" () {
 	// The header before the characters: the reference count, the capacity, then the size.
 	holds :: proc "contextless" (s: ^String, n: int, refs: i64) -> bool {
@@ -1648,7 +1669,19 @@ check_string_layout :: proc "contextless" () {
 	b := string_new_from_string(a)
 	c := string_of(long)
 	string_append_rune(&c, '!')
-	string_layout_known = holds(&a, len(short), 2) && holds(&b, len(short), 2) && holds(&c, len(long) + 1, 1)
+	layout := holds(&a, len(short), 2) && holds(&b, len(short), 2) && holds(&c, len(long) + 1, 1)
+	r := string_ref(&c)
+	copied := layout && (^rawptr)(&r)^ == (^rawptr)(&c)^ && holds(&c, len(long) + 1, 2)
+	destroy[.STRING](&r)
+	copied = copied && holds(&c, len(long) + 1, 1)
+	v: Variant
+	from_type[.STRING](&v, &c)
+	in_variant := internal[.STRING](&v) == rawptr(&v._opaque[VARIANT_DATA_OFFSET]) &&
+		(^rawptr)(&v._opaque[VARIANT_DATA_OFFSET])^ == (^rawptr)(&c)^ && layout && holds(&c, len(long) + 1, 2)
+	gde.variant_destroy(&v)
+	empty: String
+	empty_copy := string_ref(&empty)
+	string_layout_known = layout && copied && in_variant && holds(&c, len(long) + 1, 1) && (^rawptr)(&empty_copy)^ == nil
 	destroy[.STRING](&c)
 	destroy[.STRING](&b)
 	destroy[.STRING](&a)

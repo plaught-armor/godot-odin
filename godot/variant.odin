@@ -13,6 +13,11 @@ destroy: [gde.VariantType]gde.PtrDestructor
 copy_from: [gde.VariantType]gde.PtrConstructor
 internal: [gde.VariantType]gde.VariantGetInternalPtrFunc
 
+// Where a Variant keeps a String or StringName: past the 8 bytes of the type tag and padding.
+// `check_string_layout` and `check_name_layout` prove it for each.
+@(private)
+VARIANT_DATA_OFFSET :: 8
+
 // Fills the conversion tables. Called once at load, before any class registers.
 load_variants :: proc "contextless" () {
 	for type in gde.VariantType {

@@ -283,15 +283,20 @@ array_stored_get :: #force_inline proc "contextless" (a: ^Array, index: i64) -> 
 }
 
 // A copy of `x`, its value copied as is when it holds nothing counted or allocated, a StringName by
-// `name_ref`, and through the engine's Variant copy otherwise. You destroy it.
+// `name_ref`, a String by `string_ref`, and through the engine's Variant copy otherwise. You
+// destroy it.
 @(private)
 stored_copy :: #force_inline proc "contextless" (x: ^Variant) -> (out: Variant) {
-	// A StringName takes its new reference here and is then copied as is, through the same switch
-	// as before: a separate branch for it splits the copy into byte stores, which the caller's wide
-	// read of `out` stalls on.
+	// A StringName or String takes its new reference here and is then copied as is, through the
+	// same switch as before: a separate branch for it splits the copy into byte stores, which the
+	// caller's wide read of `out` stalls on.
 	elem := array_elem(variant_tag(x))
+	at := rawptr(&x._opaque[VARIANT_DATA_OFFSET])
 	if elem == .NAME && name_layout_known {
-		name_ref((^StringName)(&x._opaque[VARIANT_NAME_OFFSET]))
+		name_ref((^StringName)(at))
+		elem = .NIL
+	} else if elem == .STRING && string_layout_known {
+		string_ref((^String)(at))
 		elem = .NIL
 	}
 	switch elem {
