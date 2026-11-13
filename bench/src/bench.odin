@@ -1767,6 +1767,12 @@ Dict_Op :: enum i64 {
 	GET,             // dictionary_get, on ints
 	STRING_HAS_CALL, // the engine's Dictionary.has, on Strings
 	STRING_HAS,      // dictionary_has, on Strings
+	KEYS_CALL,       // the engine's Dictionary.keys, of 64 ints
+	KEYS,            // dictionary_keys, of 64 ints
+	VALUES_CALL,     // the engine's Dictionary.values, of 64 ints
+	VALUES,          // dictionary_values, of 64 ints
+	FIND_KEY_CALL,   // the engine's Dictionary.find_key, of the 41st value of 64 ints
+	FIND_KEY,        // dictionary_find_key, of the 41st value of 64 ints
 }
 
 // Nanoseconds per `kind` round on a Dictionary of the ints 0 to 63, each mapped to three times
@@ -1794,6 +1800,10 @@ dict_ns :: proc(self: ^Bench, kind: Dict_Op, n: i64) -> f64 {
 	size_fn := godot.builtin_method(.DICTIONARY, "size", 3173160232)
 	has_fn := godot.builtin_method(.DICTIONARY, "has", 3680194679)
 	get_fn := godot.builtin_method(.DICTIONARY, "get", 2205440559)
+	keys_fn := godot.builtin_method(.DICTIONARY, "keys", 4144163970)
+	values_fn := godot.builtin_method(.DICTIONARY, "values", 4144163970)
+	find_key_fn := godot.builtin_method(.DICTIONARY, "find_key", 1988825835)
+	value := i64(120)
 	sum: i64
 	start := time.tick_now()
 	switch kind {
@@ -1837,6 +1847,33 @@ dict_ns :: proc(self: ^Bench, kind: Dict_Op, n: i64) -> f64 {
 		}
 	case .STRING_HAS:
 		for _ in 0 ..< n { sum += i64(godot.dictionary_has(&sd, intrinsics.volatile_load(&skey)^)) }
+	case .KEYS_CALL, .VALUES_CALL:
+		fn := keys_fn if kind == .KEYS_CALL else values_fn
+		for _ in 0 ..< n {
+			r: godot.Array
+			fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += godot.array_size(&r)
+			godot.destroy[.ARRAY](&r)
+		}
+	case .KEYS, .VALUES:
+		for _ in 0 ..< n {
+			r := godot.dictionary_keys(intrinsics.volatile_load(&ref)) if kind == .KEYS else godot.dictionary_values(intrinsics.volatile_load(&ref))
+			sum += godot.array_size(&r)
+			godot.destroy[.ARRAY](&r)
+		}
+	case .FIND_KEY_CALL:
+		for _ in 0 ..< n {
+			v := godot.variant(intrinsics.volatile_load(&value))
+			args := [1]gde.ConstTypePtr{&v}
+			r: godot.Variant
+			find_key_fn(&d, &args[0], &r, 1)
+			sum += godot.from_variant(i64, &r)
+		}
+	case .FIND_KEY:
+		for _ in 0 ..< n {
+			r := godot.dictionary_find_key(&d, godot.variant(intrinsics.volatile_load(&value)))
+			sum += godot.from_variant(i64, &r)
+		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += sum

@@ -486,12 +486,13 @@ to 63, and `find` of "12" in an Array of the Strings "0" to "15".
 ## Dictionary
 
 The Dictionary reads `has`, `has_all` and `get` are defined in `godot/dictionary.odin` under the
-same names and signatures, and the generated `size` and `is_empty` read the entry count from the
-storage. They read the `HashMap<Variant, Variant>` of the engine's `DictionaryPrivate` in place,
+same names and signatures, the generated `size` and `is_empty` read the entry count from the
+storage, and the generated `find_key`, `keys` and `values` walk its entries. They read the `HashMap<Variant, Variant>` of the engine's `DictionaryPrivate` in place,
 following `core/variant/dictionary.cpp` and `core/templates/hash_map.h` of Godot 4.7-stable.
-`check_dict_layout`, run at load, proves where the map and the key type of a typed Dictionary lie,
+`check_dict_layout`, run at load, proves where the map and the key and value types of a typed
+Dictionary lie,
 and where a StringName keeps its hash, on a Dictionary of ints, Strings, StringNames (the empty one
-too), floats, bools and nil, an emptied one and one typed to int, then finds every key of the first
+too), floats, bools and nil, an emptied one and one typed from int to float, then finds every key of the first
 through the in-place lookup at the entry the engine lists it at. When any of it fails, every read
 falls back to the engine call; `layouts_proven()` tells whether it did.
 
@@ -506,18 +507,32 @@ Dictionary's, which the engine converts or rejects with its error. Keys compare 
 and -0 equals 0, and a String and a StringName of the same text equal. `get` copies the value or
 `default`, as `Array.get` copies an element.
 
+`find_key`, `keys` and `values` follow the entries in insertion order, as the engine's iterator
+does. `find_key` returns a copy of the first key whose value equals the one sought under
+`Variant::hash_compare`, the engine's `==`: of the same type only, so a String never equals a
+StringName, with NaN equal to NaN and -0 to 0. It compares values of the types `Array.find` compares
+in place and calls the engine for any other, and for a value whose type differs from a typed
+Dictionary's, which the engine converts or rejects. `keys` and `values` make a new Array, size it
+through the engine, then copy each key or value into its storage, which no other Array shares yet;
+of a typed Dictionary they call the engine, which types the Array.
+
 Checked against Godot 4.7-stable by `_check_replaced_dict`, which compares every read from GDScript
 and from `Bag.replaced_dict` on empty, emptied, typed and mixed Dictionaries, one of 300 ints
 thinned by erasing, keys of every type with NaN, -0, the empty String and StringName, a String
 holding a control character, and pairs of ints, floats, Strings and StringNames whose hashes are
-equal; and on 300 seeded random sets of three Dictionaries.
+equal, Dictionaries holding values of every type twice over, -0, NaN and a StringName among their
+values, and ones with typed values; and on 300 seeded random sets of three Dictionaries.
 
 | Method | Engine call | Replacement |
 |---|---|---|
-| `Dictionary.size` | 2.49 ns | 1.41 ns |
-| `Dictionary.has` on ints | 16.3 ns | 9.3 ns |
-| `Dictionary.get` on ints | 20.6 ns | 11.8 ns |
-| `Dictionary.has` on Strings | 19.6 ns | 9.5 ns |
+| `Dictionary.size` | 2.44 ns | 1.14 ns |
+| `Dictionary.has` on ints | 16.0 ns | 8.8 ns |
+| `Dictionary.get` on ints | 23.3 ns | 11.6 ns |
+| `Dictionary.has` on Strings | 19.1 ns | 10.2 ns |
+| `Dictionary.find_key` on ints | 86 ns | 38 ns |
+| `Dictionary.keys` of 64 ints | 412 ns | 186 ns |
+| `Dictionary.values` of 64 ints | 357 ns | 198 ns |
 
-Timings are from `bench/build.sh`: `has` and `get` of 40 in a Dictionary of the ints 0 to 63, and
-`has` of "12" in one of the Strings "0" to "15".
+Timings are from `bench/build.sh`: `has` and `get` of 40 in a Dictionary mapping the ints 0 to 63
+to three times themselves, `find_key` of 120 in it, `keys` and `values` of it, and `has` of "12" in
+one of the Strings "0" to "15".

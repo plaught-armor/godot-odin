@@ -2074,8 +2074,9 @@ func _dict_read_results(dicts: Array, keys: Array, key_sets: Array, default: Var
 		out.append_array([d.size(), d.is_empty()])
 		for ks: Array in key_sets:
 			out.append(d.has_all(ks))
+		out.append_array([d.keys(), d.values()])
 		for k: Variant in keys:
-			out.append_array([d.has(k), d.get(k, default), d.has(k), d.get(k)])
+			out.append_array([d.has(k), d.get(k, default), d.has(k), d.get(k), d.find_key(k)])
 	return out
 
 
@@ -2094,7 +2095,8 @@ func _check_dict_case(b2: Bag, dicts: Array, keys: Array, key_sets: Array, defau
 
 
 # The Dictionary reads of godot/dictionary.odin (has, has_all, get, and the generated size and
-# is_empty reading the stored size), and dict_get, against the engine's. Keys of every type the in-place lookup
+# is_empty reading the stored size, find_key, keys and values), and dict_get, against the engine's.
+# find_key searches for every key, among values of every type. Keys of every type the in-place lookup
 # hashes (nil, bools, ints, floats with NaN and -0, Strings and StringNames of the same texts, which
 # find each other, RIDs, and pairs of ints, floats, Strings and StringNames with equal hashes) and of
 # types the engine hashes (vectors, arrays, objects, callables).
@@ -2130,8 +2132,19 @@ func _check_replaced_dict(b2: Bag) -> int:
 	var collisions: Dictionary = {}
 	for i: int in colliding.size():
 		collisions[colliding[i]] = i
+	# Values of every type, each twice so find_key must return the first key, and values that are
+	# equal only under hash_compare (-0 and 0, NaN and NaN) or only by text (a String and a StringName).
+	var by_value: Dictionary = {}
+	for i: int in pool.size():
+		by_value[i] = pool[i]
+	for i: int in pool.size():
+		by_value[-1 - i] = pool[pool.size() - 1 - i]
+	var signed_zero: Dictionary = {"z": nz, "n": NAN, "s": &"a"}
+	var typed_values: Dictionary[int, float] = {1: nz, 2: NAN, 3: 1.0}
+	var typed_names: Dictionary[String, StringName] = {"x": &"a", "y": &"ab"}
 	var dicts: Array = [{}, emptied, everything, ints, typed_int, typed_float, typed_string, typed_name,
-		{"a": 1, &"ab": 2}, {&"a": 1, "ab": 2}, collisions, colliding_names]
+		{"a": 1, &"ab": 2}, {&"a": 1, "ab": 2}, collisions, colliding_names, by_value, signed_zero,
+		typed_values, typed_names]
 	var keys: Array = pool.duplicate()
 	keys.append_array([1001, 6919, 7919 * 299 - 1000, 7919 * 3 - 1000, &"aB", &"b!"])
 	keys.append_array(colliding)

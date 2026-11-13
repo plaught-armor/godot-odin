@@ -1405,7 +1405,8 @@ bag_layouts_proven :: proc(self: ^Bag) -> bool {
 
 // The Dictionary reads of godot/dictionary.odin on each Dictionary of `dicts`, in the order
 // test.gd's `_dict_read_results` makes them: size, is_empty, has_all of each Array of `key_sets`,
-// then has, get with `default`, and the found flag and value of dict_get of each of `keys`.
+// keys and values, then has, get with `default`, the found flag and value of dict_get, and
+// find_key of each of `keys`.
 bag_replaced_dict :: proc(self: ^Bag, dicts: godot.Array, keys: godot.Array, key_sets: godot.Array, default: godot.Variant) -> godot.Array {
 	dicts, keys, key_sets := dicts, keys, key_sets
 	out := godot.array_new()
@@ -1416,6 +1417,14 @@ bag_replaced_dict :: proc(self: ^Bag, dicts: godot.Array, keys: godot.Array, key
 		for &ks in godot.array_read(&key_sets) {
 			godot.array_push_back(&out, godot.variant(godot.dictionary_has_all(&d, godot.from_variant(godot.Array, &ks))))
 		}
+		ks, vs := godot.dictionary_keys(&d), godot.dictionary_values(&d)
+		kv, vv := godot.variant(ks), godot.variant(vs)
+		godot.array_push_back(&out, kv)
+		godot.array_push_back(&out, vv)
+		gde.variant_destroy(&kv)
+		gde.variant_destroy(&vv)
+		godot.destroy[.ARRAY](&ks)
+		godot.destroy[.ARRAY](&vs)
 		for &k in godot.array_read(&keys) {
 			godot.array_push_back(&out, godot.variant(godot.dictionary_has(&d, k)))
 			got := godot.dictionary_get(&d, k, default)
@@ -1425,6 +1434,9 @@ bag_replaced_dict :: proc(self: ^Bag, dicts: godot.Array, keys: godot.Array, key
 			godot.array_push_back(&out, godot.variant(found))
 			godot.array_push_back(&out, value)
 			gde.variant_destroy(&value)
+			key := godot.dictionary_find_key(&d, k)
+			godot.array_push_back(&out, key)
+			gde.variant_destroy(&key)
 		}
 	}
 	return out

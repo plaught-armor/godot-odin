@@ -2337,6 +2337,7 @@ dictionary_has_all :: proc "contextless" (self: ^Dictionary, keys: Array) -> boo
 	return __ret != 0
 }
 dictionary_find_key :: proc "contextless" (self: ^Dictionary, value: Variant) -> Variant {
+	if k, ok := dict_stored_find_key(self, value); ok { return k }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "find_key", 1988825835) }
 	__a_value := value
@@ -2362,6 +2363,7 @@ dictionary_hash :: proc "contextless" (self: ^Dictionary) -> i64 {
 	return __ret
 }
 dictionary_keys :: proc "contextless" (self: ^Dictionary) -> Array {
+	if a, ok := dict_stored_list(self, false); ok { return a }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "keys", 4144163970) }
 	__ret: Array
@@ -2369,6 +2371,7 @@ dictionary_keys :: proc "contextless" (self: ^Dictionary) -> Array {
 	return __ret
 }
 dictionary_values :: proc "contextless" (self: ^Dictionary) -> Array {
+	if a, ok := dict_stored_list(self, true); ok { return a }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "values", 4144163970) }
 	__ret: Array

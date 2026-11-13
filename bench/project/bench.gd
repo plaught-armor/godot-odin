@@ -217,6 +217,12 @@ func _initialize() -> void:
 	_report("Odin dictionary_get on ints", func() -> float: return b.dict_ns(5, N))
 	_report("Engine Dictionary.has call on Strings", func() -> float: return b.dict_ns(6, N))
 	_report("Odin dictionary_has on Strings", func() -> float: return b.dict_ns(7, N))
+	_report("Engine Dictionary.keys call, 64 ints", func() -> float: return b.dict_ns(8, N / 10))
+	_report("Odin dictionary_keys, 64 ints", func() -> float: return b.dict_ns(9, N / 10))
+	_report("Engine Dictionary.values call, 64 ints", func() -> float: return b.dict_ns(10, N / 10))
+	_report("Odin dictionary_values, 64 ints", func() -> float: return b.dict_ns(11, N / 10))
+	_report("Engine Dictionary.find_key call, 41st of 64", func() -> float: return b.dict_ns(12, N))
+	_report("Odin dictionary_find_key, 41st of 64", func() -> float: return b.dict_ns(13, N))
 	_report("GDScript -> Odin, typed, String param", func() -> float: return _string_param(b, false))
 	_report("GDScript -> Odin, typed, string param", func() -> float: return _string_param(b, true))
 	var table: Dictionary = {}

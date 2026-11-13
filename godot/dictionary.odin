@@ -27,6 +27,12 @@ DICT_MAP_OFFSET :: 16
 @(private)
 DICT_KEY_TYPE_OFFSET :: DICT_MAP_OFFSET + size_of(Dict_Map)
 
+// Where DictionaryPrivate keeps the value type of a typed Dictionary, the first field of its second
+// ContainerTypeValidate: past the first one's type (padded to 8 bytes), class name, script and
+// `where` pointer. NIL when the values are untyped.
+@(private)
+DICT_VALUE_TYPE_OFFSET :: DICT_KEY_TYPE_OFFSET + 32
+
 // The engine's HashMap<Variant, Variant> (core/templates/hash_map.h): a Robin Hood table of
 // `hash_table_size_primes[capacity_idx]` slots, each an element pointer and its key's hash, 0 for
 // an empty slot, with the elements also linked in insertion order.
@@ -96,6 +102,12 @@ dict_map :: #force_inline proc "contextless" (d: ^Dictionary) -> ^Dict_Map {
 @(private)
 dict_key_type :: #force_inline proc "contextless" (d: ^Dictionary) -> gde.VariantType {
 	return gde.VariantType((^i32)(uintptr((^rawptr)(d)^) + DICT_KEY_TYPE_OFFSET)^)
+}
+
+// The value type `d` is typed with, NIL when untyped. Only when `dict_layout_known`.
+@(private)
+dict_value_type :: #force_inline proc "contextless" (d: ^Dictionary) -> gde.VariantType {
+	return gde.VariantType((^i32)(uintptr((^rawptr)(d)^) + DICT_VALUE_TYPE_OFFSET)^)
 }
 
 // The entry count of `d`, read from its storage. Only when `dict_layout_known`; the generated `size`
@@ -263,6 +275,81 @@ dict_stored_get :: #force_inline proc "contextless" (d: ^Dictionary, key, defaul
 	return stored_copy((^Variant)(&default)), true
 }
 
+// The first element of `m`, in insertion order, whose value equals `v` under Variant::hash_compare,
+// as Dictionary.find_key compares, both values comparing as `E`s; nil when none does.
+@(private)
+dict_value_scan :: proc "contextless" ($E: typeid, m: ^Dict_Map, v: ^Variant) -> ^Dict_Element {
+	tag := variant_tag(v)
+	e := m.head
+	for _ in 0 ..< m.size {
+		hit := variant_tag(&e.value) == tag
+		when E != Array_Nil { hit = hit && array_value_same(E, &e.value, v) }
+		if hit { return e }
+		e = e.next
+	}
+	return nil
+}
+
+// Dictionary.find_key in place: a copy of the first key, in insertion order, whose value equals
+// `value`, or a nil Variant when none does. False when the engine answers: before
+// `check_dict_layout` proved the layout, for a value of a type the scan does not compare, and for
+// one a typed Dictionary would convert.
+dict_stored_find_key :: proc "contextless" (d: ^Dictionary, value: Variant) -> (Variant, bool) {
+	if !dict_layout_known { return {}, false }
+	value := variant_reload(value)
+	v := (^Variant)(&value)
+	typed := dict_value_type(d)
+	if typed != .NIL && typed != variant_tag(v) { return {}, false }
+	m := dict_map(d)
+	e: ^Dict_Element
+	switch array_elem(variant_tag(v)) {
+	case .ENGINE: return {}, false
+	case .NIL:    e = dict_value_scan(Array_Nil, m, v)
+	case .BOOL:   e = dict_value_scan(u8, m, v)
+	case .WORD:   e = dict_value_scan(i64, m, v)
+	case .DOUBLE: e = dict_value_scan(f64, m, v)
+	case .REAL_2: e = dict_value_scan([2]f32, m, v)
+	case .REAL_3: e = dict_value_scan([3]f32, m, v)
+	case .REAL_4: e = dict_value_scan([4]f32, m, v)
+	case .INT_2:  e = dict_value_scan([2]i32, m, v)
+	case .INT_3:  e = dict_value_scan([3]i32, m, v)
+	case .INT_4:  e = dict_value_scan([4]i32, m, v)
+	case .STRING: e = dict_value_scan(String, m, v)
+	case .NAME:   e = dict_value_scan(rawptr, m, v)
+	}
+	if e == nil { return {}, true }
+	return stored_copy(&e.key), true
+}
+
+// Dictionary.keys, or Dictionary.values for VALUES, in place: a new untyped Array of copies of the
+// keys or values of `d` in insertion order, written into its storage. False when the engine
+// answers: before `check_dict_layout` proved the layout, and when they are typed, as the engine
+// types the Array then.
+dict_stored_list :: proc "contextless" (d: ^Dictionary, $VALUES: bool) -> (Array, bool) {
+	if !dict_layout_known { return {}, false }
+	when VALUES {
+		if dict_value_type(d) != .NIL { return {}, false }
+	} else {
+		if dict_key_type(d) != .NIL { return {}, false }
+	}
+	m := dict_map(d)
+	out := array_new()
+	if m.size == 0 { return out, true }
+	// A new Array is its storage's only owner, so its NIL elements can be overwritten in place.
+	array_resize(&out, i64(m.size))
+	xs := array_stored(&out)
+	if len(xs) != int(m.size) {
+		destroy[.ARRAY](&out)
+		return {}, false
+	}
+	e := m.head
+	for &x in xs {
+		x = stored_copy(&e.value) when VALUES else stored_copy(&e.key)
+		e = e.next
+	}
+	return out, true
+}
+
 // Sets `dict_layout_known` from Dictionaries of known contents: one holding keys of every type the
 // probe hashes, grown through several capacities, one emptied by erasing, and a typed one. Every key
 // must be found where the engine's own lookup finds it, in the insertion order its key list gives.
@@ -307,11 +394,12 @@ check_dict_layout :: proc "contextless" () {
 	no_script: Variant
 	t := dictionary_new()
 	defer destroy[.DICTIONARY](&t)
-	gde.dictionary_set_typed(&t, .INT, &no_class, &no_script, .NIL, &no_class, &no_script)
+	gde.dictionary_set_typed(&t, .INT, &no_class, &no_script, .FLOAT, &no_class, &no_script)
 
 	dict_layout_known = name_text_ok && dict_holds(&d) &&
 		dict_map(&e).size == 0 && dictionary_size(&e) == 0 &&
-		dict_key_type(&t) == .INT && dict_key_type(&d) == .NIL
+		dict_key_type(&t) == .INT && dict_key_type(&d) == .NIL &&
+		dict_value_type(&t) == .FLOAT && dict_value_type(&d) == .NIL
 	if !dict_layout_known { return }
 	// The lookups themselves, which need the layout known.
 	keys := dictionary_keys(&d)
