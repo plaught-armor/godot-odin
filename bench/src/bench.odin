@@ -1061,6 +1061,12 @@ Color_Op :: enum i64 {
 	LINEAR_TO_SRGB,      // color_linear_to_srgb
 	FROM_HSV_CALL,       // the engine's Color.from_hsv
 	FROM_HSV,            // color_from_hsv
+	TO_HTML_CALL,        // the engine's Color.to_html with alpha
+	TO_HTML,             // color_to_html with alpha
+	FROM_STRING_CALL,    // the engine's Color.from_string on a name with spaces
+	FROM_STRING,         // color_from_string on a name with spaces
+	FROM_OK_HSL_CALL,    // the engine's Color.from_ok_hsl
+	FROM_OK_HSL,         // color_from_ok_hsl
 }
 
 // Nanoseconds per `kind` round on a Color reread through a volatile load each round, as in
@@ -1074,6 +1080,12 @@ color_ns :: proc(self: ^Bench, kind: Color_Op, n: i64) -> f64 {
 	lerp_fn := godot.builtin_method(.COLOR, "lerp", 402949615)
 	srgb_fn := godot.builtin_method(.COLOR, "linear_to_srgb", 3334027602)
 	hsv_fn := godot.builtin_method(.COLOR, "from_hsv", 1573799446)
+	html_fn := godot.builtin_method(.COLOR, "to_html", 3429816538)
+	from_string_fn := godot.builtin_method(.COLOR, "from_string", 3755044230)
+	ok_hsl_fn := godot.builtin_method(.COLOR, "from_ok_hsl", 1573799446)
+	with_alpha := true
+	name := godot.string_of("Dark Olive Green")
+	defer godot.destroy[.STRING](&name)
 	sum: f32
 	start := time.tick_now()
 	switch kind {
@@ -1112,6 +1124,39 @@ color_ns :: proc(self: ^Bench, kind: Color_Op, n: i64) -> f64 {
 		}
 	case .FROM_HSV:
 		for _ in 0 ..< n { sum += godot.color_from_hsv(f64(intrinsics.volatile_load(&ref).r) + h, s, val, alpha).r }
+	case .TO_HTML_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&with_alpha}
+			r: godot.String
+			html_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += f32(godot.string_read(&r)[1])
+			godot.destroy[.STRING](&r)
+		}
+	case .TO_HTML:
+		for _ in 0 ..< n {
+			r := godot.color_to_html(intrinsics.volatile_load(&ref), with_alpha)
+			sum += f32(godot.string_read(&r)[1])
+			godot.destroy[.STRING](&r)
+		}
+	case .FROM_STRING_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&name, intrinsics.volatile_load(&ref)}
+			r: godot.Color
+			from_string_fn(nil, &args[0], &r, 2)
+			sum += r.r
+		}
+	case .FROM_STRING:
+		for _ in 0 ..< n { sum += godot.color_from_string(name, intrinsics.volatile_load(&ref)^).r }
+	case .FROM_OK_HSL_CALL:
+		for _ in 0 ..< n {
+			hue := f64(intrinsics.volatile_load(&ref).r) + h
+			args := [4]gde.ConstTypePtr{&hue, &s, &val, &alpha}
+			r: godot.Color
+			ok_hsl_fn(nil, &args[0], &r, 4)
+			sum += r.r
+		}
+	case .FROM_OK_HSL:
+		for _ in 0 ..< n { sum += godot.color_from_ok_hsl(f64(intrinsics.volatile_load(&ref).r) + h, s, val, alpha).r }
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)

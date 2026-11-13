@@ -126,6 +126,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
 	godot.method(b, "replaced_colors", bag_replaced_colors, {"a", "b", "c", "x", "n"})
+	godot.method(b, "replaced_color_texts", bag_replaced_color_texts, {"a", "s", "d", "x", "h", "sat", "l", "r"})
 	godot.method(b, "replaced_bases", bag_replaced_bases, {"a", "b", "v", "w", "x", "n"})
 	godot.method(b, "replaced_transforms2d", bag_replaced_transforms2d, {"a", "b", "p", "q", "x", "y"})
 	godot.method(b, "replaced_transforms3d", bag_replaced_transforms3d, {"a", "b", "v", "w", "m", "x"})
@@ -1344,6 +1345,33 @@ bag_replaced_colors :: proc(self: ^Bag, a, b, c: godot.Color, x: f64, n: i64) ->
 	put_color_result(&o, godot.color_from_hsv(f64(a.r), f64(b.g), f64(a.b), x))
 	put_color_result(&o, godot.color_from_rgbe9995(n))
 	put_color_result(&o, godot.color_from_rgba8(n, n >> 40, n % 300, -n))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The Color String procs and from_ok_hsl, then the RID procs, in the order _color_text_results
+// in test.gd calls the engine's: a String by its length and then its characters.
+bag_replaced_color_texts :: proc(self: ^Bag, a: godot.Color, s: godot.String, d: godot.Color, x, h, sat, l: f64, r: godot.RID) -> godot.PackedInt64Array {
+	o: Color_Results
+	a, r := a, r
+	for alpha in ([2]bool{false, true}) {
+		t := godot.color_to_html(&a, alpha)
+		defer godot.destroy[.STRING](&t)
+		chars := godot.string_read(&t)
+		put_color_result(&o, len(chars))
+		for c in chars { put_color_result(&o, c) }
+	}
+	put_color_result(&o, godot.color_html(s))
+	put_color_result(&o, godot.color_html_is_valid(s))
+	put_color_result(&o, godot.color_from_string(s, d))
+	put_color_result(&o, godot.color_new_from_string(s))
+	put_color_result(&o, godot.color_new_from_string_float(s, x))
+	put_color_result(&o, godot.color_from_ok_hsl(h, sat, l, x))
+	put_color_result(&o, godot.rid_is_valid(&r))
+	put_color_result(&o, godot.rid_get_id(&r))
+	empty, copied := godot.rid_new(), godot.rid_new_from_rid(r)
+	put_color_result(&o, godot.rid_is_valid(&empty))
+	put_color_result(&o, godot.rid_get_id(&empty))
+	put_color_result(&o, godot.rid_get_id(&copied))
 	return godot.packed_of_int64(o.v[:o.n])
 }
 

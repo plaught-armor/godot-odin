@@ -861,72 +861,6 @@ string_humanize_size :: proc "contextless" (size: i64) -> String {
 	__fn(nil, &__args[0], &__ret, 1)
 	return __ret
 }
-color_new_from_string :: proc "contextless" (code: String) -> (__r: Color) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.COLOR, 5) }
-	__a_code := code
-	__args := [1]gde.ConstTypePtr{&__a_code}
-	__fn(&__r, &__args[0])
-	return
-}
-color_new_from_string_float :: proc "contextless" (code: String, alpha: f64) -> (__r: Color) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.COLOR, 6) }
-	__a_code := code
-	__a_alpha := alpha
-	__args := [2]gde.ConstTypePtr{&__a_code, &__a_alpha}
-	__fn(&__r, &__args[0])
-	return
-}
-color_to_html :: proc "contextless" (self: ^Color, with_alpha: bool) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "to_html", 3429816538) }
-	__a_with_alpha := u8(with_alpha)
-	__args := [1]gde.ConstTypePtr{&__a_with_alpha}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-color_html :: proc "contextless" (rgba: String) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "html", 2500054655) }
-	__a_rgba := rgba
-	__args := [1]gde.ConstTypePtr{&__a_rgba}
-	__ret: Color
-	__fn(nil, &__args[0], &__ret, 1)
-	return __ret
-}
-color_html_is_valid :: proc "contextless" (color: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "html_is_valid", 2942997125) }
-	__a_color := color
-	__args := [1]gde.ConstTypePtr{&__a_color}
-	__ret: u8
-	__fn(nil, &__args[0], &__ret, 1)
-	return __ret != 0
-}
-color_from_string :: proc "contextless" (str: String, default: Color) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "from_string", 3755044230) }
-	__a_str := str
-	__a_default := default
-	__args := [2]gde.ConstTypePtr{&__a_str, &__a_default}
-	__ret: Color
-	__fn(nil, &__args[0], &__ret, 2)
-	return __ret
-}
-color_from_ok_hsl :: proc "contextless" (h: f64, s: f64, l: f64, alpha: f64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "from_ok_hsl", 1573799446) }
-	__a_h := h
-	__a_s := s
-	__a_l := l
-	__a_alpha := alpha
-	__args := [4]gde.ConstTypePtr{&__a_h, &__a_s, &__a_l, &__a_alpha}
-	__ret: Color
-	__fn(nil, &__args[0], &__ret, 4)
-	return __ret
-}
 string_name_new :: proc "contextless" () -> (__r: StringName) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.STRING_NAME, 0) }
@@ -1972,34 +1906,6 @@ node_path_is_empty :: proc "contextless" (self: ^NodePath) -> bool {
 	__ret: u8
 	__fn(self, nil, &__ret, 0)
 	return __ret != 0
-}
-rid_new :: proc "contextless" () -> (__r: RID) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.RID, 0) }
-	__fn(&__r, nil)
-	return
-}
-rid_new_from_rid :: proc "contextless" (from: RID) -> (__r: RID) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.RID, 1) }
-	__a_from := from
-	__args := [1]gde.ConstTypePtr{&__a_from}
-	__fn(&__r, &__args[0])
-	return
-}
-rid_is_valid :: proc "contextless" (self: ^RID) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.RID, "is_valid", 3918633141) }
-	__ret: u8
-	__fn(self, nil, &__ret, 0)
-	return __ret != 0
-}
-rid_get_id :: proc "contextless" (self: ^RID) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.RID, "get_id", 3173160232) }
-	__ret: i64
-	__fn(self, nil, &__ret, 0)
-	return __ret
 }
 callable_new :: proc "contextless" () -> (__r: Callable) {
 	@(static) __fn: gde.PtrConstructor

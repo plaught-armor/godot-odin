@@ -516,6 +516,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_vectors(b2)
 	failures += _check_replaced_vectorsi(b2)
 	failures += _check_replaced_colors(b2)
+	failures += _check_replaced_color_texts(b2)
 	failures += _check_replaced_bases(b2)
 	failures += _check_replaced_transforms(b2)
 	failures += _check_replaced_quaternions(b2)
@@ -959,6 +960,119 @@ func _check_replaced_colors(b2: Bag) -> int:
 		failures += _check_color_case(b2, v[0], v[1], v[2], rng.randf_range(-2, 2), n)
 	return failures
 
+
+# The engine's Color String methods and from_ok_hsl, then RID's, in the order
+# Bag.replaced_color_texts calls the Odin procs: a String by its length and then its characters.
+func _color_text_results(a: Color, s: String, d: Color, x: float, h: float, sat: float, l: float, r: RID) -> PackedInt64Array:
+	var o: PackedInt64Array = PackedInt64Array()
+	for t: String in [a.to_html(false), a.to_html(true)]:
+		o.append(t.length())
+		for k: int in t.length():
+			o.append(t.unicode_at(k))
+	for v: Variant in [Color.html(s), Color.html_is_valid(s), Color.from_string(s, d), Color(s),
+			Color(s, x), Color.from_ok_hsl(h, sat, l, x), r.is_valid(), r.get_id(), RID().is_valid(),
+			RID().get_id(), RID(r).get_id()]:
+		_put_color_result(o, v)
+	return o
+
+
+func _check_color_text_case(b2: Bag, a: Color, s: String, d: Color, x: float, h: float, sat: float, l: float, r: RID) -> int:
+	var want: PackedInt64Array = _color_text_results(a, s, d, x, h, sat, l, r)
+	var got: PackedInt64Array = b2.replaced_color_texts(a, s, d, x, h, sat, l, r)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_color_texts(%s, %s, %s, %s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, s.c_escape(), d, x, h, sat, l, r.get_id(), at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# The Color String procs, from_ok_hsl and the RID procs on edge cases and then on seeded random
+# ones. Codes: every digit count around 3, 4, 6 and 8, with and without '#', an invalid digit in
+# each place (a valid digit before an invalid one still parses, and an invalid one first gives a
+# negative component), and characters whose low byte is a hex digit, which html reads as that
+# digit but html_is_valid rejects. Names: each separator the lookup drops, mixed case, characters
+# that upper-case to ASCII letters (U+0131, U+017F), a name one letter too long, an embedded NUL,
+# characters of every UTF-8 length for the error text and the bounds between lengths, every name in
+# the engine's table (core/math/color_names.inc), in its own spelling and lower-cased with spaces,
+# and names past either end of the table. OkHSL: every hue, saturation and lightness below crossed
+# with each other: lightness 0 and 1, saturation either side of 0.8, hues around and outside the
+# circle, and NaN and infinite inputs.
+func _check_replaced_color_texts(b2: Bag) -> int:
+	var failures: int = 0
+	var codes: Array[String] = ["", "#", "f", "#ff", "fff", "#fff", "#FfF8", "abcdef", "#AbCdEf12",
+		"#12345", "1234567", "#123456789", "#gg0", "#0g0", "#00g", "#g00f", "#0g", "#fg0000",
+		"#gf0000", "#ff00ffzz", "#ff00ff5z", "#00ff00g0", "\u0130" + "00", "#\u0129" + "12",
+		"\u0161" + "bc", "#\u0146" + "6\u0146" + "6aa", "##fff", " #fff", "#fff ", "red", "Red",
+		"Alice Blue", "alice-blue", "ALICE_BLUE", "a.l.i.c.e'blue", "  white  ", "whitesmoke",
+		"web gray", "Rebecca_Purple", "nonexistent", "\u0131vory", "\u017Feashell",
+		"red" + String.chr(0), "medium spring green", "mediumspringgreenx", "transparent",
+		"#transparent", "gold\u00E9n", "\u00ABred", "-_'. ", "#\u20AC12", "red\U01F600", "\u0800\uFFFDblue",
+		"a\u007Fb\u0080\u07FF", "\U10FFFFz\U010000", "aaa", "zzz", "yellow green x"]
+	var colors: Array[Color] = [Color(0, 0, 0, 0), Color(1, 1, 1, 1), Color(0.5, 0.25, 0.75, 0.5),
+		Color(-0.5, 1.5, 2, -1), Color(INF, -INF, NAN, 1), Color(0.5 / 255, 1.5 / 255, 254.5 / 255, 255.5 / 255),
+		Color(3e9, -3e9, 0.0019607844, 0.998), Color(0.1, 0.2, 0.3, 0.4)]
+	var xs: Array[float] = [1.0, 0.5, 0.0, -0.5, 2.0, NAN, INF, 0.25]
+	var hs: Array[float] = [0.0, 0.25, 0.5, 0.75, 1.0 / 3, 0.9, -0.3, 1.7, INF, NAN, 0.123, 0.61]
+	var sats: Array[float] = [0.0, 0.5, 0.79, 0.8, 0.81, 1.0, 1.5, -0.2, NAN, 0.3]
+	var ls: Array[float] = [0.0, 1.0, 0.5, 0.01, 0.99, 1e-6, -0.1, 1.2, NAN, 0.7, 0.3]
+	var ids: Array[int] = [0, 1, -1, 0x123456789abcdef0, 9223372036854775807, -9223372036854775807 - 1]
+	for i: int in codes.size():
+		for j: int in [0, 3, 7]:
+			var k: int = i + j
+			failures += _check_color_text_case(b2, colors[k % colors.size()], codes[i],
+				colors[(k + 1) % colors.size()], xs[k % xs.size()], hs[k % hs.size()],
+				sats[k % sats.size()], ls[k % ls.size()], rid_from_int64(ids[k % ids.size()]))
+	var names: Array[String] = ["ALICE_BLUE", "ANTIQUE_WHITE", "AQUA", "AQUAMARINE", "AZURE", "BEIGE", "BISQUE", "BLACK",
+		"BLANCHED_ALMOND", "BLUE", "BLUE_VIOLET", "BROWN", "BURLYWOOD", "CADET_BLUE", "CHARTREUSE",
+		"CHOCOLATE", "CORAL", "CORNFLOWER_BLUE", "CORNSILK", "CRIMSON", "CYAN", "DARK_BLUE", "DARK_CYAN",
+		"DARK_GOLDENROD", "DARK_GRAY", "DARK_GREEN", "DARK_KHAKI", "DARK_MAGENTA", "DARK_OLIVE_GREEN",
+		"DARK_ORANGE", "DARK_ORCHID", "DARK_RED", "DARK_SALMON", "DARK_SEA_GREEN", "DARK_SLATE_BLUE",
+		"DARK_SLATE_GRAY", "DARK_TURQUOISE", "DARK_VIOLET", "DEEP_PINK", "DEEP_SKY_BLUE", "DIM_GRAY",
+		"DODGER_BLUE", "FIREBRICK", "FLORAL_WHITE", "FOREST_GREEN", "FUCHSIA", "GAINSBORO", "GHOST_WHITE",
+		"GOLD", "GOLDENROD", "GRAY", "GREEN", "GREEN_YELLOW", "HONEYDEW", "HOT_PINK", "INDIAN_RED",
+		"INDIGO", "IVORY", "KHAKI", "LAVENDER", "LAVENDER_BLUSH", "LAWN_GREEN", "LEMON_CHIFFON",
+		"LIGHT_BLUE", "LIGHT_CORAL", "LIGHT_CYAN", "LIGHT_GOLDENROD", "LIGHT_GRAY", "LIGHT_GREEN",
+		"LIGHT_PINK", "LIGHT_SALMON", "LIGHT_SEA_GREEN", "LIGHT_SKY_BLUE", "LIGHT_SLATE_GRAY",
+		"LIGHT_STEEL_BLUE", "LIGHT_YELLOW", "LIME", "LIME_GREEN", "LINEN", "MAGENTA", "MAROON",
+		"MEDIUM_AQUAMARINE", "MEDIUM_BLUE", "MEDIUM_ORCHID", "MEDIUM_PURPLE", "MEDIUM_SEA_GREEN",
+		"MEDIUM_SLATE_BLUE", "MEDIUM_SPRING_GREEN", "MEDIUM_TURQUOISE", "MEDIUM_VIOLET_RED",
+		"MIDNIGHT_BLUE", "MINT_CREAM", "MISTY_ROSE", "MOCCASIN", "NAVAJO_WHITE", "NAVY_BLUE", "OLD_LACE",
+		"OLIVE", "OLIVE_DRAB", "ORANGE", "ORANGE_RED", "ORCHID", "PALE_GOLDENROD", "PALE_GREEN",
+		"PALE_TURQUOISE", "PALE_VIOLET_RED", "PAPAYA_WHIP", "PEACH_PUFF", "PERU", "PINK", "PLUM",
+		"POWDER_BLUE", "PURPLE", "REBECCA_PURPLE", "RED", "ROSY_BROWN", "ROYAL_BLUE", "SADDLE_BROWN",
+		"SALMON", "SANDY_BROWN", "SEA_GREEN", "SEASHELL", "SIENNA", "SILVER", "SKY_BLUE", "SLATE_BLUE",
+		"SLATE_GRAY", "SNOW", "SPRING_GREEN", "STEEL_BLUE", "TAN", "TEAL", "THISTLE", "TOMATO",
+		"TRANSPARENT", "TURQUOISE", "VIOLET", "WEB_GRAY", "WEB_GREEN", "WEB_MAROON", "WEB_PURPLE", "WHEAT",
+		"WHITE", "WHITE_SMOKE", "YELLOW", "YELLOW_GREEN"]
+	for i: int in names.size():
+		var name: String = names[i] if i % 2 == 0 else names[i].to_lower().replace("_", " ")
+		failures += _check_color_text_case(b2, colors[i % colors.size()], name, colors[(i + 1) % colors.size()],
+			xs[i % xs.size()], hs[i % hs.size()], sats[i % sats.size()], ls[i % ls.size()], rid_from_int64(ids[i % ids.size()]))
+	for h: float in hs:
+		for sat: float in sats:
+			for l: float in ls:
+				failures += _check_color_text_case(b2, colors[2], "#fff", colors[3], 0.5, h, sat, l, rid_from_int64(1))
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261113
+	var pool: String = "0123456789abcdefABCDEFgz#  -_.'\u0130\u0131\u017F\u0161REDBLUEgreen"
+	for round: int in 500:
+		var s: String = ""
+		if rng.randi_range(0, 1) == 0:
+			s = codes[rng.randi_range(0, codes.size() - 1)]
+		for m: int in rng.randi_range(0, 9):
+			s += pool[rng.randi_range(0, pool.length() - 1)]
+		var e: Array[Color] = []
+		for c: int in 2:
+			var v: Color = Color()
+			for m: int in 4:
+				v[m] = rng.randf_range(-0.2, 1.2) if rng.randi_range(0, 3) != 0 else rng.randi_range(0, 255) / 255.0 + 0.5 / 255
+			e.append(v)
+		failures += _check_color_text_case(b2, e[0], s, e[1], rng.randf_range(-0.5, 1.5),
+			rng.randf_range(-1.5, 1.5), rng.randf_range(-0.1, 1.1), rng.randf_range(-0.05, 1.05),
+			rid_from_int64((rng.randi() << 32) | rng.randi()))
+	return failures
 
 func _put_basis_result(out: PackedInt64Array, v: Variant) -> void:
 	match typeof(v):

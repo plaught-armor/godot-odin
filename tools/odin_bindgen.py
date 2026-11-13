@@ -53,8 +53,7 @@ STRING_IN_PLACE = {
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
-# same name and signature, read in place, godot/color.odin each Color one, godot/basis.odin each
-# Basis one, and
+# same name and signature, read in place, godot/basis.odin each Basis one, and
 # example/project/test.gd checks it against the engine's. Listed with
 # the engine version checked in docs/replaced.md.
 REPLACED = {
@@ -73,27 +72,6 @@ REPLACED = {
     ("String", "replace"),
     ("String", "replacen"),
     ("String", "split"),
-    ("Color", "to_argb32"),
-    ("Color", "to_abgr32"),
-    ("Color", "to_rgba32"),
-    ("Color", "to_argb64"),
-    ("Color", "to_abgr64"),
-    ("Color", "to_rgba64"),
-    ("Color", "clamp"),
-    ("Color", "inverted"),
-    ("Color", "lerp"),
-    ("Color", "lightened"),
-    ("Color", "darkened"),
-    ("Color", "blend"),
-    ("Color", "get_luminance"),
-    ("Color", "srgb_to_linear"),
-    ("Color", "linear_to_srgb"),
-    ("Color", "is_equal_approx"),
-    ("Color", "hex"),
-    ("Color", "hex64"),
-    ("Color", "from_hsv"),
-    ("Color", "from_rgbe9995"),
-    ("Color", "from_rgba8"),
     ("Basis", "inverse"),
     ("Basis", "transposed"),
     ("Basis", "orthonormalized"),
@@ -117,15 +95,9 @@ REPLACED = {
     ("Basis", "from_euler"),
 }
 
-# Builtin constructors defined in place under the generated name: godot/color.odin builds a Color
-# from floats or another Color, and godot/basis.odin a Basis from axes, an axis and angle or a
-# quaternion, without a call into the engine.
+# Builtin constructors defined in place under the generated name: godot/basis.odin builds a Basis
+# from axes, an axis and angle or a quaternion, without a call into the engine.
 REPLACED_CONSTRUCTORS = {
-    "color_new",
-    "color_new_from_color",
-    "color_new_from_color_float",
-    "color_new_from_float_float_float",
-    "color_new_from_float_float_float_float",
     "basis_new",
     "basis_new_from_basis",
     "basis_new_from_quaternion",
@@ -136,8 +108,8 @@ REPLACED_CONSTRUCTORS = {
 # Builtins whose methods and constructors all live in place under the generated name and
 # signature: godot/vector.odin computes the float vectors in single precision as the engine does,
 # godot/vectori.odin the int vectors, godot/transform.odin Transform2D and Transform3D, and
-# godot/quaternion.odin Quaternion.
-REPLACED_TYPES = {"Vector2", "Vector3", "Vector4", "Vector2i", "Vector3i", "Vector4i", "Transform2D", "Transform3D", "Quaternion", "Plane", "AABB", "Rect2", "Rect2i", "Projection"}
+# godot/quaternion.odin Quaternion, godot/color.odin Color and godot/rid.odin RID.
+REPLACED_TYPES = {"Vector2", "Vector3", "Vector4", "Vector2i", "Vector3i", "Vector4i", "Transform2D", "Transform3D", "Quaternion", "Plane", "AABB", "Rect2", "Rect2i", "Projection", "Color", "RID"}
 
 class Interface:
     """The C interface: types, then one proc variable per interface function and a loader."""

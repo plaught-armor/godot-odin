@@ -88,17 +88,19 @@ conversion saturates or wraps instead, so `i_of_double` checks the range first.
 
 ## Color
 
-The `Color` entries in `REPLACED`, and the constructors in `REPLACED_CONSTRUCTORS`, are defined in
-`godot/color.odin` under the same names and signatures: the constructors from floats and from
-another Color, the `to_*32` and `to_*64` packings, `clamp`, `inverted`, `lerp`, `lightened`,
+The `Color` methods and constructors are all defined in `godot/color.odin` under the same names
+and signatures: the constructors from floats, from another Color and from a String, the `to_*32`
+and `to_*64` packings, `clamp`, `inverted`, `lerp`, `lightened`,
 `darkened`, `blend`, `get_luminance`, `srgb_to_linear`, `linear_to_srgb`, `is_equal_approx`, `hex`,
-`hex64`, `from_hsv`, `from_rgbe9995` and `from_rgba8`. Each copies the engine's single-precision
+`hex64`, `from_hsv`, `from_rgbe9995`, `from_rgba8`, `to_html`, `html`, `html_is_valid`,
+`from_string` and `from_ok_hsl`. Each copies the engine's single-precision
 operation order and its libm calls (`powf`, `fmodf`, `floorf`), so results match bit for bit.
 Checked against Godot 4.7-stable by `_check_replaced_colors`, which compares every result from
 GDScript and from `Bag.replaced_colors` on edge cases (signed zeros, values outside 0 to 1 and past
 `int32` once scaled, infinities, NaNs, the sRGB thresholds, channels half a step from a byte,
-transparent colors) and on 2000 seeded random cases. The String methods (`to_html`, `html`,
-`html_is_valid`, `from_string`, the String constructors) and `from_ok_hsl` still call the engine.
+transparent colors) and on 2000 seeded random cases. `_check_replaced_color_texts` does the same
+for the String methods and `from_ok_hsl` against `Bag.replaced_color_texts`, on edge codes and names
+and on 500 seeded random Strings and OkHSL inputs.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -106,6 +108,9 @@ transparent colors) and on 2000 seeded random cases. The String methods (`to_htm
 | `Color.lerp` | 2.5 ns | 0.6 ns |
 | `Color.linear_to_srgb` | 15.0 ns | 11.7 ns |
 | `Color.from_hsv` | 12.8 ns | 2.4 ns |
+| `Color.to_html` | 21.1 ns | 10.8 ns |
+| `Color.from_string` | 172 ns | 77 ns |
+| `Color.from_ok_hsl` | 116 ns | 105 ns |
 
 The packings round each channel half away from zero as `roundf` does, but inline: within the
 `int32` range the fraction `x - trunc(x)` is exact, and the result matches `roundf` on every one of
@@ -118,6 +123,34 @@ A NaN result may carry a different sign or payload than the engine's, so the tes
 NaN as one value. `srgb_to_linear` depends on the last bit of the double constant
 `1.0 / (1.0 + 0.055)`; the edge cases include 17700158, the least float where a one-bit change
 shows.
+
+`html` reads each digit as the engine's `_parse_col4` does, through a `char`, so only a
+character's low byte counts: U+0130 reads as `0`, though `html_is_valid`, which tests whole
+characters, rejects it. A valid first digit of a pair before an invalid second still gives a
+positive value, as in the engine; only a negative component, or a digit count other than 3, 4, 6
+or 8 after an optional `#`, is an error. Names are looked up as the engine does, without the
+characters `" -_'."` and upper-cased by the engine's case table, so U+0131 and U+017F match `I`
+and `S`; the table is the engine's `color_names.inc` with `_` removed, sorted for a binary search.
+The errors the engine prints for an invalid code (`Invalid color code: ...`) or, from the String
+constructors, an invalid name (`Invalid color name: ...`) are printed by the same methods here,
+encoded to UTF-8 as the engine encodes them, and the result is then `Color()`; the test checks
+that every message is printed as often by the replacements as by the engine. The benched name is
+`"Dark Olive Green"`.
+
+`from_ok_hsl` follows `thirdparty/misc/ok_color.h` operation for operation, with glibc's `cosf`,
+`sinf` and `powf` as the engine imports them. The engine links its own `cbrtf`, FreeBSD's as musl
+carries it (two Newton steps in double), not glibc's, so `godot/color.odin` carries the same one;
+`fmin` and `fmax` follow the engine's inlined form, which returns the second argument when the
+first is NaN. The constants the engine folds in single precision (`2 * pi`, `(1 + 0.206) / (1 +
+0.03)`) are written by their bits. Its cost stays near the engine's because those libm calls
+dominate it.
+
+## RID
+
+The `RID` methods and constructors are defined in `godot/rid.odin`: an RID is one 64-bit id, so
+`is_valid` tests it against zero, `get_id` returns it, and the constructors give zero or a copy.
+`_check_replaced_color_texts` checks them against the engine's on zero, one, -1 and the extremes
+of `int64` and on random ids. They are not benched; each is a load and at most a compare.
 
 ## Basis
 

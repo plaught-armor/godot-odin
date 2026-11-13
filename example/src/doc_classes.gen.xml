@@ -231,6 +231,9 @@
 		<method name="replaced_colors">
 			<description>Every replaced Color proc on [code]a[/code] and the other arguments, in the order _color_results in test.gd calls the engine's methods.</description>
 		</method>
+		<method name="replaced_color_texts">
+			<description>The Color String procs and from_ok_hsl, then the RID procs, in the order _color_text_results in test.gd calls the engine's: a String by its length and then its characters.</description>
+		</method>
 		<method name="replaced_bases">
 			<description>The Basis procs that replace engine methods (godot/basis.odin) on [code]a[/code] and [code]b[/code], with [code]v[/code] and [code]w[/code] the vector arguments, [code]x[/code] the angle or weight and [code]n[/code] the Euler order. test.gd's _basis_results calls the engine's own methods in the same order.</description>
 		</method>
