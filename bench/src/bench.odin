@@ -61,6 +61,7 @@ register :: proc() {
 	godot.method(c, "color_ns", color_ns, {"kind", "n"})
 	godot.method(c, "basis_ns", basis_ns, {"kind", "n"})
 	godot.method(c, "transform_ns", transform_ns, {"kind", "n"})
+	godot.method(c, "quaternion_ns", quaternion_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1246,6 +1247,76 @@ transform_ns :: proc(self: ^Bench, kind: Transform_Op, n: i64) -> f64 {
 		}
 	case .T3_INTERPOLATE:
 		for _ in 0 ..< n { sum += godot.transform3d_interpolate_with(intrinsics.volatile_load(&ref3), b3, weight).basis.x.x }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
+	return ns
+}
+
+// The Quaternion methods `quaternion_ns` times, paired the same way as Vector_Op.
+Quaternion_Op :: enum i64 {
+	SLERP_CALL,     // the engine's Quaternion.slerp at weight 0.25
+	SLERP,          // quaternion_slerp at weight 0.25
+	CUBIC_CALL,     // the engine's Quaternion.spherical_cubic_interpolate at weight 0.25
+	CUBIC,          // quaternion_spherical_cubic_interpolate at weight 0.25
+	GET_EULER_CALL, // the engine's Quaternion.get_euler in YXZ order
+	GET_EULER,      // quaternion_get_euler in YXZ order
+	INVERSE_CALL,   // the engine's Quaternion.inverse
+	INVERSE,        // quaternion_inverse
+}
+
+// Nanoseconds per `kind` round on a unit quaternion reread through a volatile load each round, as
+// in vector_ns.
+quaternion_ns :: proc(self: ^Bench, kind: Quaternion_Op, n: i64) -> f64 {
+	a := godot.quaternion_from_euler(godot.Vector3{0.3, -1.2, 2.0})
+	b := godot.quaternion_from_euler(godot.Vector3{-0.7, 0.4, 1.1})
+	pre := godot.quaternion_from_euler(godot.Vector3{0.1, -1.0, 2.4})
+	post := godot.quaternion_from_euler(godot.Vector3{-0.9, 0.6, 0.8})
+	weight := f64(0.25)
+	order := i64(2)
+	ref := &a
+	slerp_fn := godot.builtin_method(.QUATERNION, "slerp", 1773590316)
+	cubic_fn := godot.builtin_method(.QUATERNION, "spherical_cubic_interpolate", 2150967576)
+	euler_fn := godot.builtin_method(.QUATERNION, "get_euler", 1394941017)
+	inverse_fn := godot.builtin_method(.QUATERNION, "inverse", 4274879941)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .SLERP_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&b, &weight}
+			r: godot.Quaternion
+			slerp_fn(intrinsics.volatile_load(&ref), &args[0], &r, 2)
+			sum += r.x
+		}
+	case .SLERP:
+		for _ in 0 ..< n { sum += godot.quaternion_slerp(intrinsics.volatile_load(&ref), b, weight).x }
+	case .CUBIC_CALL:
+		for _ in 0 ..< n {
+			args := [4]gde.ConstTypePtr{&b, &pre, &post, &weight}
+			r: godot.Quaternion
+			cubic_fn(intrinsics.volatile_load(&ref), &args[0], &r, 4)
+			sum += r.x
+		}
+	case .CUBIC:
+		for _ in 0 ..< n { sum += godot.quaternion_spherical_cubic_interpolate(intrinsics.volatile_load(&ref), b, pre, post, weight).x }
+	case .GET_EULER_CALL:
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&order}
+			r: godot.Vector3
+			euler_fn(intrinsics.volatile_load(&ref), &args[0], &r, 1)
+			sum += r.x
+		}
+	case .GET_EULER:
+		for _ in 0 ..< n { sum += godot.quaternion_get_euler(intrinsics.volatile_load(&ref), order).x }
+	case .INVERSE_CALL:
+		for _ in 0 ..< n {
+			r: godot.Quaternion
+			inverse_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r.x
+		}
+	case .INVERSE:
+		for _ in 0 ..< n { sum += godot.quaternion_inverse(intrinsics.volatile_load(&ref)).x }
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)

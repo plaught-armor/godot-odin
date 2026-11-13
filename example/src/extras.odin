@@ -129,6 +129,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_bases", bag_replaced_bases, {"a", "b", "v", "w", "x", "n"})
 	godot.method(b, "replaced_transforms2d", bag_replaced_transforms2d, {"a", "b", "p", "q", "x", "y"})
 	godot.method(b, "replaced_transforms3d", bag_replaced_transforms3d, {"a", "b", "v", "w", "m", "x"})
+	godot.method(b, "replaced_quaternions", bag_replaced_quaternions, {"a", "b", "c", "d", "m", "v", "w", "x", "n"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1470,5 +1471,41 @@ bag_replaced_transforms3d :: proc(self: ^Bag, a, b: godot.Transform3D, v, w: god
 	put_basis_result(&o, godot.transform3d_interpolate_with(&a, b, x))
 	put_basis_result(&o, godot.transform3d_is_equal_approx(&a, b))
 	put_basis_result(&o, godot.transform3d_is_finite(&a))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// The Quaternion procs that replace engine methods (godot/quaternion.odin) on `a` and `b`, with
+// `c` and `d` the cubic's pre and post quaternions, `m` the basis to convert, `v` and `w` the
+// vector arguments (`w` also the cubic's three times), `x` the angle or weight and `n` the Euler
+// order. test.gd's _quaternion_results calls the engine's own methods in the same order.
+bag_replaced_quaternions :: proc(self: ^Bag, a, b, c, d: godot.Quaternion, m: godot.Basis, v, w: godot.Vector3, x: f64, n: i64) -> godot.PackedInt64Array {
+	o: Basis_Results
+	a := a
+	put_basis_result(&o, godot.quaternion_new())
+	put_basis_result(&o, godot.quaternion_new_from_quaternion(a))
+	put_basis_result(&o, godot.quaternion_new_from_basis(m))
+	put_basis_result(&o, godot.quaternion_new_from_vector3_float(v, x))
+	put_basis_result(&o, godot.quaternion_new_from_vector3_vector3(v, w))
+	put_basis_result(&o, godot.quaternion_new_from_float_float_float_float(x, f64(v.x), f64(v.y), f64(v.z)))
+	put_basis_result(&o, godot.quaternion_length(&a))
+	put_basis_result(&o, godot.quaternion_length_squared(&a))
+	put_basis_result(&o, godot.quaternion_normalized(&a))
+	put_basis_result(&o, godot.quaternion_is_normalized(&a))
+	put_basis_result(&o, godot.quaternion_is_equal_approx(&a, b))
+	put_basis_result(&o, godot.quaternion_is_finite(&a))
+	put_basis_result(&o, godot.quaternion_inverse(&a))
+	put_basis_result(&o, godot.quaternion_log(&a))
+	put_basis_result(&o, godot.quaternion_exp(&a))
+	put_basis_result(&o, godot.quaternion_angle_to(&a, b))
+	put_basis_result(&o, godot.quaternion_dot(&a, b))
+	put_basis_result(&o, godot.quaternion_slerp(&a, b, x))
+	put_basis_result(&o, godot.quaternion_slerpni(&a, b, x))
+	put_basis_result(&o, godot.quaternion_spherical_cubic_interpolate(&a, b, c, d, x))
+	put_basis_result(&o, godot.quaternion_spherical_cubic_interpolate_in_time(&a, b, c, d, x, f64(w.x), f64(w.y), f64(w.z)))
+	put_basis_result(&o, godot.quaternion_get_euler(&a, n))
+	for k in i64(0) ..< 6 { put_basis_result(&o, godot.quaternion_get_euler(&a, k)) }
+	put_basis_result(&o, godot.quaternion_from_euler(v))
+	put_basis_result(&o, godot.quaternion_get_axis(&a))
+	put_basis_result(&o, godot.quaternion_get_angle(&a))
 	return godot.packed_of_int64(o.v[:o.n])
 }

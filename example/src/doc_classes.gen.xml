@@ -240,6 +240,9 @@
 		<method name="replaced_transforms3d">
 			<description>The Transform3D procs that replace engine methods (godot/transform.odin) on [code]a[/code] and [code]b[/code], with [code]v[/code] and [code]w[/code] the vector arguments, [code]m[/code] the projection and [code]x[/code] the angle or weight. test.gd's _transform3d_results calls the engine's own methods in the same order.</description>
 		</method>
+		<method name="replaced_quaternions">
+			<description>The Quaternion procs that replace engine methods (godot/quaternion.odin) on [code]a[/code] and [code]b[/code], with [code]c[/code] and [code]d[/code] the cubic's pre and post quaternions, [code]m[/code] the basis to convert, [code]v[/code] and [code]w[/code] the vector arguments ([code]w[/code] also the cubic's three times), [code]x[/code] the angle or weight and [code]n[/code] the Euler order. test.gd's _quaternion_results calls the engine's own methods in the same order.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>

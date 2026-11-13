@@ -518,6 +518,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_colors(b2)
 	failures += _check_replaced_bases(b2)
 	failures += _check_replaced_transforms(b2)
+	failures += _check_replaced_quaternions(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -1239,6 +1240,126 @@ func _check_replaced_transforms(b2: Bag) -> int:
 			Vector4(rng.randf(), rng.randf(), rng.randf(), rng.randf()))
 		failures += _check_transform3d_case(b2, Transform3D(_random_basis(rng), o), Transform3D(_random_basis(rng), -o),
 			v, w, m, rng.randf_range(-2, 2))
+	return failures
+
+
+# The engine's Quaternion methods in the order Bag.replaced_quaternions calls the Odin procs.
+func _quaternion_results(a: Quaternion, b: Quaternion, c: Quaternion, d: Quaternion, m: Basis, v: Vector3, w: Vector3, x: float, n: int) -> PackedInt64Array:
+	var vs: Array = [Quaternion(), Quaternion(a), Quaternion(m), Quaternion(v, x), Quaternion(v, w), Quaternion(x, v.x, v.y, v.z),
+		a.length(), a.length_squared(), a.normalized(), a.is_normalized(), a.is_equal_approx(b), a.is_finite(),
+		a.inverse(), a.log(), a.exp(), a.angle_to(b), a.dot(b), a.slerp(b, x), a.slerpni(b, x),
+		a.spherical_cubic_interpolate(b, c, d, x), a.spherical_cubic_interpolate_in_time(b, c, d, x, w.x, w.y, w.z),
+		a.get_euler(n)]
+	for k: int in 6:
+		vs.append(a.get_euler(k))
+	vs.append_array([Quaternion.from_euler(v), a.get_axis(), a.get_angle()])
+	var o: PackedInt64Array = PackedInt64Array()
+	for e: Variant in vs:
+		_put_basis_result(o, e)
+	return o
+
+
+func _check_quaternion_case(b2: Bag, a: Quaternion, b: Quaternion, c: Quaternion, d: Quaternion, m: Basis, v: Vector3, w: Vector3, x: float, n: int) -> int:
+	var want: PackedInt64Array = _quaternion_results(a, b, c, d, m, v, w, x, n)
+	var got: PackedInt64Array = b2.replaced_quaternions(a, b, c, d, m, v, w, x, n)
+	if got == want:
+		return 0
+	var at: int = 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_quaternions(%s, %s, %s, %s, %s, %s, %s, %s, %d) differs at %d of %d: %s, not %s" % [a, b, c, d, m, v, w, x, n, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# A float from its single-precision bits.
+func _f32_bits(bits: int) -> float:
+	var buf: PackedByteArray = PackedByteArray([0, 0, 0, 0])
+	buf.encode_u32(0, bits)
+	return buf.decode_float(0)
+
+
+# A random rotation quaternion, sometimes flipped in sign or scaled off unit length.
+func _random_quaternion(rng: RandomNumberGenerator) -> Quaternion:
+	var axis: Vector3 = Vector3(rng.randf_range(-1, 1), rng.randf_range(-1, 1), rng.randf_range(-1, 1)).normalized()
+	if axis == Vector3.ZERO:
+		axis = Vector3.UP
+	var q: Quaternion = Quaternion(axis, rng.randf_range(-7, 7))
+	var kind: int = rng.randi_range(0, 3)
+	if kind == 0:
+		return -q
+	if kind == 1:
+		return q * rng.randf_range(0.5, 1.5)
+	return q
+
+
+# The Quaternion procs that replace engine methods, on edge cases (the identity, zero, unnormalized,
+# opposite and nearly equal quaternions, signed zeros, infinities and NaNs, parallel and opposite
+# arcs) and exact limits, then on seeded random quaternions.
+func _check_replaced_quaternions(b2: Bag) -> int:
+	var failures: int = 0
+	var nz: float = -float(Time.get_ticks_msec() * 0)
+	var r: Quaternion = Quaternion.from_euler(Vector3(0.3, -1.2, 2.0))
+	var edges: Array[Quaternion] = [Quaternion(), Quaternion(0, 0, 0, 0), r, -r, Quaternion(1, 1, 1, 1),
+		Quaternion(0, 0, 0, -1), Quaternion(1, 0, 0, 0), Quaternion(0, 0.6, 0.8, 0), Quaternion(nz, nz, nz, 1),
+		Quaternion(INF, 0, 0, 1), Quaternion(0, NAN, 0, 1), r * Quaternion(Vector3.UP, 1e-6),
+		Quaternion(Vector3(0.6, 0, 0.8), PI), Quaternion(1e30, 0, 0, 1), Quaternion(0.5, 0.5, 0.5, 0.5)]
+	var vs: PackedVector3Array = PackedVector3Array([Vector3.UP, Vector3(0.6, 0, 0.8), Vector3.ZERO, Vector3(1, 2, 3),
+		Vector3(0, -2, 0), Vector3(INF, 0, 0), Vector3(NAN, 1, 0), Vector3(nz, nz, 1), Vector3(1e-30, 0, 0),
+		Vector3(-0.48, 0.6, 0.64), Vector3(0.3, -1.2, 2.0), Vector3(0, PI / 2, 0)])
+	var bases: Array[Basis] = [Basis(), Basis.from_euler(Vector3(0.3, -1.2, 2.0)), Basis(Vector3.UP, PI),
+		Basis.from_scale(Vector3(2, 1, 1)), Basis(Vector3(INF, 0, 0), Vector3.UP, Vector3.BACK)]
+	var xs: PackedFloat64Array = PackedFloat64Array([0.0, 1.0, 0.5, -0.25, PI, 2.5, INF, NAN, nz, 1e-7, TAU, 0.999])
+	var ns: PackedInt64Array = PackedInt64Array([0, 1, 2, 3, 4, 5, 6, -1, (1 << 32) + 2, 2])
+	for i: int in edges.size():
+		for j: int in [0, 1, 4, 7, 11]:
+			var e: int = edges.size()
+			failures += _check_quaternion_case(b2, edges[i], edges[(i + j) % e], edges[(i + 2 * j + 1) % e],
+				edges[(i + 3 * j + 2) % e], bases[(i + j) % bases.size()], vs[(i + j) % vs.size()],
+				vs[(i + 2 * j + 1) % vs.size()], xs[(i + j) % xs.size()], ns[(i + j) % ns.size()])
+	# Exact limits: get_axis's `1 - CMP_EPSILON` and exp's `CMP_EPSILON`, both compared in double,
+	# with the floats either side (0x3f7fff58 and 0x3f7fff59 bracket 0.99999, 0x3727c5ac and
+	# 0x3727c5ad bracket 0.00001); slerpni's 0.9999 and the shortest arc's 0.99999975 with the dot
+	# a float either side; parallel and opposite arcs, opposite along each axis.
+	for bits: int in [0x3f7fff58, 0x3f7fff59]:
+		var w: float = _f32_bits(bits)
+		for sg: float in [1.0, -1.0]:
+			failures += _check_quaternion_case(b2, Quaternion(sqrt(1 - w * w), 0, 0, w * sg), r, r, r, bases[0],
+				Vector3.UP, Vector3.BACK, 0.5, 0)
+	for bits: int in [0x3727c5ac, 0x3727c5ad]:
+		var t: float = _f32_bits(bits)
+		failures += _check_quaternion_case(b2, Quaternion(t, 0, 0, 1), r, r, r, bases[0], Vector3.UP, Vector3.BACK, 0.5, 0)
+		failures += _check_quaternion_case(b2, Quaternion(0, 0, -t, 0), r, r, r, bases[0], Vector3.UP, Vector3.BACK, 0.5, 0)
+	for bits: int in [0x3f7ff972, 0x3f7ff973, 0x3f7ffffb, 0x3f7ffffc, 0x3f7ffffd]:
+		var dw: float = _f32_bits(bits)
+		var near: Quaternion = Quaternion(sqrt(1 - dw * dw), 0, 0, dw)
+		failures += _check_quaternion_case(b2, Quaternion(), near, r, r, bases[0], Vector3.RIGHT,
+			Vector3(dw, sqrt(1 - dw * dw), 0), 0.25, 0)
+		failures += _check_quaternion_case(b2, Quaternion(), -near, r, r, bases[0], Vector3.RIGHT,
+			Vector3(-dw, sqrt(1 - dw * dw), 0), 0.25, 0)
+	for axis: Vector3 in [Vector3.RIGHT, Vector3.UP, Vector3.BACK, Vector3(1, 1, 1), Vector3(0.6, 0, -0.8)]:
+		failures += _check_quaternion_case(b2, r, r, r, r, bases[0], axis, -axis, 0.5, 0)
+		failures += _check_quaternion_case(b2, r, r, r, r, bases[0], axis, axis * 3, 0.5, 0)
+	# The spherical cubic's sign flips on every pairing of half and quarter turns, whose dots after
+	# the basis round trip are exactly +0 or -0, and of a NaN, whose dot's sign bit is set.
+	var h: float = sqrt(0.5)
+	var turns: Array[Quaternion] = [Quaternion(), Quaternion(1, 0, 0, 0), Quaternion(0, 1, 0, 0), Quaternion(0, 0, 1, 0),
+		Quaternion(0, 0.6, 0.8, 0), Quaternion(h, 0, 0, h), Quaternion(0, h, 0, -h), Quaternion(0, 0, -h, h),
+		Quaternion(0, NAN, 0, 1)]
+	for i: int in turns.size():
+		for j: int in turns.size():
+			for k: int in turns.size():
+				for l: int in turns.size():
+					failures += _check_quaternion_case(b2, turns[i], turns[j], turns[k], turns[l], bases[0],
+						Vector3.UP, Vector3(0.5, -1, 2), 0.3, 0)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261114
+	for round: int in 1500:
+		var v: Vector3 = Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))
+		if rng.randi_range(0, 1) == 0:
+			v = v.normalized()
+		var w: Vector3 = Vector3(rng.randf_range(-3, 3), rng.randf_range(-3, 3), rng.randf_range(-3, 3))
+		failures += _check_quaternion_case(b2, _random_quaternion(rng), _random_quaternion(rng), _random_quaternion(rng),
+			_random_quaternion(rng), _random_basis(rng), v, w, rng.randf_range(-2, 2), rng.randi_range(0, 5))
 	return failures
 
 

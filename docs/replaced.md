@@ -193,3 +193,39 @@ that of a singular Transform3D prints an error, keeps the basis and still carrie
 through it, and `Transform3D.looking_at` with a target approximately at the origin prints an
 error and returns the identity. The Transform2D fields `x`, `y` and `origin` are the engine's
 columns; the Transform3D basis keeps the engine's rows, as `Basis` does.
+
+## Quaternion
+
+The `Quaternion` methods and constructors are defined in `godot/quaternion.odin` under the same
+names and signatures: the constructors (empty, from a Quaternion, a Basis, an axis and angle, the
+shortest arc between two vectors, four components), `length`, `length_squared`, `normalized`,
+`is_normalized`, `is_equal_approx`, `is_finite`, `inverse`, `log`, `exp`, `angle_to`, `dot`,
+`slerp`, `slerpni`, `spherical_cubic_interpolate`, `spherical_cubic_interpolate_in_time`,
+`get_euler`, `from_euler`, `get_axis` and `get_angle`. Each follows `core/math/quaternion.cpp` and
+`quaternion.h` of Godot 4.7-stable with the same single-precision operation order and libm calls.
+The engine's `CMP_EPSILON` is a double literal, so `get_axis`'s `1 - CMP_EPSILON` and `exp`'s
+`theta < CMP_EPSILON` compare in double here too, and division by a length multiplies by its
+reciprocal as the engine's `operator/` does. The spherical cubic first replaces each quaternion
+by the rotation of its own basis, with the Basis helpers in `godot/basis.odin`, then makes the
+engine's sign flips, including the `<= 0` test that applies only after the second flip. Checked
+against Godot 4.7-stable by `_check_replaced_quaternions`, which compares every result from
+GDScript and from `Bag.replaced_quaternions` on edge cases (the identity, zero, unnormalized and
+opposite quaternions, signed zeros, huge components, infinities and NaNs, `w` a float either side
+of `1 - CMP_EPSILON`, a vector part either side of `CMP_EPSILON`, dots a float either side of
+`slerpni`'s 0.9999 and the shortest arc's `ALMOST_ONE`, parallel and opposite arcs along each axis,
+every Euler order and invalid ones) and on 1500 seeded random cases.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Quaternion.inverse` | 2.7 ns | 1.1 ns |
+| `Quaternion.slerp` | 20 ns | 18 ns |
+| `Quaternion.get_euler` | 23 ns | 20 ns |
+| `Quaternion.spherical_cubic_interpolate` | 355 ns | 270 ns |
+
+`slerp`, `get_euler` and the spherical cubic keep most of their cost in libm (`sinf`, `cosf`,
+`acosf`, `atan2f`, `asinf`, and `sin` in double for `slerp`), so the gain is the call overhead and
+the inlined Basis round trips. The replacements reproduce the engine's `MATH_CHECKS`: `inverse`,
+`slerpni`, `exp`'s axis and both quaternion arguments of the spherical cubic print an error and give
+the identity when not normalized, `get_euler` gives a zero vector, `Quaternion(axis, angle)` with an
+unnormalized axis gives the identity, the shortest arc from or to a zero vector prints an error and
+gives the identity, and an arc that cannot be normalized prints the engine's warning.
