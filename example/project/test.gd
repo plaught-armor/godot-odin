@@ -516,6 +516,12 @@ func _check_extras() -> int:
 		find_cases.append(["-".repeat(pad) + "ab--", "ab"])
 		find_cases.append(["-".repeat(pad) + "日x", "日x"])
 		find_cases.append(["--ab" + "-".repeat(pad), "ab"])
+		# Two Strings alike for 0 to 9 characters and then not, or one ending there, so casecmp_to's
+		# four-wide skip stops at every offset.
+		find_cases.append(["x".repeat(pad) + "a", "x".repeat(pad) + "b"])
+		find_cases.append(["x".repeat(pad) + "日y", "x".repeat(pad) + "ay"])
+		find_cases.append(["x".repeat(pad) + "a", "x".repeat(pad)])
+		find_cases.append(["x".repeat(pad), "x".repeat(pad) + "a"])
 	for c: Array in find_cases:
 		var s: String = c[0]
 		for from: int in [-20, -3, -2, -1, 0, 1, 2, 4, 9, 20, 1 << 32, (1 << 32) + 1, -(1 << 32) - 1]:

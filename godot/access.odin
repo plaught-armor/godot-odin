@@ -102,6 +102,22 @@ string_read :: proc "contextless" (s: ^String) -> []rune {
 	return gde.string_operator_index_const(s, 0)[:n]
 }
 
+// `string_read` of a String passed by value, read from the value itself. Taking the parameter's
+// address instead costs a stall of about 7 ns once the proc is inlined: the compiler then holds the
+// String's eight opaque bytes apart, stores them one at a time and loads them back as one pointer.
+@(private)
+string_chars :: #force_inline proc "contextless" (s: String) -> []rune {
+	if string_layout_known {
+		p := transmute([^]rune)s
+		if p == nil { return nil }
+		n := (^i64)(uintptr(p) - STRING_SIZE_OFFSET)^ - 1
+		if n <= 0 { return nil }
+		return p[:n]
+	}
+	s := s
+	return string_read(&s)
+}
+
 // Whether `a` and `b` hold the same characters. Copies share storage, so they answer without a
 // read, and Strings of different lengths answer from their headers; only Strings of one length
 // compare their characters.
@@ -255,61 +271,52 @@ string_containsn :: proc "contextless" (self: ^String, what: String) -> bool {
 // How many times `what` appears in `self` between characters `from` and `to`, not overlapping:
 // the engine's `count`, with `to` read as in `string_count_text`.
 string_count :: proc "contextless" (self: ^String, what: String, from: i64, to: i64) -> i64 {
-	what := what
-	return count_in(string_read(self), rune_needle_of(string_read(&what), false), from, to, false)
+	return count_in(string_read(self), rune_needle_of(string_chars(what), false), from, to, false)
 }
 
 // `string_count` ignoring case: the engine's `countn`.
 string_countn :: proc "contextless" (self: ^String, what: String, from: i64, to: i64) -> i64 {
-	what := what
-	return count_in(string_read(self), rune_needle_of(string_read(&what), true), from, to, true)
+	return count_in(string_read(self), rune_needle_of(string_chars(what), true), from, to, true)
 }
 
 // Whether `self` starts with `text`: the engine's `begins_with`. Empty `text` gives true.
 string_begins_with :: proc "contextless" (self: ^String, text: String) -> bool {
-	text := text
-	chars, t := string_read(self), string_read(&text)
+	chars, t := string_read(self), string_chars(text)
 	return len(t) <= len(chars) && runes_equal(raw_data(chars), raw_data(t), len(t))
 }
 
 // Whether `self` ends with `text`: the engine's `ends_with`. Empty `text` gives true.
 string_ends_with :: proc "contextless" (self: ^String, text: String) -> bool {
-	text := text
-	chars, t := string_read(self), string_read(&text)
+	chars, t := string_read(self), string_chars(text)
 	return len(t) <= len(chars) && runes_equal(raw_data(chars[len(chars) - len(t):]), raw_data(t), len(t))
 }
 
 // The engine's `casecmp_to`: -1, 0 or 1 as `self` sorts before, with or after `to`, character by
 // character by code point, a shorter String first.
 string_casecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
-	to := to
-	return compare_runes(string_read(self), string_read(&to), false)
+	return compare_runes(string_read(self), string_chars(to), false)
 }
 
 // `string_casecmp_to` with both characters uppercased first: the engine's `nocasecmp_to`.
 string_nocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
-	to := to
-	return compare_runes(string_read(self), string_read(&to), true)
+	return compare_runes(string_read(self), string_chars(to), true)
 }
 
 // A copy of `self` with every `what` replaced by `forwhat`: the engine's `replace`, made as
 // `string_replace_text` makes it. The caller destroys the result.
 string_replace :: proc "contextless" (self: ^String, what: String, forwhat: String) -> String {
-	what, forwhat := what, forwhat
-	return replace_in(self, rune_needle_of(string_read(&what), false), string_read(&forwhat), false)
+	return replace_in(self, rune_needle_of(string_chars(what), false), string_chars(forwhat), false)
 }
 
 // `string_replace` ignoring case: the engine's `replacen`.
 string_replacen :: proc "contextless" (self: ^String, what: String, forwhat: String) -> String {
-	what, forwhat := what, forwhat
-	return replace_in(self, rune_needle_of(string_read(&what), true), string_read(&forwhat), true)
+	return replace_in(self, rune_needle_of(string_chars(what), true), string_chars(forwhat), true)
 }
 
 // The parts of `self` between each `delimiter`: the engine's `split`, made as `string_split_text`
 // makes it. The caller destroys the result.
 string_split :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> (out: PackedStringArray) {
-	delimiter := delimiter
-	return split_make(string_read(self), rune_needle_of(string_read(&delimiter), false), allow_empty, maxsplit)
+	return split_make(string_read(self), rune_needle_of(string_chars(delimiter), false), allow_empty, maxsplit)
 }
 
 // Walks `a` and `b` as the engine's `casecmp_to` and `nocasecmp_to` do: an empty String sorts
@@ -318,7 +325,19 @@ string_split :: proc "contextless" (self: ^String, delimiter: String, allow_empt
 compare_runes :: #force_inline proc "contextless" (a, b: []rune, $NOCASE: bool) -> i64 {
 	if len(a) == 0 { return 0 if len(b) == 0 else -1 }
 	if len(b) == 0 { return 1 }
-	for k in 0 ..= min(len(a), len(b)) {
+	k := 0
+	when !NOCASE {
+		// Skip the equal start four characters at a time, stopping before a zero character, which
+		// ends the walk: the loop below then decides from the first four that differ or hold one.
+		pa, pb := raw_data(a), raw_data(b)
+		for m := min(len(a), len(b)); k + 4 <= m; k += 4 {
+			x := intrinsics.unaligned_load((^#simd[4]u32)(&pa[k]))
+			y := intrinsics.unaligned_load((^#simd[4]u32)(&pb[k]))
+			stop := intrinsics.simd_bit_or(intrinsics.simd_lanes_ne(x, y), intrinsics.simd_lanes_eq(x, (#simd[4]u32)(0)))
+			if intrinsics.simd_reduce_or(stop) != 0 { break }
+		}
+	}
+	for ; k <= min(len(a), len(b)); k += 1 {
 		x := a[k] if k < len(a) else 0
 		y := b[k] if k < len(b) else 0
 		if x == 0 || y == 0 { return i64(x != 0) - i64(y != 0) }
@@ -330,9 +349,8 @@ compare_runes :: #force_inline proc "contextless" (a, b: []rune, $NOCASE: bool) 
 
 @(private)
 find_string :: #force_inline proc "contextless" (self: ^String, what: String, from: i64, $NOCASE: bool) -> i64 {
-	what := what
 	chars := string_read(self)
-	n := rune_needle_of(string_read(&what), NOCASE)
+	n := rune_needle_of(string_chars(what), NOCASE)
 	start, last, ok := find_start(len(chars), n, from)
 	if !ok { return -1 }
 	return find_forward(chars, start, last, n, NOCASE)
@@ -340,9 +358,8 @@ find_string :: #force_inline proc "contextless" (self: ^String, what: String, fr
 
 @(private)
 rfind_string :: #force_inline proc "contextless" (self: ^String, what: String, from: i64, $NOCASE: bool) -> i64 {
-	what := what
 	chars := string_read(self)
-	n := rune_needle_of(string_read(&what), NOCASE)
+	n := rune_needle_of(string_chars(what), NOCASE)
 	start, _, ok := find_start(len(chars), n, from)
 	if !ok { return -1 }
 	return find_backward(chars, start, n, NOCASE)
@@ -721,7 +738,7 @@ string_of_real :: proc(number: f64, trailing := true) -> (out: String) {
 		digits := string_of_int(whole)
 		if !trailing { return digits }
 		defer destroy[.STRING](&digits)
-		chars := string_read(&digits)
+		chars := string_chars(digits)
 		for c, k in chars { buf[k] = u8(c) }
 		copy(buf[len(chars):], ".0")
 		text = buf[:len(chars) + 2]

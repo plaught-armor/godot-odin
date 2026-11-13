@@ -225,8 +225,7 @@ utf8_path :: proc(s: NodePath, allocator := context.allocator) -> string {
 utf8_string :: proc(s: String, allocator := context.allocator) -> string {
 	// Encoded here from the characters read in place: the engine's own encoder takes two calls,
 	// one to measure and one to write, about 47 ns for a short name.
-	t := s
-	chars := string_read(&t)
+	chars := string_chars(s)
 	n := 0
 	for r in chars {
 		switch {

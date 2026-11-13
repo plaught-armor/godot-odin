@@ -293,26 +293,21 @@ color_from_rgba8 :: proc "contextless" (r8: i64, g8: i64, b8: i64, a8: i64) -> C
 }
 
 color_new_from_string :: proc "contextless" (code: String) -> (__r: Color) {
-	code := code
-	return color_of_text(string_read(&code))
+	return color_of_text(string_chars(code))
 }
 color_new_from_string_float :: proc "contextless" (code: String, alpha: f64) -> (__r: Color) {
-	code := code
-	c := color_of_text(string_read(&code))
+	c := color_of_text(string_chars(code))
 	c.a = f32(alpha)
 	return c
 }
 color_html :: proc "contextless" (rgba: String) -> Color {
-	rgba := rgba
-	return html_parse(string_read(&rgba))
+	return html_parse(string_chars(rgba))
 }
 color_html_is_valid :: proc "contextless" (color: String) -> bool {
-	color := color
-	return html_valid(string_read(&color))
+	return html_valid(string_chars(color))
 }
 color_from_string :: proc "contextless" (str: String, default: Color) -> Color {
-	str := str
-	chars := string_read(&str)
+	chars := string_chars(str)
 	if html_valid(chars) { return html_parse(chars) }
 	i := named_color_index(chars)
 	return default if i < 0 else color_hex(i64(NAMED_COLORS[i].hex))
