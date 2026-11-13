@@ -58,7 +58,7 @@ import "core:math"
 	return {m_sqrt(v_dot(t.x, t.x)), m_sign(t2_determinant(t)) * m_sqrt(v_dot(t.y, t.y))}
 }
 @(private) t2_from_rotation :: #force_inline proc "contextless" (rot: f32, pos: Vector2) -> Transform2D {
-	cr, sr := libc.cosf(rot), libc.sinf(rot)
+	sr, cr := m_sincos(rot)
 	return {{cr, sr}, {-sr, cr}, pos}
 }
 @(private) t2_from_rotation_scale_skew :: #force_inline proc "contextless" (rot: f32, scale: Vector2, skew: f32, pos: Vector2) -> Transform2D {
@@ -178,7 +178,7 @@ transform2d_looking_at :: proc "contextless" (self: ^Transform2D, target: Vector
 	tp := t2_xform(t2_affine_inverse(t), target) * t2_get_scale(t)
 	rot := t2_get_rotation(r) + libc.atan2f(tp.y, tp.x)
 	scale := t2_get_scale(r)
-	cr, sr := libc.cosf(rot), libc.sinf(rot)
+	sr, cr := m_sincos(rot)
 	r.x = v_normalized(Vector2{cr, sr}, V2_NOT_FINITE) * scale.x
 	r.y = v_normalized(Vector2{-sr, cr}, V2_NOT_FINITE) * scale.y
 	return r

@@ -118,10 +118,10 @@ projection_create_perspective :: proc "contextless" (fovy: f64, aspect: f64, z_n
 	if flip_fov { fov = proj_flip_fovy(fov, a) }
 	radians := f32(f64(fov) / 2.0 * P_DEG_TO_RAD_D)
 	delta_z := f - n
-	sine := libc.sinf(radians)
+	sine, cosine := m_sincos(radians)
 	c := PROJ_IDENTITY
 	if delta_z == 0 || sine == 0 || a == 0 { return proj_of(c) }
-	cotangent := libc.cosf(radians) / sine
+	cotangent := cosine / sine
 	c[0][0] = cotangent / a
 	c[1][1] = cotangent
 	c[2][2] = -(f + n) / delta_z

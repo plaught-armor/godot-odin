@@ -277,7 +277,10 @@ basis_get_rotation_quaternion :: proc "contextless" (self: ^Basis) -> Quaternion
 }
 
 basis_looking_at :: proc "contextless" (target: Vector3, up: Vector3, use_model_front: bool) -> Basis {
-	if v_all(target, m_is_zero_approx) {
+	// Three components each under CMP_EPSILON give a squared length under 3e-10, so a longer vector
+	// skips the per-component test. A NaN length fails the compare and takes the full test.
+	NOT_ZERO :: f32(4e-10)
+	if !(v_dot(target, target) >= NOT_ZERO) && v_all(target, m_is_zero_approx) {
 		math_error("The target vector can't be zero.")
 		return B_IDENTITY
 	}
@@ -288,7 +291,7 @@ basis_looking_at :: proc "contextless" (target: Vector3, up: Vector3, use_model_
 	v_z := v_normalized(target, V3_NOT_FINITE)
 	if !use_model_front { v_z = -v_z }
 	v_x := v3_cross(up, v_z)
-	if v_all(v_x, m_is_zero_approx) {
+	if !(v_dot(v_x, v_x) >= NOT_ZERO) && v_all(v_x, m_is_zero_approx) {
 		gde.print_warning("Target and up vectors are colinear. This is not advised as it may cause unwanted rotation around local Z axis.", "", #file, #line, 1)
 		// Vector3::get_any_perpendicular, whose own zero check `up` has passed above.
 		least_x := m_abs(up.x) <= m_abs(up.y) && m_abs(up.x) <= m_abs(up.z)

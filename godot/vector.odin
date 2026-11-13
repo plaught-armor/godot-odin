@@ -22,6 +22,21 @@ import gde "../gdextension"
 @(private) m_max :: #force_inline proc "contextless" (a, b: f32) -> f32 { return a if a > b else b }
 @(private) m_clamp :: #force_inline proc "contextless" (x, lo, hi: f32) -> f32 { return lo if x < lo else (hi if x > hi else x) }
 @(private) m_sqrt :: #force_inline proc "contextless" (x: f32) -> f32 { return intrinsics.sqrt(x) }
+// sinf and cosf of one angle from a single call. glibc's sincosf returns the same bits as its sinf
+// and cosf for every input (checked over all 2^32), and the engine's own build already pairs them.
+when ODIN_OS == .Linux {
+	foreign import libm "system:m"
+	@(default_calling_convention = "c")
+	foreign libm { sincosf :: proc(x: f32, sine, cosine: ^f32) --- }
+	@(private) m_sincos :: #force_inline proc "contextless" (x: f32) -> (sine, cosine: f32) {
+		sincosf(x, &sine, &cosine)
+		return
+	}
+} else {
+	@(private) m_sincos :: #force_inline proc "contextless" (x: f32) -> (sine, cosine: f32) {
+		return libc.sinf(x), libc.cosf(x)
+	}
+}
 @(private) m_lerp :: #force_inline proc "contextless" (from, to, weight: f32) -> f32 { return from + (to - from) * weight }
 // Neither an infinity nor a NaN: those alone have every exponent bit set. One test, no branch.
 @(private) m_is_finite :: #force_inline proc "contextless" (x: f32) -> bool { return transmute(u32)x & 0x7f800000 != 0x7f800000 }
@@ -115,11 +130,15 @@ import gde "../gdextension"
 }
 
 @(private) v_normalized :: #force_inline proc "contextless" (v: $V/[$N]f32, $MESSAGE: cstring) -> V {
+	// An infinite or NaN component makes the squared length infinite or NaN, so a finite, non-zero
+	// one settles both of the engine's checks at once. A sum of squares is never negative, so its
+	// bits, less one, fall under infinity's exactly when it is neither zero, infinite nor NaN.
+	l := v_dot(v, v)
+	if transmute(u32)l - 1 < 0x7f800000 - 1 { return v / m_sqrt(l) }
 	if !v_is_finite(v) {
 		gde.print_warning(MESSAGE, "", #file, #line, 1)
 		return {}
 	}
-	l := v_dot(v, v)
 	if l == 0 { return {} }
 	return v / m_sqrt(l)
 }
@@ -286,7 +305,7 @@ vector2_min :: proc "contextless" (self: ^Vector2, with: Vector2) -> Vector2 { r
 vector2_minf :: proc "contextless" (self: ^Vector2, with: f64) -> Vector2 { return v_minf(self^, f32(with)) }
 vector2_max :: proc "contextless" (self: ^Vector2, with: Vector2) -> Vector2 { return v_map2(self^, with, m_max) }
 vector2_maxf :: proc "contextless" (self: ^Vector2, with: f64) -> Vector2 { return v_maxf(self^, f32(with)) }
-vector2_from_angle :: proc "contextless" (angle: f64) -> Vector2 { a := f32(angle); return {libc.cosf(a), libc.sinf(a)} }
+vector2_from_angle :: proc "contextless" (angle: f64) -> Vector2 { s, c := m_sincos(f32(angle)); return {c, s} }
 
 @(private) V2_NOT_FINITE :: "Vector2 cannot be normalized, the elements must be finite. Making (0, 0) as a fallback."
 @(private) V2_NOT_NORMAL :: "The normal Vector2 must be normalized."
@@ -294,7 +313,7 @@ vector2_from_angle :: proc "contextless" (angle: f64) -> Vector2 { a := f32(angl
 @(private) v2_cross :: #force_inline proc "contextless" (a, b: Vector2) -> f32 { return a.x * b.y - a.y * b.x }
 @(private) v2_angle_to :: #force_inline proc "contextless" (a, b: Vector2) -> f32 { return libc.atan2f(v2_cross(a, b), v_dot(a, b)) }
 @(private) v2_rotated :: #force_inline proc "contextless" (v: Vector2, by: f32) -> Vector2 {
-	sine, cosi := libc.sinf(by), libc.cosf(by)
+	sine, cosi := m_sincos(by)
 	return {v.x * cosi - v.y * sine, v.x * sine + v.y * cosi}
 }
 

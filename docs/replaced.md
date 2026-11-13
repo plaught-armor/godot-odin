@@ -475,8 +475,17 @@ for every method in `REPLACED` and `REPLACED_TYPES` that `bench/project/bench.gd
 by hand, with sample arguments picked by type and argument name. Run it after adding a
 replacement, then `bench/build.sh`; a replacement slower than its engine call is a defect to fix
 or drop. On Godot 4.7-stable every pair is at or ahead of the engine within run-to-run noise of
-about 5%, except `Basis.looking_at`, about 8% behind. A locally built 4.8 leads only on
-`PackedVector3Array.count`, by about 5%.
+about 5%. A locally built 4.8 leads only on `PackedVector3Array.count`, by about 5%.
+
+Two findings from that pass apply beyond one method. Normalizing tests the squared length alone
+when it is finite and not zero, since an infinite or NaN component cannot give such a length;
+that took `Basis.looking_at` from 12.9 ns to 9.9 ns (engine 11.8 ns) and
+`Transform3D.interpolate_with` from 109 ns to 77 ns (engine 138 ns). And glibc's `sincosf`
+returns the bits of `sinf` and `cosf` for every input, checked over all 2^32, but is faster only
+where the pair is the result or nearly so (`Vector2.from_angle` 2.6 ns to 1.6 ns,
+`Vector2.rotated`, `Quaternion.from_euler`, the Transform2D rotation and the perspective
+Projection). Where the pair feeds a longer computation, as in `Basis.from_euler` and the
+axis-angle constructors, two separate calls measured faster and stay.
 
 ## Array
 

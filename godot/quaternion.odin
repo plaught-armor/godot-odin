@@ -136,7 +136,8 @@ import gde "../gdextension"
 	if f64(theta) >= 0.00001 {
 		c := f32(1 / f64(theta * theta))
 		if !m_is_equal_approx(theta, Q_PI) {
-			c = f32(f64(c) - (1 + f64(libc.cosf(theta))) / (2 * f64(theta) * f64(libc.sinf(theta))))
+			sine, cosine := m_sincos(theta)
+			c = f32(f64(c) - (1 + f64(cosine)) / (2 * f64(theta) * f64(sine)))
 		}
 		to += v3_cross(rel, cross) * c
 	}
@@ -294,9 +295,9 @@ quaternion_get_euler :: proc "contextless" (self: ^Quaternion, order: i64) -> Ve
 // Quaternion::from_euler, YXZ: half angles a1 about Y, a2 about X, a3 about Z.
 quaternion_from_euler :: proc "contextless" (euler: Vector3) -> Quaternion {
 	half_a1, half_a2, half_a3 := euler.y * 0.5, euler.x * 0.5, euler.z * 0.5
-	cos_a1, sin_a1 := libc.cosf(half_a1), libc.sinf(half_a1)
-	cos_a2, sin_a2 := libc.cosf(half_a2), libc.sinf(half_a2)
-	cos_a3, sin_a3 := libc.cosf(half_a3), libc.sinf(half_a3)
+	sin_a1, cos_a1 := m_sincos(half_a1)
+	sin_a2, cos_a2 := m_sincos(half_a2)
+	sin_a3, cos_a3 := m_sincos(half_a3)
 	return {
 		sin_a1 * cos_a2 * sin_a3 + cos_a1 * sin_a2 * cos_a3,
 		sin_a1 * cos_a2 * cos_a3 - cos_a1 * sin_a2 * sin_a3,
