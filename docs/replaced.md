@@ -85,3 +85,36 @@ scalars, infinite, NaN and out-of-range float sources) and on 2000 seeded random
 Float to `int32` conversion, in the constructors from float vectors and in `snapped`, follows the
 x86-64 engine build: a value outside the `int32` range, or NaN, becomes `-2147483648`. Odin's own
 conversion saturates or wraps instead, so `i_of_double` checks the range first.
+
+## Color
+
+The `Color` entries in `REPLACED`, and the constructors in `REPLACED_CONSTRUCTORS`, are defined in
+`godot/color.odin` under the same names and signatures: the constructors from floats and from
+another Color, the `to_*32` and `to_*64` packings, `clamp`, `inverted`, `lerp`, `lightened`,
+`darkened`, `blend`, `get_luminance`, `srgb_to_linear`, `linear_to_srgb`, `is_equal_approx`, `hex`,
+`hex64`, `from_hsv`, `from_rgbe9995` and `from_rgba8`. Each copies the engine's single-precision
+operation order and its libm calls (`powf`, `fmodf`, `floorf`), so results match bit for bit.
+Checked against Godot 4.7-stable by `_check_replaced_colors`, which compares every result from
+GDScript and from `Bag.replaced_colors` on edge cases (signed zeros, values outside 0 to 1 and past
+`int32` once scaled, infinities, NaNs, the sRGB thresholds, channels half a step from a byte,
+transparent colors) and on 2000 seeded random cases. The String methods (`to_html`, `html`,
+`html_is_valid`, `from_string`, the String constructors) and `from_ok_hsl` still call the engine.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `Color.to_rgba32` | 7.5 ns | 1.2 ns |
+| `Color.lerp` | 2.5 ns | 0.6 ns |
+| `Color.linear_to_srgb` | 15.0 ns | 11.7 ns |
+| `Color.from_hsv` | 12.8 ns | 2.4 ns |
+
+The packings round each channel half away from zero as `roundf` does, but inline: within the
+`int32` range the fraction `x - trunc(x)` is exact, and the result matches `roundf` on every one of
+the 2^32 floats. Like the engine's x86-64 build, they convert through a 32-bit integer and keep the
+low byte or word, so a channel outside 0 to 1 wraps instead of clamping, and a NaN, an infinity or
+anything past the `int32` range packs as 0. `linear_to_srgb` keeps most of its cost because the
+engine's `powf` call dominates it.
+
+A NaN result may carry a different sign or payload than the engine's, so the test treats every
+NaN as one value. `srgb_to_linear` depends on the last bit of the double constant
+`1.0 / (1.0 + 0.055)`; the edge cases include 17700158, the least float where a one-bit change
+shows.

@@ -125,6 +125,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_vectors", bag_replaced_vectors, {"a", "b", "c", "d", "n2", "n3", "w", "x", "y", "z"})
 	godot.method(b, "replaced_vectorsi", bag_replaced_vectorsi, {"a", "b", "c", "x", "y", "f"})
+	godot.method(b, "replaced_colors", bag_replaced_colors, {"a", "b", "c", "x", "n"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -1279,5 +1280,60 @@ bag_replaced_vectorsi :: proc(self: ^Bag, a, b, c: godot.Vector4i, x, y: i64, f:
 	put_int_result(&o, godot.vector4i_mini(&a4, x))
 	put_int_result(&o, godot.vector4i_max(&a4, b))
 	put_int_result(&o, godot.vector4i_maxi(&a4, x))
+	return godot.packed_of_int64(o.v[:o.n])
+}
+
+// Integers gathered for bag_replaced_colors, in call order.
+Color_Results :: struct {
+	v: [128]i64,
+	n: int,
+}
+
+// Appends `v` to `o` as integers: a Color by the bits of each component, a float as its bits, a
+// bool or int as itself. Every NaN becomes one value, since which NaN an operation keeps depends
+// on operand order in the compiled code.
+put_color_result :: proc(o: ^Color_Results, v: $T) {
+	when T == godot.Color {
+		for e in v { put_color_result(o, i64(0x7fc00000) if e != e else i64(transmute(u32)e)) }
+	} else when T == f64 {
+		put_color_result(o, i64(0x7ff8000000000000) if v != v else transmute(i64)v)
+	} else {
+		o.v[o.n] = i64(v)
+		o.n += 1
+	}
+}
+
+// Every replaced Color proc on `a` and the other arguments, in the order _color_results in
+// test.gd calls the engine's methods.
+bag_replaced_colors :: proc(self: ^Bag, a, b, c: godot.Color, x: f64, n: i64) -> godot.PackedInt64Array {
+	o: Color_Results
+	a := a
+	put_color_result(&o, godot.color_new())
+	put_color_result(&o, godot.color_new_from_color(a))
+	put_color_result(&o, godot.color_new_from_color_float(a, x))
+	put_color_result(&o, godot.color_new_from_float_float_float(x, f64(b.g), f64(b.b)))
+	put_color_result(&o, godot.color_new_from_float_float_float_float(x, f64(b.g), f64(b.b), f64(c.a)))
+	put_color_result(&o, godot.color_to_argb32(&a))
+	put_color_result(&o, godot.color_to_abgr32(&a))
+	put_color_result(&o, godot.color_to_rgba32(&a))
+	put_color_result(&o, godot.color_to_argb64(&a))
+	put_color_result(&o, godot.color_to_abgr64(&a))
+	put_color_result(&o, godot.color_to_rgba64(&a))
+	put_color_result(&o, godot.color_clamp(&a, b, c))
+	put_color_result(&o, godot.color_inverted(&a))
+	put_color_result(&o, godot.color_lerp(&a, b, x))
+	put_color_result(&o, godot.color_lightened(&a, x))
+	put_color_result(&o, godot.color_darkened(&a, x))
+	put_color_result(&o, godot.color_blend(&a, b))
+	put_color_result(&o, godot.color_get_luminance(&a))
+	put_color_result(&o, godot.color_srgb_to_linear(&a))
+	put_color_result(&o, godot.color_linear_to_srgb(&a))
+	put_color_result(&o, godot.color_is_equal_approx(&a, b))
+	put_color_result(&o, godot.color_hex(n))
+	put_color_result(&o, godot.color_hex64(n))
+	put_color_result(&o, godot.color_from_hsv(x, f64(a.g), f64(a.b), f64(a.a)))
+	put_color_result(&o, godot.color_from_hsv(f64(a.r), f64(b.g), f64(a.b), x))
+	put_color_result(&o, godot.color_from_rgbe9995(n))
+	put_color_result(&o, godot.color_from_rgba8(n, n >> 40, n % 300, -n))
 	return godot.packed_of_int64(o.v[:o.n])
 }

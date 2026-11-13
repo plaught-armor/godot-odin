@@ -52,8 +52,9 @@ STRING_IN_PLACE = {
     ("String", "is_empty"): "\tif string_layout_known { return string_stored_length(self) == 0 }\n",
 }
 
-# Builtin methods left out of the bindings: godot/access.odin defines each under the same name and
-# signature, read in place, and example/project/test.gd checks it against the engine's. Listed with
+# Builtin methods left out of the bindings: godot/access.odin defines each String one under the
+# same name and signature, read in place, and godot/color.odin each Color one, and
+# example/project/test.gd checks it against the engine's. Listed with
 # the engine version checked in docs/replaced.md.
 REPLACED = {
     ("String", "find"),
@@ -71,6 +72,37 @@ REPLACED = {
     ("String", "replace"),
     ("String", "replacen"),
     ("String", "split"),
+    ("Color", "to_argb32"),
+    ("Color", "to_abgr32"),
+    ("Color", "to_rgba32"),
+    ("Color", "to_argb64"),
+    ("Color", "to_abgr64"),
+    ("Color", "to_rgba64"),
+    ("Color", "clamp"),
+    ("Color", "inverted"),
+    ("Color", "lerp"),
+    ("Color", "lightened"),
+    ("Color", "darkened"),
+    ("Color", "blend"),
+    ("Color", "get_luminance"),
+    ("Color", "srgb_to_linear"),
+    ("Color", "linear_to_srgb"),
+    ("Color", "is_equal_approx"),
+    ("Color", "hex"),
+    ("Color", "hex64"),
+    ("Color", "from_hsv"),
+    ("Color", "from_rgbe9995"),
+    ("Color", "from_rgba8"),
+}
+
+# Builtin constructors defined in place under the generated name: godot/color.odin builds a Color
+# from floats or another Color without a call into the engine.
+REPLACED_CONSTRUCTORS = {
+    "color_new",
+    "color_new_from_color",
+    "color_new_from_color_float",
+    "color_new_from_float_float_float",
+    "color_new_from_float_float_float_float",
 }
 
 # Builtins whose methods and constructors all live in place under the generated name and
@@ -448,6 +480,8 @@ class Api:
                 continue
             suffix = "_from_" + "_".join(snake(a["type"]) for a in args) if args else ""
             name = f"{snake(bname)}_new{suffix}"
+            if name in REPLACED_CONSTRUCTORS:
+                continue
             params, locals_, ptrs = self.args_and_ptrs(args)
             n = len(ptrs)
             body = "".join(locals_)

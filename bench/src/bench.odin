@@ -58,6 +58,7 @@ register :: proc() {
 	godot.method(c, "ident_ns", ident_ns, {"kind", "n"})
 	godot.method(c, "vector_ns", vector_ns, {"kind", "n"})
 	godot.method(c, "vectori_ns", vectori_ns, {"kind", "n"})
+	godot.method(c, "color_ns", color_ns, {"kind", "n"})
 	godot.method(c, "text_len", text_len, {"s"})
 	godot.method(c, "string_len", string_len, {"s"})
 }
@@ -1040,5 +1041,72 @@ vectori_ns :: proc(self: ^Bench, kind: Vectori_Op, n: i64) -> f64 {
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += sum
+	return ns
+}
+
+// The Color methods `color_ns` times, paired the same way as Vector_Op.
+Color_Op :: enum i64 {
+	TO_RGBA32_CALL,      // the engine's Color.to_rgba32
+	TO_RGBA32,           // color_to_rgba32
+	LERP_CALL,           // the engine's Color.lerp at weight 0.25
+	LERP,                // color_lerp at weight 0.25
+	LINEAR_TO_SRGB_CALL, // the engine's Color.linear_to_srgb
+	LINEAR_TO_SRGB,      // color_linear_to_srgb
+	FROM_HSV_CALL,       // the engine's Color.from_hsv
+	FROM_HSV,            // color_from_hsv
+}
+
+// Nanoseconds per `kind` round on a Color reread through a volatile load each round, as in
+// vector_ns.
+color_ns :: proc(self: ^Bench, kind: Color_Op, n: i64) -> f64 {
+	v := godot.Color{0.25, 0.5, 0.75, 1}
+	to := godot.Color{0.9, 0.1, 0.4, 0.5}
+	weight, h, s, val, alpha := f64(0.25), f64(0.6), f64(0.5), f64(0.8), f64(1)
+	ref := &v
+	rgba_fn := godot.builtin_method(.COLOR, "to_rgba32", 3173160232)
+	lerp_fn := godot.builtin_method(.COLOR, "lerp", 402949615)
+	srgb_fn := godot.builtin_method(.COLOR, "linear_to_srgb", 3334027602)
+	hsv_fn := godot.builtin_method(.COLOR, "from_hsv", 1573799446)
+	sum: f32
+	start := time.tick_now()
+	switch kind {
+	case .TO_RGBA32_CALL:
+		for _ in 0 ..< n {
+			r: i64
+			rgba_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += f32(r & 0xFF)
+		}
+	case .TO_RGBA32:
+		for _ in 0 ..< n { sum += f32(godot.color_to_rgba32(intrinsics.volatile_load(&ref)) & 0xFF) }
+	case .LERP_CALL:
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&to, &weight}
+			r: godot.Color
+			lerp_fn(intrinsics.volatile_load(&ref), &args[0], &r, 2)
+			sum += r.r
+		}
+	case .LERP:
+		for _ in 0 ..< n { sum += godot.color_lerp(intrinsics.volatile_load(&ref), to, weight).r }
+	case .LINEAR_TO_SRGB_CALL:
+		for _ in 0 ..< n {
+			r: godot.Color
+			srgb_fn(intrinsics.volatile_load(&ref), nil, &r, 0)
+			sum += r.r
+		}
+	case .LINEAR_TO_SRGB:
+		for _ in 0 ..< n { sum += godot.color_linear_to_srgb(intrinsics.volatile_load(&ref)).r }
+	case .FROM_HSV_CALL:
+		for _ in 0 ..< n {
+			hue := f64(intrinsics.volatile_load(&ref).r) + h
+			args := [4]gde.ConstTypePtr{&hue, &s, &val, &alpha}
+			r: godot.Color
+			hsv_fn(nil, &args[0], &r, 4)
+			sum += r.r
+		}
+	case .FROM_HSV:
+		for _ in 0 ..< n { sum += godot.color_from_hsv(f64(intrinsics.volatile_load(&ref).r) + h, s, val, alpha).r }
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += i64(sum)
 	return ns
 }

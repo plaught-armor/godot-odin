@@ -2664,50 +2664,6 @@ projection_get_lod_multiplier :: proc "contextless" (self: ^Projection) -> f64 {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-color_new :: proc "contextless" () -> (__r: Color) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.COLOR, 0) }
-	__fn(&__r, nil)
-	return
-}
-color_new_from_color :: proc "contextless" (from: Color) -> (__r: Color) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.COLOR, 1) }
-	__a_from := from
-	__args := [1]gde.ConstTypePtr{&__a_from}
-	__fn(&__r, &__args[0])
-	return
-}
-color_new_from_color_float :: proc "contextless" (from: Color, alpha: f64) -> (__r: Color) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.COLOR, 2) }
-	__a_from := from
-	__a_alpha := alpha
-	__args := [2]gde.ConstTypePtr{&__a_from, &__a_alpha}
-	__fn(&__r, &__args[0])
-	return
-}
-color_new_from_float_float_float :: proc "contextless" (r: f64, g: f64, b: f64) -> (__r: Color) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.COLOR, 3) }
-	__a_r := r
-	__a_g := g
-	__a_b := b
-	__args := [3]gde.ConstTypePtr{&__a_r, &__a_g, &__a_b}
-	__fn(&__r, &__args[0])
-	return
-}
-color_new_from_float_float_float_float :: proc "contextless" (r: f64, g: f64, b: f64, a: f64) -> (__r: Color) {
-	@(static) __fn: gde.PtrConstructor
-	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.COLOR, 4) }
-	__a_r := r
-	__a_g := g
-	__a_b := b
-	__a_a := a
-	__args := [4]gde.ConstTypePtr{&__a_r, &__a_g, &__a_b, &__a_a}
-	__fn(&__r, &__args[0])
-	return
-}
 color_new_from_string :: proc "contextless" (code: String) -> (__r: Color) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.COLOR, 5) }
@@ -2725,48 +2681,6 @@ color_new_from_string_float :: proc "contextless" (code: String, alpha: f64) -> 
 	__fn(&__r, &__args[0])
 	return
 }
-color_to_argb32 :: proc "contextless" (self: ^Color) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "to_argb32", 3173160232) }
-	__ret: i64
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_to_abgr32 :: proc "contextless" (self: ^Color) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "to_abgr32", 3173160232) }
-	__ret: i64
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_to_rgba32 :: proc "contextless" (self: ^Color) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "to_rgba32", 3173160232) }
-	__ret: i64
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_to_argb64 :: proc "contextless" (self: ^Color) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "to_argb64", 3173160232) }
-	__ret: i64
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_to_abgr64 :: proc "contextless" (self: ^Color) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "to_abgr64", 3173160232) }
-	__ret: i64
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_to_rgba64 :: proc "contextless" (self: ^Color) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "to_rgba64", 3173160232) }
-	__ret: i64
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
 color_to_html :: proc "contextless" (self: ^Color, with_alpha: bool) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.COLOR, "to_html", 3429816538) }
@@ -2774,108 +2688,6 @@ color_to_html :: proc "contextless" (self: ^Color, with_alpha: bool) -> String {
 	__args := [1]gde.ConstTypePtr{&__a_with_alpha}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-color_clamp :: proc "contextless" (self: ^Color, min: Color, max: Color) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "clamp", 105651410) }
-	__a_min := min
-	__a_max := max
-	__args := [2]gde.ConstTypePtr{&__a_min, &__a_max}
-	__ret: Color
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-color_inverted :: proc "contextless" (self: ^Color) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "inverted", 3334027602) }
-	__ret: Color
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_lerp :: proc "contextless" (self: ^Color, to: Color, weight: f64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "lerp", 402949615) }
-	__a_to := to
-	__a_weight := weight
-	__args := [2]gde.ConstTypePtr{&__a_to, &__a_weight}
-	__ret: Color
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-color_lightened :: proc "contextless" (self: ^Color, amount: f64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "lightened", 1466039168) }
-	__a_amount := amount
-	__args := [1]gde.ConstTypePtr{&__a_amount}
-	__ret: Color
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-color_darkened :: proc "contextless" (self: ^Color, amount: f64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "darkened", 1466039168) }
-	__a_amount := amount
-	__args := [1]gde.ConstTypePtr{&__a_amount}
-	__ret: Color
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-color_blend :: proc "contextless" (self: ^Color, over: Color) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "blend", 3803690977) }
-	__a_over := over
-	__args := [1]gde.ConstTypePtr{&__a_over}
-	__ret: Color
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-color_get_luminance :: proc "contextless" (self: ^Color) -> f64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "get_luminance", 466405837) }
-	__ret: f64
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_srgb_to_linear :: proc "contextless" (self: ^Color) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "srgb_to_linear", 3334027602) }
-	__ret: Color
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_linear_to_srgb :: proc "contextless" (self: ^Color) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "linear_to_srgb", 3334027602) }
-	__ret: Color
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-color_is_equal_approx :: proc "contextless" (self: ^Color, to: Color) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "is_equal_approx", 3167426256) }
-	__a_to := to
-	__args := [1]gde.ConstTypePtr{&__a_to}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
-color_hex :: proc "contextless" (hex: i64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "hex", 351421375) }
-	__a_hex := hex
-	__args := [1]gde.ConstTypePtr{&__a_hex}
-	__ret: Color
-	__fn(nil, &__args[0], &__ret, 1)
-	return __ret
-}
-color_hex64 :: proc "contextless" (hex: i64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "hex64", 351421375) }
-	__a_hex := hex
-	__args := [1]gde.ConstTypePtr{&__a_hex}
-	__ret: Color
-	__fn(nil, &__args[0], &__ret, 1)
 	return __ret
 }
 color_html :: proc "contextless" (rgba: String) -> Color {
@@ -2906,18 +2718,6 @@ color_from_string :: proc "contextless" (str: String, default: Color) -> Color {
 	__fn(nil, &__args[0], &__ret, 2)
 	return __ret
 }
-color_from_hsv :: proc "contextless" (h: f64, s: f64, v: f64, alpha: f64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "from_hsv", 1573799446) }
-	__a_h := h
-	__a_s := s
-	__a_v := v
-	__a_alpha := alpha
-	__args := [4]gde.ConstTypePtr{&__a_h, &__a_s, &__a_v, &__a_alpha}
-	__ret: Color
-	__fn(nil, &__args[0], &__ret, 4)
-	return __ret
-}
 color_from_ok_hsl :: proc "contextless" (h: f64, s: f64, l: f64, alpha: f64) -> Color {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.COLOR, "from_ok_hsl", 1573799446) }
@@ -2926,27 +2726,6 @@ color_from_ok_hsl :: proc "contextless" (h: f64, s: f64, l: f64, alpha: f64) -> 
 	__a_l := l
 	__a_alpha := alpha
 	__args := [4]gde.ConstTypePtr{&__a_h, &__a_s, &__a_l, &__a_alpha}
-	__ret: Color
-	__fn(nil, &__args[0], &__ret, 4)
-	return __ret
-}
-color_from_rgbe9995 :: proc "contextless" (rgbe: i64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "from_rgbe9995", 351421375) }
-	__a_rgbe := rgbe
-	__args := [1]gde.ConstTypePtr{&__a_rgbe}
-	__ret: Color
-	__fn(nil, &__args[0], &__ret, 1)
-	return __ret
-}
-color_from_rgba8 :: proc "contextless" (r8: i64, g8: i64, b8: i64, a8: i64) -> Color {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.COLOR, "from_rgba8", 3072934735) }
-	__a_r8 := r8
-	__a_g8 := g8
-	__a_b8 := b8
-	__a_a8 := a8
-	__args := [4]gde.ConstTypePtr{&__a_r8, &__a_g8, &__a_b8, &__a_a8}
 	__ret: Color
 	__fn(nil, &__args[0], &__ret, 4)
 	return __ret

@@ -515,6 +515,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_random(b2)
 	failures += _check_replaced_vectors(b2)
 	failures += _check_replaced_vectorsi(b2)
+	failures += _check_replaced_colors(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -866,6 +867,88 @@ func _check_replaced_vectorsi(b2: Bag) -> int:
 			v.append(e)
 		var f := Vector4(rng.randf_range(-20, 20), rng.randf_range(-3e9, 3e9), rng.randf_range(-1, 1), rng.randf_range(-1e5, 1e5))
 		failures += _check_vectori_case(b2, v[0], v[1], v[2], rng.randi_range(-9, 9), rng.randi_range(-9, 9), f)
+	return failures
+
+
+
+# Appends `v` as Bag.replaced_colors does: a Color by the bits of each float component, a float
+# as its bits, a bool or int as itself, and every NaN as one value.
+func _put_color_result(out: PackedInt64Array, v: Variant) -> void:
+	match typeof(v):
+		TYPE_COLOR:
+			for k: int in 4:
+				var e: float = v[k]
+				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
+		TYPE_FLOAT:
+			out.append(0x7ff8000000000000 if is_nan(v) else PackedFloat64Array([v]).to_byte_array().decode_s64(0))
+		_:
+			out.append(int(v))
+
+
+# The engine's Color methods in the order Bag.replaced_colors calls the Odin procs.
+func _color_results(a: Color, b: Color, c: Color, x: float, n: int) -> PackedInt64Array:
+	var o := PackedInt64Array()
+	for v: Variant in [Color(), Color(a), Color(a, x), Color(x, b.g, b.b), Color(x, b.g, b.b, c.a),
+			a.to_argb32(), a.to_abgr32(), a.to_rgba32(), a.to_argb64(), a.to_abgr64(), a.to_rgba64(),
+			a.clamp(b, c), a.inverted(), a.lerp(b, x), a.lightened(x), a.darkened(x), a.blend(b),
+			a.get_luminance(), a.srgb_to_linear(), a.linear_to_srgb(), a.is_equal_approx(b),
+			Color.hex(n), Color.hex64(n), Color.from_hsv(x, a.g, a.b, a.a),
+			Color.from_hsv(a.r, b.g, a.b, x), Color.from_rgbe9995(n),
+			Color.from_rgba8(n, n >> 40, n % 300, -n)]:
+		_put_color_result(o, v)
+	return o
+
+
+func _check_color_case(b2: Bag, a: Color, b: Color, c: Color, x: float, n: int) -> int:
+	var want := _color_results(a, b, c, x, n)
+	var got: PackedInt64Array = b2.replaced_colors(a, b, c, x, n)
+	if got == want:
+		return 0
+	var at := 0
+	while at < mini(got.size(), want.size()) and got[at] == want[at]:
+		at += 1
+	print("FAIL: Bag.replaced_colors(%s, %s, %s, %s, %d) differs at %d of %d: %s, not %s" % [a, b, c, x, n, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
+	return 1
+
+
+# The Color procs that replace engine methods, on edge cases (zero, white, signed zeros, values
+# outside 0 to 1 and outside int32 once scaled, infinities, NaNs, the sRGB thresholds, channels a
+# half step from a byte, transparent colors, and 17700158, the least float whose srgb_to_linear
+# depends on the last bit of the double 1 / 1.055) and then on seeded random colors.
+func _check_replaced_colors(b2: Bag) -> int:
+	var failures := 0
+	var nz := -float(Time.get_ticks_msec() * 0)
+	var edges: Array[Color] = [Color(0, 0, 0, 0), Color(1, 1, 1, 1), Color(nz, nz, 0, nz),
+		Color(0.5, 0.25, 0.75, 0.5),
+		Color(0.5, 0.25, 0.75, 1), Color(-0.5, 1.5, 2, -1), Color(3e9, -3e9, 1e38, 16777216),
+		Color(INF, -INF, NAN, 1), Color(0.04045, 0.0031308, 0.04044, 0.0031307),
+		Color(0.5 / 255, 1.5 / 255, 254.5 / 255, 255.5 / 255), Color(0.3, 0.6, 0.9, 0),
+		Color(1e-30, -1e-30, 65535.5, 300), Color(0.2, 0.9, 0.9, 1), Color(0.9, 0.2, 0.5, 0.7),
+		Color(0.1, 0.1, 0.8, 0.3), Color(9.5, 0.75, 33, 2),
+		Color(0.6, 17700158, 0.04, 1)]
+	var xs: Array[float] = [0.0, 1.0, 0.25, -0.5, 2.5, INF, NAN, 1.0 / 6, 0.9999, 1e10, -1e-30,
+		5.0 / 6, nz, 0.5, -INF, 0.75]
+	var ns: Array[int] = [0, -1, 0xFF00FF80, 0x123456789abcdef0, 9223372036854775807,
+		0x7fffffff, 4294967301, 0xF8000000, 0x0801FF3F, -0x7fffffffffffffff, 255, 300]
+	for i: int in edges.size():
+		for j: int in [0, 1, 4, 7, 11]:
+			failures += _check_color_case(b2, edges[i], edges[(i + j) % edges.size()],
+				edges[(i + j + 3) % edges.size()], xs[(i + j) % xs.size()], ns[(i + j) % ns.size()])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261114
+	for round: int in 2000:
+		var v: Array[Color] = []
+		for k: int in 3:
+			var e := Color()
+			for m: int in 4:
+				match rng.randi_range(0, 5):
+					0: e[m] = rng.randf_range(-3, 3)
+					1: e[m] = rng.randi_range(0, 255) / 255.0 + [0.0, 0.5 / 255][rng.randi_range(0, 1)]
+					2: e[m] = rng.randf_range(-1e10, 1e10)
+					_: e[m] = rng.randf()
+			v.append(e)
+		var n := (rng.randi() << 32) | rng.randi()
+		failures += _check_color_case(b2, v[0], v[1], v[2], rng.randf_range(-2, 2), n)
 	return failures
 
 

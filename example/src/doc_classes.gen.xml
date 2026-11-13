@@ -228,6 +228,9 @@
 		<method name="replaced_vectorsi">
 			<description>Every Vector2i, Vector3i and Vector4i proc on [code]a[/code] and the other arguments, in the order _vectori_results in test.gd calls the engine's methods.</description>
 		</method>
+		<method name="replaced_colors">
+			<description>Every replaced Color proc on [code]a[/code] and the other arguments, in the order _color_results in test.gd calls the engine's methods.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>
