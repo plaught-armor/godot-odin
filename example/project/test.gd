@@ -493,7 +493,10 @@ func _check_extras() -> int:
 		find_cases.append(["--ab" + "-".repeat(pad), "ab"])
 	for c: Array in find_cases:
 		var s: String = c[0]
-		for from: int in [-20, -3, -2, -1, 0, 1, 2, 4, 9, 20]:
+		for from: int in [-20, -3, -2, -1, 0, 1, 2, 4, 9, 20, 1 << 32, (1 << 32) + 1, -(1 << 32) - 1]:
+			if b2.find(s, c[1], from) != s.find(c[1], from):
+				print("FAIL: Bag.find(%s, %s, %d) gave %d, not %d" % [s, c[1], from, b2.find(s, c[1], from), s.find(c[1], from)])
+				failures += 1
 			if b2.find_text(s, c[1], from) != s.find(c[1], from):
 				print("FAIL: Bag.find_text(%s, %s, %d) gave %d, not %d" % [s, c[1], from, b2.find_text(s, c[1], from), s.find(c[1], from)])
 				failures += 1
@@ -503,6 +506,7 @@ func _check_extras() -> int:
 		if b2.has_text(s, c[1]) != s.contains(c[1]):
 			print("FAIL: Bag.has_text(%s, %s) gave %s" % [s, c[1], b2.has_text(s, c[1])])
 			failures += 1
+	failures += _check_find_random(b2)
 	if b2.lone_byte_matches():
 		print("FAIL: Bag.lone_byte_matches: \"é\" matched the invalid byte 0xE9")
 		failures += 1
@@ -577,6 +581,27 @@ func _check_extras() -> int:
 
 # Untyped calls and property writes arrive as Variants, and an int, float or bool converts to the
 # parameter's or field's type as the engine's own would.
+# Bag.find, which replaces the engine's String.find, against the engine's on seeded random Strings
+# over a small alphabet, so most needles match somewhere. The seed is fixed so a failure repeats.
+func _check_find_random(b2: Bag) -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261112
+	var alphabet: Array[String] = ["a", "b", "-", "日", "é"]
+	var failures := 0
+	for round: int in 3000:
+		var hay := ""
+		for k: int in rng.randi_range(0, 40):
+			hay += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		var needle := ""
+		for k: int in rng.randi_range(0, 5):
+			needle += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		var from := rng.randi_range(-45, 45)
+		if b2.find(hay, needle, from) != hay.find(needle, from):
+			print("FAIL: Bag.find(%s, %s, %d) gave %d, not %d (round %d)" % [hay, needle, from, b2.find(hay, needle, from), hay.find(needle, from), round])
+			failures += 1
+	return failures
+
+
 func _check_untyped() -> int:
 	var failures: int = 0
 	var u: Variant = Walker.new()

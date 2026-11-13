@@ -120,6 +120,7 @@ register_extras :: proc() {
 	godot.method(b, "text_ends", bag_text_ends, {"s", "part"})
 	godot.method(b, "which", bag_which, {"s"})
 	godot.method(b, "which_name", bag_which_name, {"name"})
+	godot.method(b, "find", bag_find, {"s", "part", "from"})
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
 	godot.method(b, "rfind_text", bag_rfind_text, {"s", "part", "from"})
@@ -591,6 +592,13 @@ bag_which_name :: proc(self: ^Bag, name: godot.StringName) -> i64 {
 	set := godot.name_set([4]string{"jump", "run", "日本", ""})
 	defer godot.name_set_destroy(&set)
 	return i64(godot.name_which(name, &set))
+}
+
+// Where `part` first appears in `s` at or after `from`, by `string_find`, which replaces the
+// engine's String.find.
+bag_find :: proc(self: ^Bag, s: godot.String, part: godot.String, from: i64) -> i64 {
+	s := s
+	return godot.string_find(&s, part, from)
 }
 
 // Where `part`'s text first appears in `s` at or after `from`, by `string_find_text`.

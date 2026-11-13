@@ -52,6 +52,13 @@ STRING_IN_PLACE = {
     ("String", "is_empty"): "\tif string_layout_known { return string_stored_length(self) == 0 }\n",
 }
 
+# Builtin methods left out of the bindings: godot/access.odin defines each under the same name and
+# signature, read in place, and example/project/test.gd checks it against the engine's. Listed with
+# the engine version checked in docs/replaced.md.
+REPLACED = {
+    ("String", "find"),
+}
+
 class Interface:
     """The C interface: types, then one proc variable per interface function and a loader."""
 
@@ -384,6 +391,8 @@ class Api:
 
     def emit_builtin_method(self, bname, m):
         name = f"{snake(bname)}_{m['name']}"
+        if (bname, m["name"]) in REPLACED:
+            return ""
         if m.get("is_vararg") and not m.get("is_static") and self.bindable(m):
             return self.emit_vararg_builtin_method(bname, m, name)
         if m.get("is_vararg") or not self.bindable(m):

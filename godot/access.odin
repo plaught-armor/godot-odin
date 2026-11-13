@@ -215,6 +215,19 @@ string_find_text :: proc "contextless" (s: ^String, text: string, from: i64 = 0)
 	return find_forward(chars, start, last, n, false)
 }
 
+// Where `what` first appears in `self` at or after character `from`, in characters, or -1: the
+// engine's `find`, which the bindings leave out (tools/odin_bindgen.py REPLACED), read in place
+// with no engine call. A negative `from` counts back from the last place `what` fits, and an
+// empty `what` gives -1.
+string_find :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
+	what := what
+	chars := string_read(self)
+	n := rune_needle_of(string_read(&what))
+	start, last, ok := find_start(len(chars), n, from)
+	if !ok { return -1 }
+	return find_forward(chars, start, last, n, false)
+}
+
 // Where Odin text `text` last appears in `s` at or before character `from`, in characters, or -1:
 // the engine's `rfind`, compared in place. `from` reads as in `string_find_text`, so the default
 // -1 searches from the last place `text` fits, and a `from` past that place gives -1.
@@ -752,7 +765,7 @@ count_in :: #force_inline proc "contextless" (chars: []rune, n: Needle, from, to
 // step while none of them can hold `n`'s first character, then one at a time through a step that
 // can. Every round moves `i` on, so `len(chars) + 1` rounds cover it.
 @(private)
-find_forward :: #force_inline proc "contextless" (chars: []rune, start, last: int, n: Needle, $NOCASE: bool) -> i64 {
+find_forward :: #force_inline proc "contextless" (chars: []rune, start, last: int, n: $N, $NOCASE: bool) -> i64 {
 	i := start
 	for _ in 0 ..= len(chars) {
 		if i > last { break }
@@ -771,7 +784,7 @@ find_forward :: #force_inline proc "contextless" (chars: []rune, start, last: in
 
 // As `find_forward`, walking down from `start` to 0: four places ending at `i` per step.
 @(private)
-find_backward :: #force_inline proc "contextless" (chars: []rune, start: int, n: Needle, $NOCASE: bool) -> i64 {
+find_backward :: #force_inline proc "contextless" (chars: []rune, start: int, n: $N, $NOCASE: bool) -> i64 {
 	i := start
 	for _ in 0 ..= len(chars) {
 		if i < 0 { break }
@@ -791,7 +804,7 @@ find_backward :: #force_inline proc "contextless" (chars: []rune, start: int, n:
 // Whether any of four characters may be `n`'s first. Ignoring case, an ASCII letter matches with
 // bit 5 set, and any non-ASCII character may lower to it.
 @(private)
-may_hold_first :: #force_inline proc "contextless" (v: #simd[4]u32, n: Needle, $NOCASE: bool) -> bool {
+may_hold_first :: #force_inline proc "contextless" (v: #simd[4]u32, n: $N, $NOCASE: bool) -> bool {
 	f := u32(n.first)
 	firsts := #simd[4]u32{f, f, f, f}
 	when NOCASE {
@@ -833,12 +846,38 @@ needle_of :: #force_inline proc "contextless" (text: string, $NOCASE: bool) -> (
 	return
 }
 
-// The first place a search from `from` looks, and the last place `n` fits in `length` characters,
-// by the engine's rules; not `ok` when `from` is out of range or `n` is empty.
+// A String searched for by `string_find`, read in place, with its length and first character.
 @(private)
-find_start :: #force_inline proc "contextless" (length: int, n: Needle, from: i64) -> (start, last: int, ok: bool) {
+Rune_Needle :: struct {
+	chars:    []rune,
+	count:    int,
+	first:    rune,
+	fold_bit: u32,
+}
+
+@(private)
+rune_needle_of :: #force_inline proc "contextless" (chars: []rune) -> (n: Rune_Needle) {
+	n.chars, n.count = chars, len(chars)
+	if n.count > 0 { n.first = chars[0] }
+	return
+}
+
+// Whether `n` appears at character `i` of `chars`, which it fits in. Case-sensitive only.
+@(private)
+rune_needle_at :: #force_inline proc "contextless" (chars: []rune, i: int, n: Rune_Needle, $NOCASE: bool) -> bool {
+	#assert(!NOCASE)
+	if chars[i] != n.first { return false }
+	return runes_equal(raw_data(chars[i:]), raw_data(n.chars), n.count)
+}
+
+// The first place a search from `from` looks, and the last place `n` fits in `length` characters,
+// by the engine's rules; not `ok` when `from` is out of range or `n` is empty. `from` is a 32-bit
+// int in the engine, so it wraps here as it does there.
+@(private)
+find_start :: #force_inline proc "contextless" (length: int, n: $N, from: i64) -> (start, last: int, ok: bool) {
 	if n.count == 0 { return }
 	l := i64(length - n.count)
+	from := i64(i32(from))
 	f := from if from >= 0 else l + from + 1
 	if f < 0 || f > l { return }
 	return int(f), int(l), true
@@ -846,7 +885,10 @@ find_start :: #force_inline proc "contextless" (length: int, n: Needle, from: i6
 
 // Whether `n` appears at character `i` of `chars`, which it fits in.
 @(private)
-needle_at :: #force_inline proc "contextless" (chars: []rune, i: int, n: Needle, $NOCASE: bool) -> bool {
+needle_at :: proc {text_needle_at, rune_needle_at}
+
+@(private)
+text_needle_at :: #force_inline proc "contextless" (chars: []rune, i: int, n: Needle, $NOCASE: bool) -> bool {
 	window := chars[i:][:n.count]
 	when NOCASE {
 		if rune_lower(chars[i]) != n.first { return false }

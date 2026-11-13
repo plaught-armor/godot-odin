@@ -140,16 +140,6 @@ string_get_slice_count :: proc "contextless" (self: ^String, delimiter: String) 
 	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
-string_find :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "find", 1760645412) }
-	__a_what := what
-	__a_from := from
-	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 string_findn :: proc "contextless" (self: ^String, what: String, from: i64) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "findn", 1760645412) }

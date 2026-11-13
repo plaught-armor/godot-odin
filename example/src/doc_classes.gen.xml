@@ -216,6 +216,9 @@
 		<method name="which_name">
 			<description>The index of [code]name[/code] among a fixed set of names by [code]name_which[/code], or -1.</description>
 		</method>
+		<method name="find">
+			<description>Where [code]part[/code] first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find[/code], which replaces the engine's String.find.</description>
+		</method>
 		<method name="find_text">
 			<description>Where [code]part[/code]'s text first appears in [code]s[/code] at or after [code]from[/code], by [code]string_find_text[/code].</description>
 		</method>
