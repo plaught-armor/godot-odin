@@ -17,22 +17,24 @@ follow it or be dropped from `REPLACED`.
 | `String.find` | `string_find` | Godot 4.7-stable | 75 ns | 12 ns |
 | `String.rfind` | `string_rfind` | Godot 4.7-stable | 80 ns | 13 ns |
 | `String.findn` | `string_findn` | Godot 4.7-stable | 700 ns | 19 ns |
-| `String.rfindn` | `string_rfindn` | Godot 4.7-stable | | |
-| `String.contains` | `string_contains` | Godot 4.7-stable | | |
-| `String.containsn` | `string_containsn` | Godot 4.7-stable | | |
-| `String.count` | `string_count` | Godot 4.7-stable | | |
-| `String.countn` | `string_countn` | Godot 4.7-stable | | |
-| `String.begins_with` | `string_begins_with` | Godot 4.7-stable | | |
-| `String.ends_with` | `string_ends_with` | Godot 4.7-stable | | |
-| `String.casecmp_to` | `string_casecmp_to` | Godot 4.7-stable | | |
+| `String.rfindn` | `string_rfindn` | Godot 4.7-stable | 586 ns | 14 ns |
+| `String.contains` | `string_contains` | Godot 4.7-stable | 72 ns | 10 ns |
+| `String.containsn` | `string_containsn` | Godot 4.7-stable | 665 ns | 15 ns |
+| `String.count` | `string_count` | Godot 4.7-stable | 81 ns | 12 ns |
+| `String.countn` | `string_countn` | Godot 4.7-stable | 660 ns | 20 ns |
+| `String.begins_with` | `string_begins_with` | Godot 4.7-stable | 4.4 ns | 2.8 ns |
+| `String.ends_with` | `string_ends_with` | Godot 4.7-stable | 4.0 ns | 1.9 ns |
+| `String.casecmp_to` | `string_casecmp_to` | Godot 4.7-stable | 18 ns | 7.7 ns |
 | `String.nocasecmp_to` | `string_nocasecmp_to` | Godot 4.7-stable | 360 ns | 18 ns |
 | `String.replace` | `string_replace` | Godot 4.7-stable | 109 ns | 37 ns |
-| `String.replacen` | `string_replacen` | Godot 4.7-stable | | |
+| `String.replacen` | `string_replacen` | Godot 4.7-stable | 679 ns | 43 ns |
 | `String.split` | `string_split` | Godot 4.7-stable | 235 ns | 144 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
-sentence split on spaces into nine Strings, which making those Strings dominates. Blank timings are not benched; the methods share the scans above.
+sentence split on spaces into nine Strings, which making those Strings dominates; `begins_with`
+and `ends_with` of a two-word start and end of the sentence; `casecmp_to` of the sentence and an
+equal one in separate storage.
 
 ## Vector2, Vector3 and Vector4
 

@@ -61,6 +61,7 @@ register :: proc() {
 	godot.method(c, "color_ns", color_ns, {"kind", "n"})
 	godot.method(c, "basis_ns", basis_ns, {"kind", "n"})
 	godot.method(c, "transform_ns", transform_ns, {"kind", "n"})
+	godot.method(c, "string_ns", string_ns, {"kind", "n"})
 	godot.method(c, "quaternion_ns", quaternion_ns, {"kind", "n"})
 	godot.method(c, "plane_ns", plane_ns, {"kind", "n"})
 	godot.method(c, "aabb_ns", aabb_ns, {"kind", "n"})
@@ -1562,6 +1563,123 @@ transform_ns :: proc(self: ^Bench, kind: Transform_Op, n: i64) -> f64 {
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += i64(sum)
+	return ns
+}
+
+// The String methods `string_ns` times that `ident_ns` does not, paired the same way as Vector_Op:
+// the engine's method through its builtin method pointer, as the bindings called it before, then
+// its replacement on the same Strings.
+String_Op :: enum i64 {
+	RFINDN_CALL,    // the engine's String.rfindn of "QUICK" in the sentence
+	RFINDN,         // string_rfindn of the same
+	CONTAINS_CALL,  // the engine's String.contains of "lazy" in the sentence
+	CONTAINS,       // string_contains of the same
+	CONTAINSN_CALL, // the engine's String.containsn of "LAZY" in the sentence
+	CONTAINSN,      // string_containsn of the same
+	COUNT_CALL,     // the engine's String.count of "the" in the sentence
+	COUNT,          // string_count of the same
+	COUNTN_CALL,    // the engine's String.countn of "THE" in the sentence
+	COUNTN,         // string_countn of the same
+	BEGINS_CALL,    // the engine's String.begins_with of "the quick" on the sentence
+	BEGINS,         // string_begins_with of the same
+	ENDS_CALL,      // the engine's String.ends_with of "lazy dog" on the sentence
+	ENDS,           // string_ends_with of the same
+	CASECMP_CALL,   // the engine's String.casecmp_to of the sentence and a copy in separate storage
+	CASECMP,        // string_casecmp_to of the same
+	REPLACEN_CALL,  // the engine's String.replacen of "THE" by "a" in the sentence, the result destroyed
+	REPLACEN,       // string_replacen of the same
+}
+
+// Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
+// rounds.
+string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
+	hay, same := godot.string_of(FIND_HAY), godot.string_of(FIND_HAY)
+	defer godot.destroy[.STRING](&hay)
+	defer godot.destroy[.STRING](&same)
+	h := &hay
+	quick, lazy, lazy_upper := godot.intern_text("QUICK"), godot.intern_text("lazy"), godot.intern_text("LAZY")
+	the, the_upper, a := godot.intern_text("the"), godot.intern_text("THE"), godot.intern_text("a")
+	head, tail := godot.intern_text("the quick"), godot.intern_text("lazy dog")
+	from, to := i64(0), i64(0)
+	last := i64(-1)
+	sum: i64
+	start := time.tick_now()
+	switch kind {
+	case .RFINDN_CALL:
+		fn := godot.builtin_method(.STRING, "rfindn", 1760645412)
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&quick, &last}
+			r: i64
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 2)
+			sum += r
+		}
+	case .RFINDN:
+		for _ in 0 ..< n { sum += godot.string_rfindn(intrinsics.volatile_load(&h), quick, last) }
+	case .CONTAINS_CALL, .CONTAINSN_CALL, .BEGINS_CALL, .ENDS_CALL:
+		method: cstring
+		what: ^godot.String
+		#partial switch kind {
+		case .CONTAINS_CALL:  method, what = "contains", &lazy
+		case .CONTAINSN_CALL: method, what = "containsn", &lazy_upper
+		case .BEGINS_CALL:    method, what = "begins_with", &head
+		case .ENDS_CALL:      method, what = "ends_with", &tail
+		}
+		fn := godot.builtin_method(.STRING, method, 2566493496)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{what}
+			r: u8
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 1)
+			sum += i64(r)
+		}
+	case .CONTAINS:
+		for _ in 0 ..< n { sum += i64(godot.string_contains(intrinsics.volatile_load(&h), lazy)) }
+	case .CONTAINSN:
+		for _ in 0 ..< n { sum += i64(godot.string_containsn(intrinsics.volatile_load(&h), lazy_upper)) }
+	case .COUNT_CALL, .COUNTN_CALL:
+		what := &the if kind == .COUNT_CALL else &the_upper
+		fn := godot.builtin_method(.STRING, "count" if kind == .COUNT_CALL else "countn", 2343087891)
+		for _ in 0 ..< n {
+			args := [3]gde.ConstTypePtr{what, &from, &to}
+			r: i64
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 3)
+			sum += r
+		}
+	case .COUNT:
+		for _ in 0 ..< n { sum += godot.string_count(intrinsics.volatile_load(&h), the, from, to) }
+	case .COUNTN:
+		for _ in 0 ..< n { sum += godot.string_countn(intrinsics.volatile_load(&h), the_upper, from, to) }
+	case .BEGINS:
+		for _ in 0 ..< n { sum += i64(godot.string_begins_with(intrinsics.volatile_load(&h), head)) }
+	case .ENDS:
+		for _ in 0 ..< n { sum += i64(godot.string_ends_with(intrinsics.volatile_load(&h), tail)) }
+	case .CASECMP_CALL:
+		fn := godot.builtin_method(.STRING, "casecmp_to", 2920860731)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&same}
+			r: i64
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 1)
+			sum += r
+		}
+	case .CASECMP:
+		for _ in 0 ..< n { sum += godot.string_casecmp_to(intrinsics.volatile_load(&h), same) }
+	case .REPLACEN_CALL:
+		fn := godot.builtin_method(.STRING, "replacen", 1340436205)
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&the_upper, &a}
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 2)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .REPLACEN:
+		for _ in 0 ..< n {
+			r := godot.string_replacen(intrinsics.volatile_load(&h), the_upper, a)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	}
+	ns := f64(time.tick_since(start)) / f64(n)
+	self.total += sum
 	return ns
 }
 
