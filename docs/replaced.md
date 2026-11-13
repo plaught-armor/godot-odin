@@ -26,9 +26,9 @@ follow it or be dropped from `REPLACED`.
 | `String.ends_with` | `string_ends_with` | Godot 4.7-stable | | |
 | `String.casecmp_to` | `string_casecmp_to` | Godot 4.7-stable | | |
 | `String.nocasecmp_to` | `string_nocasecmp_to` | Godot 4.7-stable | 360 ns | 18 ns |
-| `String.replace` | `string_replace` | Godot 4.7-stable | 113 ns | 43 ns |
+| `String.replace` | `string_replace` | Godot 4.7-stable | 109 ns | 37 ns |
 | `String.replacen` | `string_replacen` | Godot 4.7-stable | | |
-| `String.split` | `string_split` | Godot 4.7-stable | 336 ns | 215 ns |
+| `String.split` | `string_split` | Godot 4.7-stable | 235 ns | 144 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the

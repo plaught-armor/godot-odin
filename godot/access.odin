@@ -445,8 +445,7 @@ replace_in :: proc "contextless" (s: ^String, n: $N, with: $W, $NOCASE: bool) ->
 	// A zeroed String is the engine's empty one: its storage pointer is null.
 	if total == 0 { return }
 	// The engine's resize counts the terminator, which it leaves for the caller to write.
-	gde.string_resize(&out, gde.Int(total + 1))
-	w := gde.string_operator_index(&out, 0)[:total + 1]
+	w := string_storage(&out, total + 1)[:total + 1]
 	j, start, last := 0, 0, len(chars) - n.count
 	for _ in 0 ..< hits {
 		at := int(find_forward(chars, start, last, n, NOCASE))
@@ -794,8 +793,7 @@ fixed_text :: proc "contextless" (buf: []byte, number: f64, places: int) -> ([]b
 // Sizes the empty String `s` to the ASCII `text` and writes it in, with the terminator.
 @(private)
 ascii_fill :: proc "contextless" (s: ^String, text: []byte) {
-	gde.string_resize(s, gde.Int(len(text) + 1))
-	w := (^[^]rune)(s)^ if string_layout_known else gde.string_operator_index(s, 0)
+	w := string_storage(s, len(text) + 1)
 	for c, k in text { w[k] = rune(c) }
 	w[len(text)] = 0
 }
@@ -870,10 +868,27 @@ part_put :: #force_inline proc "contextless" (out: []String, k: int, part: []run
 // leaves for the caller. `s` must be a String you own with no other references.
 @(private)
 string_fill :: #force_inline proc "contextless" (s: ^String, chars: []rune) {
-	gde.string_resize(s, gde.Int(len(chars) + 1))
-	w := (^[^]rune)(s)^ if string_layout_known else gde.string_operator_index(s, 0)
+	w := string_storage(s, len(chars) + 1)
 	copy(w[:len(chars)], chars)
 	w[len(chars)] = 0
+}
+
+// Gives the empty String `s` storage for `n` characters, the terminator counted, and returns it.
+// With `string_layout_known` it allocates and fills the header itself, the reference count 1 and
+// the capacity and size the engine's `resize` from empty would set, sparing the engine's resize
+// path; the engine frees such storage as its own. Otherwise it asks the engine to resize.
+@(private)
+string_storage :: #force_inline proc "contextless" (s: ^String, n: int) -> [^]rune {
+	if !string_layout_known {
+		gde.string_resize(s, gde.Int(n))
+		return gde.string_operator_index(s, 0)
+	}
+	capacity := max(2, n)
+	base := ([^]i64)(gde.mem_alloc2(uint(STRING_DATA_OFFSET + capacity * size_of(rune)), gde.Bool(0)))
+	base[0], base[1], base[2] = 1, i64(capacity), i64(n)
+	data := rawptr(&base[STRING_DATA_OFFSET / size_of(i64)])
+	(^rawptr)(s)^ = data
+	return ([^]rune)(data)
 }
 
 // Writes the characters of `text` to the front of `dst`, decoded as `text_rune_count` counts them,
@@ -1535,16 +1550,22 @@ dict_fill :: proc "contextless" (d: ^Dictionary, keys: []$K, values: []$V) {
 }
 
 
-// True when a String is the engine's copy-on-write storage as `string_read` reads it: one pointer
-// to the characters, null when empty, with the 64-bit size counting the terminator 16 bytes before
-// them (the capacity sits between). `check_string_layout` decides it at load; without it
-// `string_read` asks the engine, two calls more.
+// True when a String is the engine's copy-on-write storage as `string_read` reads it and
+// `string_storage` builds it: one pointer to the characters, null when empty, after a header of
+// 64-bit reference count, capacity and size, the size counting the terminator 16 bytes before them.
+// `check_string_layout` decides it at load; without it `string_read` asks the engine, two calls
+// more, and `string_storage` resizes through the engine.
 @(private)
 string_layout_known: bool
 
 // Where the size sits before a String's characters.
 @(private)
 STRING_SIZE_OFFSET :: 16
+
+// Where a String's characters sit after the start of its storage: the reference count, capacity and
+// size, each 64 bits, padded to 16 bytes.
+@(private)
+STRING_DATA_OFFSET :: 32
 
 // The length of `s` in characters, read from its storage's header. Only when `string_layout_known`;
 // the generated `string_length` and `string_is_empty` use it then, and ask the engine otherwise.
@@ -1557,9 +1578,12 @@ string_stored_length :: #force_inline proc "contextless" (s: ^String) -> i64 {
 // Sets `string_layout_known` from Strings of known length: one shared by two references, and one
 // grown by an append so its capacity differs from its size.
 check_string_layout :: proc "contextless" () {
-	holds :: proc "contextless" (s: ^String, n: int) -> bool {
+	// The header before the characters: the reference count, the capacity, then the size.
+	holds :: proc "contextless" (s: ^String, n: int, refs: i64) -> bool {
 		p := (^rawptr)(s)^
-		return p != nil && p == rawptr(gde.string_operator_index_const(s, 0)) && (^i64)(uintptr(p) - STRING_SIZE_OFFSET)^ == i64(n) + 1
+		if p == nil || p != rawptr(gde.string_operator_index_const(s, 0)) { return false }
+		h := ([^]i64)(uintptr(p) - STRING_DATA_OFFSET)
+		return h[0] == refs && h[1] >= i64(n) + 1 && h[2] == i64(n) + 1 && uintptr(p) - STRING_SIZE_OFFSET == uintptr(&h[2])
 	}
 	short :: "abc"
 	long :: "a longer String, past any small-size storage"
@@ -1567,7 +1591,7 @@ check_string_layout :: proc "contextless" () {
 	b := string_new_from_string(a)
 	c := string_of(long)
 	string_append_rune(&c, '!')
-	string_layout_known = holds(&a, len(short)) && holds(&b, len(short)) && holds(&c, len(long) + 1)
+	string_layout_known = holds(&a, len(short), 2) && holds(&b, len(short), 2) && holds(&c, len(long) + 1, 1)
 	destroy[.STRING](&c)
 	destroy[.STRING](&b)
 	destroy[.STRING](&a)
