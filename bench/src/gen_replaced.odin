@@ -430,6 +430,7 @@ rb_1 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -444,7 +445,7 @@ rb_1 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_angle_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_angle_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -457,6 +458,7 @@ rb_2 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -471,7 +473,7 @@ rb_2 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_angle_to_point(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_angle_to_point(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -484,6 +486,7 @@ rb_3 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -498,7 +501,7 @@ rb_3 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_direction_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_direction_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -511,6 +514,7 @@ rb_4 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -525,7 +529,7 @@ rb_4 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_distance_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_distance_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -538,6 +542,7 @@ rb_5 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -552,7 +557,7 @@ rb_5 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_distance_squared_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_distance_squared_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -613,6 +618,7 @@ rb_8 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(1.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -627,7 +633,7 @@ rb_8 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_limit_length(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_limit_length(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -688,6 +694,7 @@ rb_11 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -702,7 +709,7 @@ rb_11 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -763,6 +770,7 @@ rb_14 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.75)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -777,7 +785,7 @@ rb_14 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_posmod(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_posmod(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -790,6 +798,7 @@ rb_15 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.75, 0.75}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -804,7 +813,7 @@ rb_15 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_posmodv(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_posmodv(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -817,6 +826,7 @@ rb_16 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -831,7 +841,7 @@ rb_16 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_project(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_project(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -844,8 +854,10 @@ rb_17 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.35)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -860,7 +872,7 @@ rb_17 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_lerp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector2_lerp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -873,8 +885,10 @@ rb_18 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.35)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -889,7 +903,7 @@ rb_18 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_slerp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector2_slerp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -902,12 +916,16 @@ rb_19 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector2 = godot.Vector2{0, 1}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector2 = godot.Vector2{-0.8, 0.6}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -922,7 +940,7 @@ rb_19 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_cubic_interpolate(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.vector2_cubic_interpolate(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -935,18 +953,25 @@ rb_20 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector2 = godot.Vector2{0, 1}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector2 = godot.Vector2{-0.8, 0.6}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: f64 = f64(1.0)
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	a5: f64 = f64(-0.5)
 	a5 = intrinsics.volatile_load(&a5)
+	p5 := &a5
 	a6: f64 = f64(1.5)
 	a6 = intrinsics.volatile_load(&a6)
+	p6 := &a6
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -961,7 +986,7 @@ rb_20 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_cubic_interpolate_in_time(intrinsics.volatile_load(&ref), a0, a1, a2, a3, a4, a5, a6)
+			r := godot.vector2_cubic_interpolate_in_time(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^, intrinsics.volatile_load(&p5)^, intrinsics.volatile_load(&p6)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -974,12 +999,16 @@ rb_21 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector2 = godot.Vector2{0, 1}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector2 = godot.Vector2{-0.8, 0.6}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -994,7 +1023,7 @@ rb_21 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_bezier_interpolate(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.vector2_bezier_interpolate(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1007,12 +1036,16 @@ rb_22 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector2 = godot.Vector2{0, 1}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector2 = godot.Vector2{-0.8, 0.6}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1027,7 +1060,7 @@ rb_22 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_bezier_derivative(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.vector2_bezier_derivative(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1088,8 +1121,10 @@ rb_25 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.25)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1104,7 +1139,7 @@ rb_25 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_move_toward(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector2_move_toward(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1117,6 +1152,7 @@ rb_26 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.7)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1131,7 +1167,7 @@ rb_26 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_rotated(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_rotated(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1264,6 +1300,7 @@ rb_32 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -1278,7 +1315,7 @@ rb_32 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_dot(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_dot(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1291,6 +1328,7 @@ rb_33 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1305,7 +1343,7 @@ rb_33 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_slide(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_slide(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1318,6 +1356,7 @@ rb_34 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1332,7 +1371,7 @@ rb_34 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_bounce(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_bounce(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1345,6 +1384,7 @@ rb_35 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1359,7 +1399,7 @@ rb_35 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_reflect(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_reflect(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1372,6 +1412,7 @@ rb_36 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -1386,7 +1427,7 @@ rb_36 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_cross(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_cross(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1447,8 +1488,10 @@ rb_39 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{-0.5, -0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector2 = godot.Vector2{0.5, 0.5}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1463,7 +1506,7 @@ rb_39 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_clamp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector2_clamp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1476,8 +1519,10 @@ rb_40 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(-0.5)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.5)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1492,7 +1537,7 @@ rb_40 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_clampf(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector2_clampf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1505,6 +1550,7 @@ rb_41 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.25, 0.25}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1519,7 +1565,7 @@ rb_41 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_snapped(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_snapped(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1532,6 +1578,7 @@ rb_42 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.25)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1546,7 +1593,7 @@ rb_42 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_snappedf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_snappedf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1559,6 +1606,7 @@ rb_43 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1573,7 +1621,7 @@ rb_43 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_min(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_min(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1586,6 +1634,7 @@ rb_44 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1600,7 +1649,7 @@ rb_44 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_minf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_minf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1613,6 +1662,7 @@ rb_45 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1627,7 +1677,7 @@ rb_45 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_max(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_max(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1640,6 +1690,7 @@ rb_46 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -1654,7 +1705,7 @@ rb_46 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2_maxf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2_maxf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1766,6 +1817,7 @@ rb_51 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2i = godot.Vector2i{2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -1780,7 +1832,7 @@ rb_51 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_distance_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2i_distance_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1793,6 +1845,7 @@ rb_52 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2i = godot.Vector2i{2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -1807,7 +1860,7 @@ rb_52 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_distance_squared_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2i_distance_squared_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1916,8 +1969,10 @@ rb_57 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2i = godot.Vector2i{-2, -2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector2i = godot.Vector2i{4, 4}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector2i
 	start: time.Tick
 	if engine {
@@ -1932,7 +1987,7 @@ rb_57 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_clamp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector2i_clamp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1945,8 +2000,10 @@ rb_58 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(-2)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(4)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector2i
 	start: time.Tick
 	if engine {
@@ -1961,7 +2018,7 @@ rb_58 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_clampi(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector2i_clampi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -1974,6 +2031,7 @@ rb_59 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2i = godot.Vector2i{2, 2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2i
 	start: time.Tick
 	if engine {
@@ -1988,7 +2046,7 @@ rb_59 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_snapped(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2i_snapped(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2001,6 +2059,7 @@ rb_60 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(2)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2i
 	start: time.Tick
 	if engine {
@@ -2015,7 +2074,7 @@ rb_60 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_snappedi(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2i_snappedi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2028,6 +2087,7 @@ rb_61 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2i = godot.Vector2i{2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2i
 	start: time.Tick
 	if engine {
@@ -2042,7 +2102,7 @@ rb_61 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_min(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2i_min(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2055,6 +2115,7 @@ rb_62 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2i
 	start: time.Tick
 	if engine {
@@ -2069,7 +2130,7 @@ rb_62 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_mini(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2i_mini(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2082,6 +2143,7 @@ rb_63 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2i = godot.Vector2i{2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2i
 	start: time.Tick
 	if engine {
@@ -2096,7 +2158,7 @@ rb_63 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_max(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2i_max(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2109,6 +2171,7 @@ rb_64 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2i
 	start: time.Tick
 	if engine {
@@ -2123,7 +2186,7 @@ rb_64 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector2i_maxi(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector2i_maxi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2208,6 +2271,7 @@ rb_68 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Rect2 = godot.Rect2{{3, 4}, {8, 6}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -2222,7 +2286,7 @@ rb_68 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2259,8 +2323,10 @@ rb_70 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Rect2 = godot.Rect2{{3, 4}, {8, 6}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = false
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -2275,7 +2341,7 @@ rb_70 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2_intersects(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.rect2_intersects(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2288,6 +2354,7 @@ rb_71 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Rect2 = godot.Rect2{{3, 4}, {8, 6}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -2302,7 +2369,7 @@ rb_71 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2_encloses(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2_encloses(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2315,6 +2382,7 @@ rb_72 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Rect2
 	start: time.Tick
 	if engine {
@@ -2329,7 +2397,7 @@ rb_72 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2_expand(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2_expand(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2342,6 +2410,7 @@ rb_73 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -2356,7 +2425,7 @@ rb_73 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2_get_support(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2_get_support(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2369,6 +2438,7 @@ rb_74 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Rect2
 	start: time.Tick
 	if engine {
@@ -2383,7 +2453,7 @@ rb_74 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2_grow(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2_grow(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2396,8 +2466,10 @@ rb_75 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.35)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Rect2
 	start: time.Tick
 	if engine {
@@ -2412,7 +2484,7 @@ rb_75 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2_grow_side(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.rect2_grow_side(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2425,12 +2497,16 @@ rb_76 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(-1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: f64 = f64(1)
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(-1)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Rect2
 	start: time.Tick
 	if engine {
@@ -2445,7 +2521,7 @@ rb_76 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2_grow_individual(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.rect2_grow_individual(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2554,6 +2630,7 @@ rb_81 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2i = godot.Vector2i{2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -2568,7 +2645,7 @@ rb_81 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2i_has_point(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2i_has_point(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2581,6 +2658,7 @@ rb_82 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Rect2i = godot.Rect2i{{3, 4}, {8, 6}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -2595,7 +2673,7 @@ rb_82 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2i_intersects(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2i_intersects(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2608,6 +2686,7 @@ rb_83 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Rect2i = godot.Rect2i{{3, 4}, {8, 6}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -2622,7 +2701,7 @@ rb_83 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2i_encloses(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2i_encloses(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2635,6 +2714,7 @@ rb_84 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Rect2i = godot.Rect2i{{3, 4}, {8, 6}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Rect2i
 	start: time.Tick
 	if engine {
@@ -2649,7 +2729,7 @@ rb_84 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2i_merge(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2i_merge(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2662,6 +2742,7 @@ rb_85 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2i = godot.Vector2i{2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Rect2i
 	start: time.Tick
 	if engine {
@@ -2676,7 +2757,7 @@ rb_85 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2i_expand(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2i_expand(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2689,6 +2770,7 @@ rb_86 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Rect2i
 	start: time.Tick
 	if engine {
@@ -2703,7 +2785,7 @@ rb_86 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2i_grow(intrinsics.volatile_load(&ref), a0)
+			r := godot.rect2i_grow(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2716,8 +2798,10 @@ rb_87 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Rect2i
 	start: time.Tick
 	if engine {
@@ -2732,7 +2816,7 @@ rb_87 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2i_grow_side(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.rect2i_grow_side(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2745,12 +2829,16 @@ rb_88 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: i64 = i64(1)
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: i64 = i64(1)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Rect2i
 	start: time.Tick
 	if engine {
@@ -2765,7 +2853,7 @@ rb_88 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.rect2i_grow_individual(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.rect2i_grow_individual(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2850,6 +2938,7 @@ rb_92 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -2864,7 +2953,7 @@ rb_92 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_angle_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_angle_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2877,8 +2966,10 @@ rb_93 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{0, 1, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -2893,7 +2984,7 @@ rb_93 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_signed_angle_to(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector3_signed_angle_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2906,6 +2997,7 @@ rb_94 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -2920,7 +3012,7 @@ rb_94 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_direction_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_direction_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2933,6 +3025,7 @@ rb_95 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -2947,7 +3040,7 @@ rb_95 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_distance_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_distance_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -2960,6 +3053,7 @@ rb_96 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -2974,7 +3068,7 @@ rb_96 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_distance_squared_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_distance_squared_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3011,6 +3105,7 @@ rb_98 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(1.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3025,7 +3120,7 @@ rb_98 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_limit_length(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_limit_length(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3062,6 +3157,7 @@ rb_100 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -3076,7 +3172,7 @@ rb_100 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3161,8 +3257,10 @@ rb_104 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{-0.5, -0.5, -0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{0.5, 0.5, 0.5}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3177,7 +3275,7 @@ rb_104 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_clamp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector3_clamp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3190,8 +3288,10 @@ rb_105 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(-0.5)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.5)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3206,7 +3306,7 @@ rb_105 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_clampf(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector3_clampf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3219,6 +3319,7 @@ rb_106 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.25, 0.25, 0.25}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3233,7 +3334,7 @@ rb_106 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_snapped(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_snapped(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3246,6 +3347,7 @@ rb_107 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.25)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3260,7 +3362,7 @@ rb_107 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_snappedf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_snappedf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3273,8 +3375,10 @@ rb_108 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.7)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3289,7 +3393,7 @@ rb_108 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_rotated(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector3_rotated(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3302,8 +3406,10 @@ rb_109 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.35)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3318,7 +3424,7 @@ rb_109 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_slerp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector3_slerp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3331,12 +3437,16 @@ rb_110 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{0, 1, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector3 = godot.Vector3{0.6, 0, -0.8}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3351,7 +3461,7 @@ rb_110 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_cubic_interpolate(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.vector3_cubic_interpolate(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3364,18 +3474,25 @@ rb_111 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{0, 1, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector3 = godot.Vector3{0.6, 0, -0.8}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: f64 = f64(1.0)
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	a5: f64 = f64(-0.5)
 	a5 = intrinsics.volatile_load(&a5)
+	p5 := &a5
 	a6: f64 = f64(1.5)
 	a6 = intrinsics.volatile_load(&a6)
+	p6 := &a6
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3390,7 +3507,7 @@ rb_111 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_cubic_interpolate_in_time(intrinsics.volatile_load(&ref), a0, a1, a2, a3, a4, a5, a6)
+			r := godot.vector3_cubic_interpolate_in_time(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^, intrinsics.volatile_load(&p5)^, intrinsics.volatile_load(&p6)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3403,12 +3520,16 @@ rb_112 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{0, 1, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector3 = godot.Vector3{0.6, 0, -0.8}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3423,7 +3544,7 @@ rb_112 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_bezier_interpolate(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.vector3_bezier_interpolate(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3436,12 +3557,16 @@ rb_113 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{0, 1, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector3 = godot.Vector3{0.6, 0, -0.8}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3456,7 +3581,7 @@ rb_113 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_bezier_derivative(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.vector3_bezier_derivative(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3469,8 +3594,10 @@ rb_114 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.25)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3485,7 +3612,7 @@ rb_114 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_move_toward(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector3_move_toward(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3498,6 +3625,7 @@ rb_115 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3512,7 +3640,7 @@ rb_115 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_cross(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_cross(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3525,6 +3653,7 @@ rb_116 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Basis
 	start: time.Tick
 	if engine {
@@ -3539,7 +3668,7 @@ rb_116 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_outer(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_outer(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3648,6 +3777,7 @@ rb_121 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.75)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3662,7 +3792,7 @@ rb_121 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_posmod(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_posmod(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3675,6 +3805,7 @@ rb_122 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.75, 0.75, 0.75}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3689,7 +3820,7 @@ rb_122 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_posmodv(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_posmodv(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3702,6 +3833,7 @@ rb_123 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3716,7 +3848,7 @@ rb_123 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_project(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_project(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3729,6 +3861,7 @@ rb_124 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3743,7 +3876,7 @@ rb_124 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_slide(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_slide(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3756,6 +3889,7 @@ rb_125 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3770,7 +3904,7 @@ rb_125 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_bounce(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_bounce(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3783,6 +3917,7 @@ rb_126 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3797,7 +3932,7 @@ rb_126 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_reflect(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_reflect(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3858,6 +3993,7 @@ rb_129 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3872,7 +4008,7 @@ rb_129 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_min(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_min(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3885,6 +4021,7 @@ rb_130 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3899,7 +4036,7 @@ rb_130 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_minf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_minf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3912,6 +4049,7 @@ rb_131 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3926,7 +4064,7 @@ rb_131 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_max(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_max(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -3939,6 +4077,7 @@ rb_132 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -3953,7 +4092,7 @@ rb_132 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3_maxf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3_maxf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4041,6 +4180,7 @@ rb_136 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3i = godot.Vector3i{2, 3, 4}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -4055,7 +4195,7 @@ rb_136 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3i_distance_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3i_distance_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4140,8 +4280,10 @@ rb_140 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3i = godot.Vector3i{-2, -2, -2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3i = godot.Vector3i{4, 4, 4}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector3i
 	start: time.Tick
 	if engine {
@@ -4156,7 +4298,7 @@ rb_140 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3i_clamp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector3i_clamp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4169,8 +4311,10 @@ rb_141 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(-2)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(4)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector3i
 	start: time.Tick
 	if engine {
@@ -4185,7 +4329,7 @@ rb_141 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3i_clampi(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector3i_clampi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4198,6 +4342,7 @@ rb_142 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(2)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3i
 	start: time.Tick
 	if engine {
@@ -4212,7 +4357,7 @@ rb_142 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3i_snappedi(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3i_snappedi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4225,6 +4370,7 @@ rb_143 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3i = godot.Vector3i{2, 3, 4}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3i
 	start: time.Tick
 	if engine {
@@ -4239,7 +4385,7 @@ rb_143 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3i_min(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3i_min(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4252,6 +4398,7 @@ rb_144 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3i
 	start: time.Tick
 	if engine {
@@ -4266,7 +4413,7 @@ rb_144 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3i_mini(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3i_mini(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4279,6 +4426,7 @@ rb_145 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3i = godot.Vector3i{2, 3, 4}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3i
 	start: time.Tick
 	if engine {
@@ -4293,7 +4441,7 @@ rb_145 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3i_max(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3i_max(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4306,6 +4454,7 @@ rb_146 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3i
 	start: time.Tick
 	if engine {
@@ -4320,7 +4469,7 @@ rb_146 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector3i_maxi(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector3i_maxi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4477,6 +4626,7 @@ rb_153 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.7)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform2D
 	start: time.Tick
 	if engine {
@@ -4491,7 +4641,7 @@ rb_153 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_rotated(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_rotated(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4504,6 +4654,7 @@ rb_154 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.7)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform2D
 	start: time.Tick
 	if engine {
@@ -4518,7 +4669,7 @@ rb_154 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_rotated_local(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_rotated_local(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4531,6 +4682,7 @@ rb_155 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform2D
 	start: time.Tick
 	if engine {
@@ -4545,7 +4697,7 @@ rb_155 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_scaled(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_scaled(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4558,6 +4710,7 @@ rb_156 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform2D
 	start: time.Tick
 	if engine {
@@ -4572,7 +4725,7 @@ rb_156 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_scaled_local(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_scaled_local(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4585,6 +4738,7 @@ rb_157 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform2D
 	start: time.Tick
 	if engine {
@@ -4599,7 +4753,7 @@ rb_157 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_translated(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_translated(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4612,6 +4766,7 @@ rb_158 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform2D
 	start: time.Tick
 	if engine {
@@ -4626,7 +4781,7 @@ rb_158 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_translated_local(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_translated_local(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4663,6 +4818,7 @@ rb_160 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -4677,7 +4833,7 @@ rb_160 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_basis_xform(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_basis_xform(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4690,6 +4846,7 @@ rb_161 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -4704,7 +4861,7 @@ rb_161 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_basis_xform_inv(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_basis_xform_inv(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4741,6 +4898,7 @@ rb_163 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Transform2D = godot.Transform2D{{0.6, 0.8}, {-0.8, 0.6}, {1, 2}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -4755,7 +4913,7 @@ rb_163 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -4792,6 +4950,7 @@ rb_165 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform2D
 	start: time.Tick
 	if engine {
@@ -4806,7 +4965,7 @@ rb_165 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform2d_looking_at(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform2d_looking_at(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5035,8 +5194,10 @@ rb_175 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.35)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5051,7 +5212,7 @@ rb_175 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_lerp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector4_lerp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5064,12 +5225,16 @@ rb_176 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector4 = godot.Vector4{1, 0, 0, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector4 = godot.Vector4{0, 0.6, 0.8, 0}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5084,7 +5249,7 @@ rb_176 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_cubic_interpolate(intrinsics.volatile_load(&ref), a0, a1, a2, a3)
+			r := godot.vector4_cubic_interpolate(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5097,18 +5262,25 @@ rb_177 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector4 = godot.Vector4{1, 0, 0, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector4 = godot.Vector4{0, 0.6, 0.8, 0}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.35)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: f64 = f64(1.0)
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	a5: f64 = f64(-0.5)
 	a5 = intrinsics.volatile_load(&a5)
+	p5 := &a5
 	a6: f64 = f64(1.5)
 	a6 = intrinsics.volatile_load(&a6)
+	p6 := &a6
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5123,7 +5295,7 @@ rb_177 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_cubic_interpolate_in_time(intrinsics.volatile_load(&ref), a0, a1, a2, a3, a4, a5, a6)
+			r := godot.vector4_cubic_interpolate_in_time(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^, intrinsics.volatile_load(&p5)^, intrinsics.volatile_load(&p6)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5136,6 +5308,7 @@ rb_178 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.75)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5150,7 +5323,7 @@ rb_178 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_posmod(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_posmod(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5163,6 +5336,7 @@ rb_179 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.75, 0.75, 0.75, 0.75}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5177,7 +5351,7 @@ rb_179 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_posmodv(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_posmodv(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5190,6 +5364,7 @@ rb_180 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.25, 0.25, 0.25, 0.25}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5204,7 +5379,7 @@ rb_180 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_snapped(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_snapped(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5217,6 +5392,7 @@ rb_181 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.25)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5231,7 +5407,7 @@ rb_181 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_snappedf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_snappedf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5244,8 +5420,10 @@ rb_182 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{-0.5, -0.5, -0.5, -0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5260,7 +5438,7 @@ rb_182 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_clamp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector4_clamp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5273,8 +5451,10 @@ rb_183 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(-0.5)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.5)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5289,7 +5469,7 @@ rb_183 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_clampf(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector4_clampf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5350,6 +5530,7 @@ rb_186 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5364,7 +5545,7 @@ rb_186 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_direction_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_direction_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5377,6 +5558,7 @@ rb_187 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -5391,7 +5573,7 @@ rb_187 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_distance_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_distance_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5404,6 +5586,7 @@ rb_188 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -5418,7 +5601,7 @@ rb_188 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_distance_squared_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_distance_squared_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5431,6 +5614,7 @@ rb_189 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -5445,7 +5629,7 @@ rb_189 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_dot(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_dot(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5482,6 +5666,7 @@ rb_191 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -5496,7 +5681,7 @@ rb_191 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5557,6 +5742,7 @@ rb_194 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5571,7 +5757,7 @@ rb_194 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_min(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_min(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5584,6 +5770,7 @@ rb_195 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5598,7 +5785,7 @@ rb_195 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_minf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_minf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5611,6 +5798,7 @@ rb_196 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{0.5, 0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5625,7 +5813,7 @@ rb_196 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_max(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_max(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5638,6 +5826,7 @@ rb_197 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -5652,7 +5841,7 @@ rb_197 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4_maxf(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4_maxf(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5809,8 +5998,10 @@ rb_204 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4i = godot.Vector4i{-2, -2, -2, -2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector4i = godot.Vector4i{4, 4, 4, 4}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector4i
 	start: time.Tick
 	if engine {
@@ -5825,7 +6016,7 @@ rb_204 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_clamp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector4i_clamp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5838,8 +6029,10 @@ rb_205 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(-2)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(4)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Vector4i
 	start: time.Tick
 	if engine {
@@ -5854,7 +6047,7 @@ rb_205 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_clampi(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.vector4i_clampi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5867,6 +6060,7 @@ rb_206 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4i = godot.Vector4i{2, 2, 2, 2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4i
 	start: time.Tick
 	if engine {
@@ -5881,7 +6075,7 @@ rb_206 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_snapped(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4i_snapped(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5894,6 +6088,7 @@ rb_207 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(2)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4i
 	start: time.Tick
 	if engine {
@@ -5908,7 +6103,7 @@ rb_207 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_snappedi(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4i_snappedi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5921,6 +6116,7 @@ rb_208 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4i = godot.Vector4i{2, 3, 4, 5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4i
 	start: time.Tick
 	if engine {
@@ -5935,7 +6131,7 @@ rb_208 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_min(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4i_min(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5948,6 +6144,7 @@ rb_209 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4i
 	start: time.Tick
 	if engine {
@@ -5962,7 +6159,7 @@ rb_209 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_mini(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4i_mini(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -5975,6 +6172,7 @@ rb_210 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4i = godot.Vector4i{2, 3, 4, 5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4i
 	start: time.Tick
 	if engine {
@@ -5989,7 +6187,7 @@ rb_210 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_max(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4i_max(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6002,6 +6200,7 @@ rb_211 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4i
 	start: time.Tick
 	if engine {
@@ -6016,7 +6215,7 @@ rb_211 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_maxi(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4i_maxi(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6029,6 +6228,7 @@ rb_212 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4i = godot.Vector4i{2, 3, 4, 5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -6043,7 +6243,7 @@ rb_212 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_distance_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4i_distance_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6056,6 +6256,7 @@ rb_213 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4i = godot.Vector4i{2, 3, 4, 5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -6070,7 +6271,7 @@ rb_213 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.vector4i_distance_squared_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.vector4i_distance_squared_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6107,6 +6308,7 @@ rb_215 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Plane = godot.Plane{{0, 1, 0}, -0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -6121,7 +6323,7 @@ rb_215 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.plane_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.plane_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6158,6 +6360,7 @@ rb_217 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -6172,7 +6375,7 @@ rb_217 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.plane_is_point_over(intrinsics.volatile_load(&ref), a0)
+			r := godot.plane_is_point_over(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6185,8 +6388,10 @@ rb_218 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.001)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -6201,7 +6406,7 @@ rb_218 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.plane_has_point(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.plane_has_point(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6214,6 +6419,7 @@ rb_219 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -6228,7 +6434,7 @@ rb_219 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.plane_project(intrinsics.volatile_load(&ref), a0)
+			r := godot.plane_project(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6241,8 +6447,10 @@ rb_220 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{3, 4, 5}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Variant
 	start: time.Tick
 	if engine {
@@ -6257,7 +6465,7 @@ rb_220 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.plane_intersects_segment(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.plane_intersects_segment(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6366,6 +6574,7 @@ rb_225 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Quaternion = godot.Quaternion{0.5, -0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -6380,7 +6589,7 @@ rb_225 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.quaternion_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.quaternion_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6417,6 +6626,7 @@ rb_227 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Quaternion = godot.Quaternion{0.5, -0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -6431,7 +6641,7 @@ rb_227 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.quaternion_angle_to(intrinsics.volatile_load(&ref), a0)
+			r := godot.quaternion_angle_to(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6444,6 +6654,7 @@ rb_228 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Quaternion = godot.Quaternion{0.5, -0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -6458,7 +6669,7 @@ rb_228 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.quaternion_dot(intrinsics.volatile_load(&ref), a0)
+			r := godot.quaternion_dot(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6471,8 +6682,10 @@ rb_229 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Quaternion = godot.Quaternion{0.5, -0.5, 0.5, 0.5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.35)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Quaternion
 	start: time.Tick
 	if engine {
@@ -6487,7 +6700,7 @@ rb_229 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.quaternion_slerpni(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.quaternion_slerpni(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6695,6 +6908,7 @@ rb_238 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -6709,7 +6923,7 @@ rb_238 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_has_point(intrinsics.volatile_load(&ref), a0)
+			r := godot.aabb_has_point(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6722,6 +6936,7 @@ rb_239 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.AABB = godot.AABB{{0, 0, 0}, {2, 2, 2}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -6736,7 +6951,7 @@ rb_239 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.aabb_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6773,6 +6988,7 @@ rb_241 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.AABB = godot.AABB{{0, 0, 0}, {2, 2, 2}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -6787,7 +7003,7 @@ rb_241 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_encloses(intrinsics.volatile_load(&ref), a0)
+			r := godot.aabb_encloses(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6800,6 +7016,7 @@ rb_242 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.AABB = godot.AABB{{0, 0, 0}, {2, 2, 2}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.AABB
 	start: time.Tick
 	if engine {
@@ -6814,7 +7031,7 @@ rb_242 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_intersection(intrinsics.volatile_load(&ref), a0)
+			r := godot.aabb_intersection(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6827,6 +7044,7 @@ rb_243 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.AABB
 	start: time.Tick
 	if engine {
@@ -6841,7 +7059,7 @@ rb_243 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_expand(intrinsics.volatile_load(&ref), a0)
+			r := godot.aabb_expand(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6854,6 +7072,7 @@ rb_244 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.5)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.AABB
 	start: time.Tick
 	if engine {
@@ -6868,7 +7087,7 @@ rb_244 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_grow(intrinsics.volatile_load(&ref), a0)
+			r := godot.aabb_grow(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -6881,6 +7100,7 @@ rb_245 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -6895,7 +7115,7 @@ rb_245 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_get_support(intrinsics.volatile_load(&ref), a0)
+			r := godot.aabb_get_support(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7052,6 +7272,7 @@ rb_252 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(3)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -7066,7 +7287,7 @@ rb_252 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_get_endpoint(intrinsics.volatile_load(&ref), a0)
+			r := godot.aabb_get_endpoint(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7079,8 +7300,10 @@ rb_253 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{-5, -5, -5}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{5, 5, 5}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Variant
 	start: time.Tick
 	if engine {
@@ -7095,7 +7318,7 @@ rb_253 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.aabb_intersects_segment(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.aabb_intersects_segment(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7180,6 +7403,7 @@ rb_257 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Basis
 	start: time.Tick
 	if engine {
@@ -7194,7 +7418,7 @@ rb_257 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.basis_scaled(intrinsics.volatile_load(&ref), a0)
+			r := godot.basis_scaled(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7207,6 +7431,7 @@ rb_258 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Basis
 	start: time.Tick
 	if engine {
@@ -7221,7 +7446,7 @@ rb_258 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.basis_scaled_local(intrinsics.volatile_load(&ref), a0)
+			r := godot.basis_scaled_local(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7258,6 +7483,7 @@ rb_260 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -7272,7 +7498,7 @@ rb_260 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.basis_tdotx(intrinsics.volatile_load(&ref), a0)
+			r := godot.basis_tdotx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7285,6 +7511,7 @@ rb_261 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -7299,7 +7526,7 @@ rb_261 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.basis_tdoty(intrinsics.volatile_load(&ref), a0)
+			r := godot.basis_tdoty(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7312,6 +7539,7 @@ rb_262 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -7326,7 +7554,7 @@ rb_262 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.basis_tdotz(intrinsics.volatile_load(&ref), a0)
+			r := godot.basis_tdotz(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7363,6 +7591,7 @@ rb_264 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Basis = godot.Basis{{1, 0, 0}, {0, 0.8, -0.6}, {0, 0.6, 0.8}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -7377,7 +7606,7 @@ rb_264 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.basis_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.basis_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7463,8 +7692,10 @@ rb_268 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: godot.Vector3 = godot.Vector3{0, 1, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: bool = false
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	ref = &a0
 	sink: godot.Basis
 	start: time.Tick
@@ -7480,7 +7711,7 @@ rb_268 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.basis_looking_at(intrinsics.volatile_load(&ref)^, a1, a2)
+			r := godot.basis_looking_at(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7521,6 +7752,7 @@ rb_270 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: i64 = i64(2)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	ref = &a0
 	sink: godot.Basis
 	start: time.Tick
@@ -7536,7 +7768,7 @@ rb_270 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.basis_from_euler(intrinsics.volatile_load(&ref)^, a1)
+			r := godot.basis_from_euler(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7597,8 +7829,10 @@ rb_273 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.7)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Transform3D
 	start: time.Tick
 	if engine {
@@ -7613,7 +7847,7 @@ rb_273 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform3d_rotated(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.transform3d_rotated(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7626,8 +7860,10 @@ rb_274 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: f64 = f64(0.7)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Transform3D
 	start: time.Tick
 	if engine {
@@ -7642,7 +7878,7 @@ rb_274 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform3d_rotated_local(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.transform3d_rotated_local(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7655,6 +7891,7 @@ rb_275 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform3D
 	start: time.Tick
 	if engine {
@@ -7669,7 +7906,7 @@ rb_275 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform3d_scaled(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform3d_scaled(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7682,6 +7919,7 @@ rb_276 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform3D
 	start: time.Tick
 	if engine {
@@ -7696,7 +7934,7 @@ rb_276 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform3d_scaled_local(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform3d_scaled_local(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7709,6 +7947,7 @@ rb_277 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform3D
 	start: time.Tick
 	if engine {
@@ -7723,7 +7962,7 @@ rb_277 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform3d_translated(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform3d_translated(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7736,6 +7975,7 @@ rb_278 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Transform3D
 	start: time.Tick
 	if engine {
@@ -7750,7 +7990,7 @@ rb_278 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform3d_translated_local(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform3d_translated_local(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7763,10 +8003,13 @@ rb_279 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{0.48, 0.6, 0.64}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Vector3 = godot.Vector3{0, 1, 0}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: bool = false
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	sink: godot.Transform3D
 	start: time.Tick
 	if engine {
@@ -7781,7 +8024,7 @@ rb_279 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform3d_looking_at(intrinsics.volatile_load(&ref), a0, a1, a2)
+			r := godot.transform3d_looking_at(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7794,6 +8037,7 @@ rb_280 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Transform3D = godot.Transform3D{{{1, 0, 0}, {0, 0.8, -0.6}, {0, 0.6, 0.8}}, {3, 2, 1}}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -7808,7 +8052,7 @@ rb_280 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.transform3d_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.transform3d_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7900,18 +8144,25 @@ rb_284 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: f64 = f64(1.5)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: f64 = f64(0.1)
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(100)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: bool = false
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	a5: i64 = i64(1)
 	a5 = intrinsics.volatile_load(&a5)
+	p5 := &a5
 	a6: f64 = f64(0.065)
 	a6 = intrinsics.volatile_load(&a6)
+	p6 := &a6
 	a7: f64 = f64(1)
 	a7 = intrinsics.volatile_load(&a7)
+	p7 := &a7
 	ref = &a0
 	sink: godot.Projection
 	start: time.Tick
@@ -7927,7 +8178,7 @@ rb_284 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_create_perspective_hmd(intrinsics.volatile_load(&ref)^, a1, a2, a3, a4, a5, a6, a7)
+			r := godot.projection_create_perspective_hmd(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^, intrinsics.volatile_load(&p5)^, intrinsics.volatile_load(&p6)^, intrinsics.volatile_load(&p7)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7941,18 +8192,25 @@ rb_285 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: f64 = f64(1.5)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: f64 = f64(0.065)
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.14)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: f64 = f64(0.04)
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	a5: f64 = f64(1.5)
 	a5 = intrinsics.volatile_load(&a5)
+	p5 := &a5
 	a6: f64 = f64(0.1)
 	a6 = intrinsics.volatile_load(&a6)
+	p6 := &a6
 	a7: f64 = f64(100)
 	a7 = intrinsics.volatile_load(&a7)
+	p7 := &a7
 	ref = &a0
 	sink: godot.Projection
 	start: time.Tick
@@ -7968,7 +8226,7 @@ rb_285 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_create_for_hmd(intrinsics.volatile_load(&ref)^, a1, a2, a3, a4, a5, a6, a7)
+			r := godot.projection_create_for_hmd(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^, intrinsics.volatile_load(&p5)^, intrinsics.volatile_load(&p6)^, intrinsics.volatile_load(&p7)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -7982,14 +8240,19 @@ rb_286 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: f64 = f64(1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: f64 = f64(-1)
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(1)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: f64 = f64(0.1)
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	a5: f64 = f64(100)
 	a5 = intrinsics.volatile_load(&a5)
+	p5 := &a5
 	ref = &a0
 	sink: godot.Projection
 	start: time.Tick
@@ -8005,7 +8268,7 @@ rb_286 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_create_orthogonal(intrinsics.volatile_load(&ref)^, a1, a2, a3, a4, a5)
+			r := godot.projection_create_orthogonal(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^, intrinsics.volatile_load(&p5)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8019,12 +8282,16 @@ rb_287 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: f64 = f64(1.5)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: f64 = f64(0.1)
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(100)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: bool = false
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	ref = &a0
 	sink: godot.Projection
 	start: time.Tick
@@ -8040,7 +8307,7 @@ rb_287 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_create_orthogonal_aspect(intrinsics.volatile_load(&ref)^, a1, a2, a3, a4)
+			r := godot.projection_create_orthogonal_aspect(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8054,14 +8321,19 @@ rb_288 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: f64 = f64(1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: f64 = f64(-1)
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(1)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: f64 = f64(0.1)
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	a5: f64 = f64(100)
 	a5 = intrinsics.volatile_load(&a5)
+	p5 := &a5
 	ref = &a0
 	sink: godot.Projection
 	start: time.Tick
@@ -8077,7 +8349,7 @@ rb_288 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_create_frustum(intrinsics.volatile_load(&ref)^, a1, a2, a3, a4, a5)
+			r := godot.projection_create_frustum(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^, intrinsics.volatile_load(&p5)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8091,14 +8363,19 @@ rb_289 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: f64 = f64(1.5)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: godot.Vector2 = godot.Vector2{-0.8, 0.6}
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: f64 = f64(0.1)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	a4: f64 = f64(100)
 	a4 = intrinsics.volatile_load(&a4)
+	p4 := &a4
 	a5: bool = false
 	a5 = intrinsics.volatile_load(&a5)
+	p5 := &a5
 	ref = &a0
 	sink: godot.Projection
 	start: time.Tick
@@ -8114,7 +8391,7 @@ rb_289 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_create_frustum_aspect(intrinsics.volatile_load(&ref)^, a1, a2, a3, a4, a5)
+			r := godot.projection_create_frustum_aspect(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^, intrinsics.volatile_load(&p4)^, intrinsics.volatile_load(&p5)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8154,6 +8431,7 @@ rb_291 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.2)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Projection
 	start: time.Tick
 	if engine {
@@ -8168,7 +8446,7 @@ rb_291 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_perspective_znear_adjusted(intrinsics.volatile_load(&ref), a0)
+			r := godot.projection_perspective_znear_adjusted(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8205,6 +8483,7 @@ rb_293 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{0.6, 0.8}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Projection
 	start: time.Tick
 	if engine {
@@ -8219,7 +8498,7 @@ rb_293 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_jitter_offseted(intrinsics.volatile_load(&ref), a0)
+			r := godot.projection_jitter_offseted(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8233,6 +8512,7 @@ rb_294 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: f64 = f64(1.5)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	ref = &a0
 	sink: f64
 	start: time.Tick
@@ -8248,7 +8528,7 @@ rb_294 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_get_fovy(intrinsics.volatile_load(&ref)^, a1)
+			r := godot.projection_get_fovy(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8429,6 +8709,7 @@ rb_302 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(1920)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -8443,7 +8724,7 @@ rb_302 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.projection_get_pixels_per_meter(intrinsics.volatile_load(&ref), a0)
+			r := godot.projection_get_pixels_per_meter(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8600,8 +8881,10 @@ rb_309 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Color = godot.Color{0, 0, 0, 0}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: godot.Color = godot.Color{1, 1, 1, 1}
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: godot.Color
 	start: time.Tick
 	if engine {
@@ -8616,7 +8899,7 @@ rb_309 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.color_clamp(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.color_clamp(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8653,6 +8936,7 @@ rb_311 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Color
 	start: time.Tick
 	if engine {
@@ -8667,7 +8951,7 @@ rb_311 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.color_lightened(intrinsics.volatile_load(&ref), a0)
+			r := godot.color_lightened(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8680,6 +8964,7 @@ rb_312 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(0.35)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Color
 	start: time.Tick
 	if engine {
@@ -8694,7 +8979,7 @@ rb_312 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.color_darkened(intrinsics.volatile_load(&ref), a0)
+			r := godot.color_darkened(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8707,6 +8992,7 @@ rb_313 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Color = godot.Color{0.9, 0.1, 0.3, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Color
 	start: time.Tick
 	if engine {
@@ -8721,7 +9007,7 @@ rb_313 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.color_blend(intrinsics.volatile_load(&ref), a0)
+			r := godot.color_blend(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8782,6 +9068,7 @@ rb_316 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Color = godot.Color{0.9, 0.1, 0.3, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -8796,7 +9083,7 @@ rb_316 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.color_is_equal_approx(intrinsics.volatile_load(&ref), a0)
+			r := godot.color_is_equal_approx(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -8947,10 +9234,13 @@ rb_322 :: proc(engine: bool, n: i64) -> f64 {
 	a0 = intrinsics.volatile_load(&a0)
 	a1: i64 = i64(102)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	a2: i64 = i64(153)
 	a2 = intrinsics.volatile_load(&a2)
+	p2 := &a2
 	a3: i64 = i64(204)
 	a3 = intrinsics.volatile_load(&a3)
+	p3 := &a3
 	ref = &a0
 	sink: godot.Color
 	start: time.Tick
@@ -8966,7 +9256,7 @@ rb_322 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.color_from_rgba8(intrinsics.volatile_load(&ref)^, a1, a2, a3)
+			r := godot.color_from_rgba8(intrinsics.volatile_load(&ref)^, intrinsics.volatile_load(&p1)^, intrinsics.volatile_load(&p2)^, intrinsics.volatile_load(&p3)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9030,6 +9320,7 @@ rb_325 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9044,7 +9335,7 @@ rb_325 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_byte_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_byte_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9060,6 +9351,7 @@ rb_326 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -9074,7 +9366,7 @@ rb_326 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_byte_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_byte_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9090,8 +9382,10 @@ rb_327 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9106,7 +9400,7 @@ rb_327 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_byte_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_byte_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9122,8 +9416,10 @@ rb_328 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(0)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9138,7 +9434,7 @@ rb_328 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_byte_array_find(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_byte_array_find(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9154,8 +9450,10 @@ rb_329 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9170,7 +9468,7 @@ rb_329 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_byte_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_byte_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9186,6 +9484,7 @@ rb_330 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9200,7 +9499,7 @@ rb_330 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_byte_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_byte_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9216,6 +9515,7 @@ rb_331 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9230,7 +9530,7 @@ rb_331 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int32_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_int32_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9246,6 +9546,7 @@ rb_332 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -9260,7 +9561,7 @@ rb_332 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int32_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_int32_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9276,8 +9577,10 @@ rb_333 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9292,7 +9595,7 @@ rb_333 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int32_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_int32_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9308,8 +9611,10 @@ rb_334 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(0)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9324,7 +9629,7 @@ rb_334 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int32_array_find(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_int32_array_find(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9340,8 +9645,10 @@ rb_335 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9356,7 +9663,7 @@ rb_335 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int32_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_int32_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9372,6 +9679,7 @@ rb_336 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9386,7 +9694,7 @@ rb_336 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int32_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_int32_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9402,6 +9710,7 @@ rb_337 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -9416,7 +9725,7 @@ rb_337 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int64_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_int64_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9432,8 +9741,10 @@ rb_338 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9448,7 +9759,7 @@ rb_338 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int64_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_int64_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9464,8 +9775,10 @@ rb_339 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9480,7 +9793,7 @@ rb_339 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int64_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_int64_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9496,6 +9809,7 @@ rb_340 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(120)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9510,7 +9824,7 @@ rb_340 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_int64_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_int64_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9526,6 +9840,7 @@ rb_341 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -9540,7 +9855,7 @@ rb_341 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float32_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_float32_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9556,6 +9871,7 @@ rb_342 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -9570,7 +9886,7 @@ rb_342 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float32_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_float32_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9586,8 +9902,10 @@ rb_343 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9602,7 +9920,7 @@ rb_343 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float32_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_float32_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9618,8 +9936,10 @@ rb_344 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(0)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9634,7 +9954,7 @@ rb_344 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float32_array_find(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_float32_array_find(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9650,8 +9970,10 @@ rb_345 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9666,7 +9988,7 @@ rb_345 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float32_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_float32_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9682,6 +10004,7 @@ rb_346 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9696,7 +10019,7 @@ rb_346 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float32_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_float32_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9712,6 +10035,7 @@ rb_347 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: f64
 	start: time.Tick
 	if engine {
@@ -9726,7 +10050,7 @@ rb_347 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float64_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_float64_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9742,6 +10066,7 @@ rb_348 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -9756,7 +10081,7 @@ rb_348 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float64_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_float64_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9772,8 +10097,10 @@ rb_349 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9788,7 +10115,7 @@ rb_349 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float64_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_float64_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9804,8 +10131,10 @@ rb_350 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(0)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9820,7 +10149,7 @@ rb_350 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float64_array_find(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_float64_array_find(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9836,8 +10165,10 @@ rb_351 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9852,7 +10183,7 @@ rb_351 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float64_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_float64_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9868,6 +10199,7 @@ rb_352 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: f64 = f64(20.0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9882,7 +10214,7 @@ rb_352 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_float64_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_float64_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9899,6 +10231,7 @@ rb_353 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.String
 	start: time.Tick
 	if engine {
@@ -9914,7 +10247,7 @@ rb_353 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_string_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_string_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 			godot.string_destroy(&r)
 		}
@@ -9933,6 +10266,7 @@ rb_354 :: proc(engine: bool, n: i64) -> f64 {
 	a0: godot.String = godot.string_of("fa")
 	defer godot.string_destroy(&a0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -9947,7 +10281,7 @@ rb_354 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_string_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_string_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9965,8 +10299,10 @@ rb_355 :: proc(engine: bool, n: i64) -> f64 {
 	a0: godot.String = godot.string_of("fa")
 	defer godot.string_destroy(&a0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -9981,7 +10317,7 @@ rb_355 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_string_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_string_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -9999,8 +10335,10 @@ rb_356 :: proc(engine: bool, n: i64) -> f64 {
 	a0: godot.String = godot.string_of("fa")
 	defer godot.string_destroy(&a0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10015,7 +10353,7 @@ rb_356 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_string_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_string_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10033,6 +10371,7 @@ rb_357 :: proc(engine: bool, n: i64) -> f64 {
 	a0: godot.String = godot.string_of("fa")
 	defer godot.string_destroy(&a0)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10047,7 +10386,7 @@ rb_357 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_string_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_string_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10063,6 +10402,7 @@ rb_358 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector2
 	start: time.Tick
 	if engine {
@@ -10077,7 +10417,7 @@ rb_358 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector2_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector2_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10093,6 +10433,7 @@ rb_359 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{40, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -10107,7 +10448,7 @@ rb_359 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector2_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector2_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10123,8 +10464,10 @@ rb_360 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{40, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10139,7 +10482,7 @@ rb_360 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector2_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector2_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10155,8 +10498,10 @@ rb_361 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{40, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(0)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10171,7 +10516,7 @@ rb_361 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector2_array_find(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector2_array_find(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10187,8 +10532,10 @@ rb_362 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{40, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10203,7 +10550,7 @@ rb_362 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector2_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector2_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10219,6 +10566,7 @@ rb_363 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector2 = godot.Vector2{40, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10233,7 +10581,7 @@ rb_363 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector2_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector2_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10249,6 +10597,7 @@ rb_364 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector3
 	start: time.Tick
 	if engine {
@@ -10263,7 +10612,7 @@ rb_364 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector3_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector3_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10279,6 +10628,7 @@ rb_365 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{40, 1, 2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -10293,7 +10643,7 @@ rb_365 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector3_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector3_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10309,8 +10659,10 @@ rb_366 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{40, 1, 2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10325,7 +10677,7 @@ rb_366 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector3_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector3_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10341,8 +10693,10 @@ rb_367 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{40, 1, 2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(0)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10357,7 +10711,7 @@ rb_367 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector3_array_find(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector3_array_find(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10373,8 +10727,10 @@ rb_368 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{40, 1, 2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10389,7 +10745,7 @@ rb_368 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector3_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector3_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10405,6 +10761,7 @@ rb_369 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector3 = godot.Vector3{40, 1, 2}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10419,7 +10776,7 @@ rb_369 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector3_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector3_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10435,6 +10792,7 @@ rb_370 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Color
 	start: time.Tick
 	if engine {
@@ -10449,7 +10807,7 @@ rb_370 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_color_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_color_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10465,6 +10823,7 @@ rb_371 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Color = godot.Color{40, 0.5, 0.25, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -10479,7 +10838,7 @@ rb_371 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_color_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_color_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10495,8 +10854,10 @@ rb_372 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Color = godot.Color{40, 0.5, 0.25, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10511,7 +10872,7 @@ rb_372 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_color_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_color_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10527,8 +10888,10 @@ rb_373 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Color = godot.Color{40, 0.5, 0.25, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(0)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10543,7 +10906,7 @@ rb_373 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_color_array_find(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_color_array_find(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10559,8 +10922,10 @@ rb_374 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Color = godot.Color{40, 0.5, 0.25, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10575,7 +10940,7 @@ rb_374 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_color_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_color_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10591,6 +10956,7 @@ rb_375 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Color = godot.Color{40, 0.5, 0.25, 1}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10605,7 +10971,7 @@ rb_375 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_color_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_color_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10621,6 +10987,7 @@ rb_376 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: i64 = i64(40)
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: godot.Vector4
 	start: time.Tick
 	if engine {
@@ -10635,7 +11002,7 @@ rb_376 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector4_array_get(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector4_array_get(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10651,6 +11018,7 @@ rb_377 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{40, 1, 2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: bool
 	start: time.Tick
 	if engine {
@@ -10665,7 +11033,7 @@ rb_377 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector4_array_has(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector4_array_has(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10681,8 +11049,10 @@ rb_378 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{40, 1, 2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: bool = true
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10697,7 +11067,7 @@ rb_378 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector4_array_bsearch(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector4_array_bsearch(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10713,8 +11083,10 @@ rb_379 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{40, 1, 2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(0)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10729,7 +11101,7 @@ rb_379 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector4_array_find(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector4_array_find(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10745,8 +11117,10 @@ rb_380 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{40, 1, 2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	a1: i64 = i64(-1)
 	a1 = intrinsics.volatile_load(&a1)
+	p1 := &a1
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10761,7 +11135,7 @@ rb_380 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector4_array_rfind(intrinsics.volatile_load(&ref), a0, a1)
+			r := godot.packed_vector4_array_rfind(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^, intrinsics.volatile_load(&p1)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}
@@ -10777,6 +11151,7 @@ rb_381 :: proc(engine: bool, n: i64) -> f64 {
 	ref := &self_v
 	a0: godot.Vector4 = godot.Vector4{40, 1, 2, 3}
 	a0 = intrinsics.volatile_load(&a0)
+	p0 := &a0
 	sink: i64
 	start: time.Tick
 	if engine {
@@ -10791,7 +11166,7 @@ rb_381 :: proc(engine: bool, n: i64) -> f64 {
 	} else {
 		start = time.tick_now()
 		for _ in 0 ..< n {
-			r := godot.packed_vector4_array_count(intrinsics.volatile_load(&ref), a0)
+			r := godot.packed_vector4_array_count(intrinsics.volatile_load(&ref), intrinsics.volatile_load(&p0)^)
 			intrinsics.volatile_store(&sink, r)
 		}
 	}

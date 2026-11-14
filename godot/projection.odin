@@ -3,8 +3,10 @@ package godot
 // Projection methods and constructors computed in place, under the names and signatures the
 // bindings generated before. Each follows the engine's own code in core/math/projection.cpp and
 // projection.h of Godot 4.7-stable: single-precision operations in the same order, the double
-// steps where the engine's literals widen an expression to double, and the same libm calls (sinf,
-// cosf, atan2f, tan, atan), so results match bit for bit. The errors the engine prints when it
+// steps where the engine's literals widen an expression to double, and the same libm calls
+// (atan2f, tan, atan), so results match bit for bit, except create_perspective: its sine and
+// cosine come from trig.odin, correctly rounded, which the C library's are not always, so it may
+// differ from the engine's in its last bits. The errors the engine prints when it
 // refuses a frustum or a singular matrix are printed here too, and the result is then left as the
 // engine leaves it. tools/odin_bindgen.py leaves these names out of godot/gen_builtins.odin.
 

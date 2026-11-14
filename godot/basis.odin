@@ -3,8 +3,10 @@ package godot
 // Basis methods and constructors computed in place, under the names and signatures the bindings
 // generated before. Each follows the engine's own code in core/math/basis.cpp, basis.h and
 // quaternion.cpp of Godot 4.7-stable: single-precision operations in the same order, the same
-// libm calls (sinf, cosf, atan2f, asinf, acosf), and the one double step of Quaternion::slerp, so
-// results match bit for bit. The checks the engine makes under MATH_CHECKS (on in editor and
+// libm calls (atan2f, asinf, acosf), and the one double step of Quaternion::slerp, so results
+// match bit for bit, except those built on a sine or cosine: trig.odin rounds those two
+// correctly, which the C library does not always do, so such a result may differ from the
+// engine's in its last bits. The checks the engine makes under MATH_CHECKS (on in editor and
 // debug builds) are made here too, with the same fallback results: a singular basis inverts to
 // itself, a basis that is not a rotation gives the identity quaternion, and an axis that is not
 // normalized gives the identity rotation.
@@ -62,7 +64,8 @@ import gde "../gdextension"
 		math_error("The axis Vector3 must be normalized.")
 		return B_IDENTITY
 	}
-	return b_axis_sin_cos(axis, libc.sinf(angle), libc.cosf(angle))
+	sine, cosine := m_sincos(angle)
+	return b_axis_sin_cos(axis, sine, cosine)
 }
 // The rotation about a normalized `axis` from the sine and cosine of its angle.
 @(private) b_axis_sin_cos :: #force_inline proc "contextless" (axis: Vector3, sine, cosine: f32) -> Basis {
@@ -166,9 +169,9 @@ import gde "../gdextension"
 	scale0, scale1: f32
 	if 1 - cosom > CMP_EPSILON {
 		omega := libc.acosf(cosom)
-		sinom := libc.sinf(omega)
+		sinom := m_sin(omega)
 		scale0 = f32(libc.sin((1.0 - f64(weight)) * f64(omega)) / f64(sinom))
-		scale1 = libc.sinf(weight * omega) / sinom
+		scale1 = m_sin(weight * omega) / sinom
 	} else {
 		scale0 = 1 - weight
 		scale1 = weight
@@ -253,9 +256,8 @@ basis_slerp :: proc "contextless" (self: ^Basis, to: Basis, weight: f64) -> Basi
 
 basis_is_conformal :: proc "contextless" (self: ^Basis) -> bool { return b_is_conformal(self^) }
 basis_is_equal_approx :: proc "contextless" (self: ^Basis, b: Basis) -> bool {
-	m, o := transmute([9]f32)self^, transmute([9]f32)b
-	#unroll for i in 0 ..< 9 { if !m_is_equal_approx(m[i], o[i]) { return false } }
-	return true
+	b := b
+	return m_all_equal_approx(cast([^]f32)self, cast([^]f32)&b, 9)
 }
 basis_is_finite :: proc "contextless" (self: ^Basis) -> bool {
 	return v_is_finite(self.x) && v_is_finite(self.y) && v_is_finite(self.z)
@@ -310,11 +312,11 @@ basis_from_scale :: proc "contextless" (scale: Vector3) -> Basis {
 // the order as a 32-bit enum, so only the low 32 bits of `order` count; any other value fails its
 // check and leaves the identity.
 basis_from_euler :: proc "contextless" (euler: Vector3, order: i64) -> Basis {
-	c, s := libc.cosf(euler.x), libc.sinf(euler.x)
+	s, c := m_sincos(euler.x)
 	xm := Basis{{1, 0, 0}, {0, c, -s}, {0, s, c}}
-	c, s = libc.cosf(euler.y), libc.sinf(euler.y)
+	s, c = m_sincos(euler.y)
 	ym := Basis{{c, 0, s}, {0, 1, 0}, {-s, 0, c}}
-	c, s = libc.cosf(euler.z), libc.sinf(euler.z)
+	s, c = m_sincos(euler.z)
 	zm := Basis{{c, -s, 0}, {s, c, 0}, {0, 0, 1}}
 	switch i32(order) {
 	case 0: return b_mul(xm, b_mul(ym, zm))

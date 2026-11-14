@@ -1,8 +1,10 @@
 // Vector2, Vector3 and Vector4 methods in place of the generated builtin calls: the same names and
 // signatures, computed here in single precision exactly as the engine's real_t math does, so each
 // result matches the engine's bit for bit. Arguments the API passes as double narrow to f32 first,
-// as the engine's ptrcall does, and real_t results widen back to f64. Trigonometry and the libm
-// rounding calls go through the same C library the engine calls.
+// as the engine's ptrcall does, and real_t results widen back to f64. The inverse trigonometry
+// goes through the same C library the engine calls. Sine and cosine do not: trig.odin rounds them
+// correctly, which the C library's sinf and cosf do not always do, so rotated, slerp and
+// from_angle may differ from the engine's results in their last bits.
 package godot
 
 import "base:intrinsics"
@@ -22,21 +24,6 @@ import gde "../gdextension"
 @(private) m_max :: #force_inline proc "contextless" (a, b: f32) -> f32 { return a if a > b else b }
 @(private) m_clamp :: #force_inline proc "contextless" (x, lo, hi: f32) -> f32 { return lo if x < lo else (hi if x > hi else x) }
 @(private) m_sqrt :: #force_inline proc "contextless" (x: f32) -> f32 { return intrinsics.sqrt(x) }
-// sinf and cosf of one angle from a single call. glibc's sincosf returns the same bits as its sinf
-// and cosf for every input (checked over all 2^32), and the engine's own build already pairs them.
-when ODIN_OS == .Linux {
-	foreign import libm "system:m"
-	@(default_calling_convention = "c")
-	foreign libm { sincosf :: proc(x: f32, sine, cosine: ^f32) --- }
-	@(private) m_sincos :: #force_inline proc "contextless" (x: f32) -> (sine, cosine: f32) {
-		sincosf(x, &sine, &cosine)
-		return
-	}
-} else {
-	@(private) m_sincos :: #force_inline proc "contextless" (x: f32) -> (sine, cosine: f32) {
-		return libc.sinf(x), libc.cosf(x)
-	}
-}
 @(private) m_lerp :: #force_inline proc "contextless" (from, to, weight: f32) -> f32 { return from + (to - from) * weight }
 // Neither an infinity nor a NaN: those alone have every exponent bit set. One test, no branch.
 @(private) m_is_finite :: #force_inline proc "contextless" (x: f32) -> bool { return transmute(u32)x & 0x7f800000 != 0x7f800000 }
@@ -47,6 +34,13 @@ when ODIN_OS == .Linux {
 	tolerance := CMP_EPSILON * m_abs(a)
 	if tolerance < CMP_EPSILON { tolerance = CMP_EPSILON }
 	return m_abs(a - b) < tolerance
+}
+
+// Whether the first `N` floats at `a` and `b` are approximately equal pair by pair. It reads
+// through the pointers so that a mismatch returns before the rest is loaded.
+@(private) m_all_equal_approx :: #force_inline proc "contextless" (a, b: [^]f32, $N: int) -> bool {
+	#unroll for i in 0 ..< N { if !m_is_equal_approx(a[i], b[i]) { return false } }
+	return true
 }
 
 @(private) m_fposmod :: #force_inline proc "contextless" (x, y: f32) -> f32 {
@@ -270,7 +264,15 @@ vector2_slerp :: proc "contextless" (self: ^Vector2, to: Vector2, weight: f64) -
 	return v2_rotated(v, v2_angle_to(v, to) * w) * (result / start)
 }
 vector2_cubic_interpolate :: proc "contextless" (self: ^Vector2, b: Vector2, pre_a: Vector2, post_b: Vector2, weight: f64) -> Vector2 {
-	return v_cubic(self^, b, pre_a, post_b, f32(weight))
+	// Explicit four-lane vectors, two lanes unused: left to itself the compiler emits scalar code
+	// for two lanes. Each lane runs the operations of `m_cubic` in the same order.
+	V :: #simd[4]f32
+	a := self^
+	from, to, pre, post := V{a.x, a.y, 0, 0}, V{b.x, b.y, 0, 0}, V{pre_a.x, pre_a.y, 0, 0}, V{post_b.x, post_b.y, 0, 0}
+	w := f32(weight)
+	w1, w2, w3 := V(w), V(w * w), V(w * w * w)
+	r := V(0.5) * ((from * V(2)) + (-pre + to) * w1 + (V(2) * pre - V(5) * from + V(4) * to - post) * w2 + (-pre + V(3) * from - V(3) * to + post) * w3)
+	return {intrinsics.simd_extract(r, 0), intrinsics.simd_extract(r, 1)}
 }
 vector2_cubic_interpolate_in_time :: proc "contextless" (self: ^Vector2, b: Vector2, pre_a: Vector2, post_b: Vector2, weight: f64, b_t: f64, pre_a_t: f64, post_b_t: f64) -> Vector2 {
 	return v_cubic_in_time(self^, b, pre_a, post_b, f32(weight), f32(b_t), f32(pre_a_t), f32(post_b_t))

@@ -542,6 +542,7 @@ func _check_extras() -> int:
 			failures += 1
 	failures += _check_replaced_random(b2)
 	failures += _check_replaced_vectors(b2)
+	failures += _check_sine_cosine(b2)
 	failures += _check_replaced_vectorsi(b2)
 	failures += _check_replaced_colors(b2)
 	failures += _check_replaced_color_texts(b2)
@@ -794,6 +795,84 @@ func _check_replaced_random(b2: Bag) -> int:
 	return failures
 
 
+# Slot ranges, as (first, end) pairs, of the results built last that depend on a sine or cosine.
+var _trig_spans: PackedInt32Array = PackedInt32Array()
+# How far a marked result may sit from the engine's, in units in the last place of its largest
+# component. The differences measured stay within four.
+const TRIG_ULPS: float = 16.0
+
+
+# Marks a result that depends on a sine or cosine. The Odin procs round those two correctly and the
+# engine's C library does not always, so such a result may differ from the engine's in its last
+# bits. The encoders note the slots a marked result fills; it must fill them with f32 bits.
+func _trig(v: Variant) -> Array:
+	return [v]
+
+
+# The floats of `a` as their bits, every NaN as one value.
+func _float_bits(a: PackedFloat32Array) -> PackedInt64Array:
+	var bytes := a.to_byte_array()
+	var o := PackedInt64Array()
+	for k: int in a.size():
+		o.append(0x7fc00000 if is_nan(a[k]) else bytes.decode_u32(4 * k))
+	return o
+
+
+# Whether slot `at` lies in a marked result of `spans` and `got` is within TRIG_ULPS of `want`
+# there, measured against the largest finite component the engine gave that result.
+func _trig_close(spans: PackedInt32Array, got: PackedInt64Array, want: PackedInt64Array, at: int) -> bool:
+	for s: int in spans.size() / 2:
+		if at < spans[2 * s] or at >= spans[2 * s + 1]:
+			continue
+		var largest := 0.0
+		for k: int in range(spans[2 * s], spans[2 * s + 1]):
+			var e := absf(_f32_bits(want[k]))
+			if is_finite(e):
+				largest = maxf(largest, e)
+		return absf(_f32_bits(got[at]) - _f32_bits(want[at])) <= TRIG_ULPS * 1.1920929e-07 * largest
+	return false
+
+
+# The first slot where `got` differs from `want`, or -1 when none does. Slots must match bit for
+# bit, except those of a marked result, which must be close (see _trig). Forgets the marks.
+func _first_mismatch(got: PackedInt64Array, want: PackedInt64Array) -> int:
+	var spans := _trig_spans
+	_trig_spans = PackedInt32Array()
+	if got == want:
+		return -1
+	if got.size() != want.size():
+		return mini(got.size(), want.size())
+	for at: int in want.size():
+		if got[at] != want[at] and not _trig_close(spans, got, want, at):
+			return at
+	return -1
+
+
+# Vector2.from_angle returns the cosine and sine the Odin procs compute. Both must be the f32
+# nearest the exact value; the engine's double-precision sin and cos, rounded to f32, give that
+# for these angles: every magnitude from 2^-30 to 2^40, and the angles near multiples of PI / 2.
+func _check_sine_cosine(b2: Bag) -> int:
+	var failures := 0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261114
+	for round: int in 4000:
+		var x := rng.randf_range(-1, 1) * pow(2.0, rng.randi_range(-30, 40))
+		if round % 8 == 0:
+			x = rng.randi_range(-64, 64) * PI / 2 + rng.randf_range(-1e-4, 1e-4)
+		x = PackedFloat32Array([x])[0]
+		var want := _float_bits(PackedFloat32Array([cos(x), sin(x)]))
+		var got: PackedFloat32Array = b2.replaced_vectors(Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO,
+			Vector2.RIGHT, Vector3.BACK, 0.0, x, 0.0, 0.0)
+		if _float_bits(got.slice(FROM_ANGLE_SLOT, FROM_ANGLE_SLOT + 2)) != want:
+			failures += 1
+			print("FAIL: cosine and sine of %s are %s, not (%s, %s)" % [x, got.slice(FROM_ANGLE_SLOT, FROM_ANGLE_SLOT + 2), cos(x), sin(x)])
+	return failures
+
+
+# Where Bag.replaced_vectors puts Vector2.from_angle(x).
+const FROM_ANGLE_SLOT: int = 78
+
+
 # Appends `v` to `out` as floats, as Bag.replaced_vectors does: a vector by component, a Basis row
 # by row, a boolean or an index as its number.
 func _put_result(out: PackedFloat32Array, v: Variant) -> void:
@@ -808,6 +887,10 @@ func _put_result(out: PackedFloat32Array, v: Variant) -> void:
 			for row: int in 3:
 				for col: int in 3:
 					out.append(v[col][row])
+		TYPE_ARRAY:
+			var from := out.size()
+			_put_result(out, v[0])
+			_trig_spans.append_array([from, out.size()])
 		_:
 			out.append(float(v))
 
@@ -823,13 +906,13 @@ func _vector_results(a: Vector4, b: Vector4, c: Vector4, d: Vector4, n2: Vector2
 			a2.distance_to(b2), a2.distance_squared_to(b2), a2.length(), a2.length_squared(),
 			a2.limit_length(x), a2.normalized(), a2.is_normalized(), a2.is_equal_approx(b2),
 			a2.is_zero_approx(), a2.is_finite(), a2.posmod(x), a2.posmodv(b2), a2.project(b2),
-			a2.lerp(b2, w), a2.slerp(b2, w), a2.cubic_interpolate(b2, c2, d2, w),
+			a2.lerp(b2, w), _trig(a2.slerp(b2, w)), a2.cubic_interpolate(b2, c2, d2, w),
 			a2.cubic_interpolate_in_time(b2, c2, d2, w, x, y, z), a2.bezier_interpolate(b2, c2, d2, w),
 			a2.bezier_derivative(b2, c2, d2, w), a2.max_axis_index(), a2.min_axis_index(),
-			a2.move_toward(b2, x), a2.rotated(x), a2.orthogonal(), a2.floor(), a2.ceil(), a2.round(),
+			a2.move_toward(b2, x), _trig(a2.rotated(x)), a2.orthogonal(), a2.floor(), a2.ceil(), a2.round(),
 			a2.aspect(), a2.dot(b2), a2.slide(n2), a2.bounce(n2), a2.reflect(n2), a2.cross(b2), a2.abs(),
 			a2.sign(), a2.clamp(b2, c2), a2.clampf(y, z), a2.snapped(b2), a2.snappedf(x), a2.min(b2),
-			a2.minf(x), a2.max(b2), a2.maxf(x), Vector2.from_angle(x), Vector2(x, y),
+			a2.minf(x), a2.max(b2), a2.maxf(x), _trig(Vector2.from_angle(x)), Vector2(x, y),
 			Vector2(Vector2i(int(x), int(y)))]:
 		_put_result(o, v)
 	var a3 := Vector3(a.x, a.y, a.z)
@@ -840,7 +923,7 @@ func _vector_results(a: Vector4, b: Vector4, c: Vector4, d: Vector4, n2: Vector2
 			a3.distance_to(b3), a3.distance_squared_to(b3), a3.length(), a3.length_squared(),
 			a3.limit_length(x), a3.normalized(), a3.is_normalized(), a3.is_equal_approx(b3),
 			a3.is_zero_approx(), a3.is_finite(), a3.inverse(), a3.clamp(b3, c3), a3.clampf(y, z),
-			a3.snapped(b3), a3.snappedf(x), a3.rotated(n3, x), a3.lerp(b3, w), a3.slerp(b3, w),
+			a3.snapped(b3), a3.snappedf(x), _trig(a3.rotated(n3, x)), a3.lerp(b3, w), _trig(a3.slerp(b3, w)),
 			a3.cubic_interpolate(b3, c3, d3, w), a3.cubic_interpolate_in_time(b3, c3, d3, w, x, y, z),
 			a3.bezier_interpolate(b3, c3, d3, w), a3.bezier_derivative(b3, c3, d3, w),
 			a3.move_toward(b3, x), a3.dot(b3), a3.cross(b3), a3.outer(b3), a3.abs(), a3.floor(),
@@ -869,11 +952,10 @@ func _check_vector_case(b2: Bag, a: Vector4, b: Vector4, c: Vector4, d: Vector4,
 	var got_bits := got.to_byte_array().to_int32_array()
 	var want_bits := want.to_byte_array().to_int32_array()
 	if got_bits == want_bits:
+		_trig_spans.clear()
 		return 0
-	var at := 0
-	while at < mini(got.size(), want.size()) and (got_bits[at] == want_bits[at] or (is_nan(got[at]) and is_nan(want[at]))):
-		at += 1
-	if at == got.size() and at == want.size():
+	var at := _first_mismatch(_float_bits(got), _float_bits(want))
+	if at < 0:
 		return 0
 	print("FAIL: Bag.replaced_vectors(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, b, c, d, n2, n3, w, x, y, z, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
 	return 1
@@ -1033,6 +1115,11 @@ func _put_color_result(out: PackedInt64Array, v: Variant) -> void:
 				out.append(0x7fc00000 if is_nan(e) else PackedFloat32Array([e]).to_byte_array().decode_u32(0))
 		TYPE_FLOAT:
 			out.append(0x7ff8000000000000 if is_nan(v) else PackedFloat64Array([v]).to_byte_array().decode_s64(0))
+		TYPE_ARRAY:
+			assert(typeof(v[0]) == TYPE_COLOR, "a marked result must be stored as f32 bits")
+			var from := out.size()
+			_put_color_result(out, v[0])
+			_trig_spans.append_array([from, out.size()])
 		_:
 			out.append(int(v))
 
@@ -1113,7 +1200,7 @@ func _color_text_results(a: Color, s: String, d: Color, x: float, h: float, sat:
 		for k: int in t.length():
 			o.append(t.unicode_at(k))
 	for v: Variant in [Color.html(s), Color.html_is_valid(s), Color.from_string(s, d), Color(s),
-			Color(s, x), Color.from_ok_hsl(h, sat, l, x), r.is_valid(), r.get_id(), RID().is_valid(),
+			Color(s, x), _trig(Color.from_ok_hsl(h, sat, l, x)), r.is_valid(), r.get_id(), RID().is_valid(),
 			RID().get_id(), RID(r).get_id()]:
 		_put_color_result(o, v)
 	return o
@@ -1122,11 +1209,9 @@ func _color_text_results(a: Color, s: String, d: Color, x: float, h: float, sat:
 func _check_color_text_case(b2: Bag, a: Color, s: String, d: Color, x: float, h: float, sat: float, l: float, r: RID) -> int:
 	var want: PackedInt64Array = _color_text_results(a, s, d, x, h, sat, l, r)
 	var got: PackedInt64Array = b2.replaced_color_texts(a, s, d, x, h, sat, l, r)
-	if got == want:
+	var at: int = _first_mismatch(got, want)
+	if at < 0:
 		return 0
-	var at: int = 0
-	while at < mini(got.size(), want.size()) and got[at] == want[at]:
-		at += 1
 	print("FAIL: Bag.replaced_color_texts(%s, %s, %s, %s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, s.c_escape(), d, x, h, sat, l, r.get_id(), at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
 	return 1
 
@@ -1251,23 +1336,28 @@ func _put_basis_result(out: PackedInt64Array, v: Variant) -> void:
 			out.append(v.y)
 		TYPE_FLOAT:
 			out.append(0x7ff8000000000000 if is_nan(v) else PackedFloat64Array([v]).to_byte_array().decode_s64(0))
+		TYPE_ARRAY:
+			assert(typeof(v[0]) != TYPE_FLOAT, "a marked result must be stored as f32 bits")
+			var from: int = out.size()
+			_put_basis_result(out, v[0])
+			_trig_spans.append_array([from, out.size()])
 		_:
 			out.append(int(v))
 
 
 # The engine's Basis methods in the order Bag.replaced_bases calls the Odin procs.
 func _basis_results(a: Basis, b: Basis, v: Vector3, w: Vector3, x: float, n: int) -> PackedInt64Array:
-	var vs: Array = [Basis(), Basis(a), Basis(Quaternion(v.x, v.y, v.z, x)), Basis(v, x), Basis(w, v, w),
-		a.inverse(), a.transposed(), a.orthonormalized(), a.determinant(), a.rotated(v, x),
+	var vs: Array = [Basis(), Basis(a), Basis(Quaternion(v.x, v.y, v.z, x)), _trig(Basis(v, x)), Basis(w, v, w),
+		a.inverse(), a.transposed(), a.orthonormalized(), a.determinant(), _trig(a.rotated(v, x)),
 		a.scaled(v), a.scaled_local(v), a.get_scale(), a.get_euler(n)]
 	for k: int in 6:
 		vs.append(a.get_euler(k))
-	vs.append_array([a.tdotx(v), a.tdoty(v), a.tdotz(v), a.slerp(b, x), a.is_conformal(),
+	vs.append_array([a.tdotx(v), a.tdoty(v), a.tdotz(v), _trig(a.slerp(b, x)), a.is_conformal(),
 		a.is_equal_approx(b), a.is_finite(), a.is_orthonormal(), a.get_rotation_quaternion(),
 		Basis.looking_at(v, w, false), Basis.looking_at(v, w, true), Basis.from_scale(v),
-		Basis.from_euler(v, n)])
+		_trig(Basis.from_euler(v, n))])
 	for k: int in 6:
-		vs.append(Basis.from_euler(v, k))
+		vs.append(_trig(Basis.from_euler(v, k)))
 	var o := PackedInt64Array()
 	for e: Variant in vs:
 		_put_basis_result(o, e)
@@ -1277,11 +1367,9 @@ func _basis_results(a: Basis, b: Basis, v: Vector3, w: Vector3, x: float, n: int
 func _check_basis_case(b2: Bag, a: Basis, b: Basis, v: Vector3, w: Vector3, x: float, n: int) -> int:
 	var want := _basis_results(a, b, v, w, x, n)
 	var got: PackedInt64Array = b2.replaced_bases(a, b, v, w, x, n)
-	if got == want:
+	var at: int = _first_mismatch(got, want)
+	if at < 0:
 		return 0
-	var at := 0
-	while at < mini(got.size(), want.size()) and got[at] == want[at]:
-		at += 1
 	print("FAIL: Bag.replaced_bases(%s, %s, %s, %s, %s, %d) differs at %d of %d: %s, not %s" % [a, b, v, w, x, n, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
 	return 1
 
@@ -1373,11 +1461,11 @@ func _check_replaced_bases(b2: Bag) -> int:
 
 # The engine's Transform2D methods in the order Bag.replaced_transforms2d calls the Odin procs.
 func _transform2d_results(a: Transform2D, b: Transform2D, p: Vector2, q: Vector2, x: float, y: float) -> PackedInt64Array:
-	var vs: Array = [Transform2D(), Transform2D(a), Transform2D(x, p), Transform2D(x, p, y, q), Transform2D(p, q, p),
+	var vs: Array = [Transform2D(), Transform2D(a), _trig(Transform2D(x, p)), _trig(Transform2D(x, p, y, q)), Transform2D(p, q, p),
 		a.inverse(), a.affine_inverse(), a.get_rotation(), a.get_origin(), a.get_scale(), a.get_skew(),
-		a.orthonormalized(), a.rotated(x), a.rotated_local(x), a.scaled(p), a.scaled_local(p),
+		a.orthonormalized(), _trig(a.rotated(x)), _trig(a.rotated_local(x)), a.scaled(p), a.scaled_local(p),
 		a.translated(p), a.translated_local(p), a.determinant(), a.basis_xform(p), a.basis_xform_inv(p),
-		a.interpolate_with(b, x), a.is_conformal(), a.is_equal_approx(b), a.is_finite(), a.looking_at(p)]
+		_trig(a.interpolate_with(b, x)), a.is_conformal(), a.is_equal_approx(b), a.is_finite(), _trig(a.looking_at(p))]
 	var o: PackedInt64Array = PackedInt64Array()
 	for e: Variant in vs:
 		_put_basis_result(o, e)
@@ -1387,9 +1475,9 @@ func _transform2d_results(a: Transform2D, b: Transform2D, p: Vector2, q: Vector2
 # The engine's Transform3D methods in the order Bag.replaced_transforms3d calls the Odin procs.
 func _transform3d_results(a: Transform3D, b: Transform3D, v: Vector3, w: Vector3, m: Projection, x: float) -> PackedInt64Array:
 	var vs: Array = [Transform3D(), Transform3D(a), Transform3D(b.basis, v), Transform3D(v, w, a.origin, b.origin),
-		Transform3D(m), a.inverse(), a.affine_inverse(), a.orthonormalized(), a.rotated(v, x),
-		a.rotated_local(v, x), a.scaled(v), a.scaled_local(v), a.translated(v), a.translated_local(v),
-		a.looking_at(v, w, false), a.looking_at(v, w, true), a.interpolate_with(b, x),
+		Transform3D(m), a.inverse(), a.affine_inverse(), a.orthonormalized(), _trig(a.rotated(v, x)),
+		_trig(a.rotated_local(v, x)), a.scaled(v), a.scaled_local(v), a.translated(v), a.translated_local(v),
+		a.looking_at(v, w, false), a.looking_at(v, w, true), _trig(a.interpolate_with(b, x)),
 		a.is_equal_approx(b), a.is_finite()]
 	var o: PackedInt64Array = PackedInt64Array()
 	for e: Variant in vs:
@@ -1400,11 +1488,9 @@ func _transform3d_results(a: Transform3D, b: Transform3D, v: Vector3, w: Vector3
 func _check_transform2d_case(b2: Bag, a: Transform2D, b: Transform2D, p: Vector2, q: Vector2, x: float, y: float) -> int:
 	var want: PackedInt64Array = _transform2d_results(a, b, p, q, x, y)
 	var got: PackedInt64Array = b2.replaced_transforms2d(a, b, p, q, x, y)
-	if got == want:
+	var at: int = _first_mismatch(got, want)
+	if at < 0:
 		return 0
-	var at: int = 0
-	while at < mini(got.size(), want.size()) and got[at] == want[at]:
-		at += 1
 	print("FAIL: Bag.replaced_transforms2d(%s, %s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, b, p, q, x, y, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
 	return 1
 
@@ -1412,11 +1498,9 @@ func _check_transform2d_case(b2: Bag, a: Transform2D, b: Transform2D, p: Vector2
 func _check_transform3d_case(b2: Bag, a: Transform3D, b: Transform3D, v: Vector3, w: Vector3, m: Projection, x: float) -> int:
 	var want: PackedInt64Array = _transform3d_results(a, b, v, w, m, x)
 	var got: PackedInt64Array = b2.replaced_transforms3d(a, b, v, w, m, x)
-	if got == want:
+	var at: int = _first_mismatch(got, want)
+	if at < 0:
 		return 0
-	var at: int = 0
-	while at < mini(got.size(), want.size()) and got[at] == want[at]:
-		at += 1
 	print("FAIL: Bag.replaced_transforms3d(%s, %s, %s, %s, %s) differs at %d of %d: %s, not %s" % [a, b, v, w, x, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
 	return 1
 
@@ -1519,14 +1603,14 @@ func _check_replaced_transforms(b2: Bag) -> int:
 
 # The engine's Quaternion methods in the order Bag.replaced_quaternions calls the Odin procs.
 func _quaternion_results(a: Quaternion, b: Quaternion, c: Quaternion, d: Quaternion, m: Basis, v: Vector3, w: Vector3, x: float, n: int) -> PackedInt64Array:
-	var vs: Array = [Quaternion(), Quaternion(a), Quaternion(m), Quaternion(v, x), Quaternion(v, w), Quaternion(x, v.x, v.y, v.z),
+	var vs: Array = [Quaternion(), Quaternion(a), Quaternion(m), _trig(Quaternion(v, x)), Quaternion(v, w), Quaternion(x, v.x, v.y, v.z),
 		a.length(), a.length_squared(), a.normalized(), a.is_normalized(), a.is_equal_approx(b), a.is_finite(),
-		a.inverse(), a.log(), a.exp(), a.angle_to(b), a.dot(b), a.slerp(b, x), a.slerpni(b, x),
-		a.spherical_cubic_interpolate(b, c, d, x), a.spherical_cubic_interpolate_in_time(b, c, d, x, w.x, w.y, w.z),
+		a.inverse(), a.log(), _trig(a.exp()), a.angle_to(b), a.dot(b), _trig(a.slerp(b, x)), _trig(a.slerpni(b, x)),
+		_trig(a.spherical_cubic_interpolate(b, c, d, x)), _trig(a.spherical_cubic_interpolate_in_time(b, c, d, x, w.x, w.y, w.z)),
 		a.get_euler(n)]
 	for k: int in 6:
 		vs.append(a.get_euler(k))
-	vs.append_array([Quaternion.from_euler(v), a.get_axis(), a.get_angle()])
+	vs.append_array([_trig(Quaternion.from_euler(v)), a.get_axis(), a.get_angle()])
 	var o: PackedInt64Array = PackedInt64Array()
 	for e: Variant in vs:
 		_put_basis_result(o, e)
@@ -1536,11 +1620,9 @@ func _quaternion_results(a: Quaternion, b: Quaternion, c: Quaternion, d: Quatern
 func _check_quaternion_case(b2: Bag, a: Quaternion, b: Quaternion, c: Quaternion, d: Quaternion, m: Basis, v: Vector3, w: Vector3, x: float, n: int) -> int:
 	var want: PackedInt64Array = _quaternion_results(a, b, c, d, m, v, w, x, n)
 	var got: PackedInt64Array = b2.replaced_quaternions(a, b, c, d, m, v, w, x, n)
-	if got == want:
+	var at: int = _first_mismatch(got, want)
+	if at < 0:
 		return 0
-	var at: int = 0
-	while at < mini(got.size(), want.size()) and got[at] == want[at]:
-		at += 1
 	print("FAIL: Bag.replaced_quaternions(%s, %s, %s, %s, %s, %s, %s, %s, %d) differs at %d of %d: %s, not %s" % [a, b, c, d, m, v, w, x, n, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
 	return 1
 
@@ -1992,7 +2074,7 @@ func _projection_results(a: Projection, t: Transform3D, r: Rect2, box: AABB, w: 
 		y: float, z: float, u: float, n: int, m: int, flip: bool) -> PackedInt64Array:
 	var vs: Array = [Projection(), Projection(a), Projection(t), Projection(a.w, a.z, a.y, a.x),
 		Projection.create_depth_correction(flip), Projection.create_light_atlas_rect(r),
-		Projection.create_perspective(x, y, z, u, flip), Projection.create_perspective_hmd(x, y, z, u, flip, n, w.x, w.y),
+		_trig(Projection.create_perspective(x, y, z, u, flip)), Projection.create_perspective_hmd(x, y, z, u, flip, n, w.x, w.y),
 		Projection.create_for_hmd(n, y, w.x, q.x, q.y, x, z, u), Projection.create_orthogonal(w.x, q.x, w.y, q.y, z, u),
 		Projection.create_orthogonal_aspect(x, y, z, u, flip), Projection.create_frustum(w.x, q.x, w.y, q.y, z, u),
 		Projection.create_frustum_aspect(x, y, w, z, u, flip), Projection.create_fit_aabb(box), Projection.get_fovy(x, y),
@@ -2009,11 +2091,9 @@ func _check_projection_case(b2: Bag, a: Projection, t: Transform3D, r: Rect2, bo
 		x: float, y: float, z: float, u: float, n: int, m: int, flip: bool) -> int:
 	var want: PackedInt64Array = _projection_results(a, t, r, box, w, q, x, y, z, u, n, m, flip)
 	var got: PackedInt64Array = b2.replaced_projections(a, t, r, box, w, q, x, y, z, u, n, m, flip)
-	if got == want:
+	var at: int = _first_mismatch(got, want)
+	if at < 0:
 		return 0
-	var at: int = 0
-	while at < mini(got.size(), want.size()) and got[at] == want[at]:
-		at += 1
 	print("FAIL: Bag.replaced_projections(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %d, %d, %s) differs at %d of %d: %s, not %s" % [
 		a, t, r, box, w, q, x, y, z, u, n, m, flip, at, want.size(), got.slice(at, at + 4), want.slice(at, at + 4)])
 	return 1

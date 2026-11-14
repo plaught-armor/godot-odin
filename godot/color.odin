@@ -5,8 +5,9 @@ package godot
 // Godot 4.7-stable: single-precision operations in the same order, the same libm calls (powf,
 // fmodf, floorf), roundf's rounding done inline, and the same mixed double steps, so results match bit for bit.
 // The String methods read and build Strings in place and print the engine's errors for an
-// invalid code or name; `from_ok_hsl` follows thirdparty/misc/ok_color.h with the engine's own
-// cbrtf. tools/odin_bindgen.py leaves these names out of godot/gen_builtins.odin.
+// invalid code or name; `from_ok_hsl` follows thirdparty/misc/ok_color.h with the C library's
+// cbrtf, and with trig.odin's correctly rounded sine and cosine, so its result may differ from the
+// engine's in its last bits. tools/odin_bindgen.py leaves these names out of godot/gen_builtins.odin.
 
 import "base:intrinsics"
 import "core:c/libc"
@@ -329,30 +330,6 @@ color_to_html :: proc "contextless" (self: ^Color, with_alpha: bool) -> (out: St
 
 // OkHSL, after thirdparty/misc/ok_color.h of Godot 4.7-stable, operation for operation.
 
-// The engine's own cbrtf (FreeBSD's, as musl carries it): a bit-level first guess, then two
-// Newton steps in double, rounded once to float.
-@(private) ok_cbrtf :: proc "contextless" (x: f32) -> f32 {
-	B1 :: 709958130
-	B2 :: 642849266
-	u := transmute(u32)x
-	hx := u & 0x7fffffff
-	if hx >= 0x7f800000 { return x + x }
-	if hx < 0x00800000 {
-		if hx == 0 { return x }
-		u = transmute(u32)(x * 0h4b800000)
-		hx = (u & 0x7fffffff) / 3 + B2
-	} else {
-		hx = hx / 3 + B1
-	}
-	t := f64(transmute(f32)(u & 0x80000000 | hx))
-	xd := f64(x)
-	r := t * t * t
-	t = t * (xd + xd + r) / (xd + r + r)
-	r = t * t * t
-	t = t * (xd + xd + r) / (xd + r + r)
-	return f32(t)
-}
-
 // fmin and fmax as the engine's compiler inlines them: a NaN first argument gives the second.
 @(private) ok_fmin :: #force_inline proc "contextless" (x, y: f32) -> f32 {
 	return y if x != x else (y if y < x else x)
@@ -413,7 +390,9 @@ color_to_html :: proc "contextless" (self: ^Color, with_alpha: bool) -> (out: St
 @(private) ok_find_cusp :: proc "contextless" (a, b: f32) -> [2]f32 {
 	S_cusp := ok_max_saturation(a, b)
 	rgb := oklab_to_linear_srgb(1, S_cusp * a, S_cusp * b)
-	L_cusp := ok_cbrtf(1 / ok_fmax(ok_fmax(rgb.r, rgb.g), rgb.b))
+	// The C library's cbrtf, correctly rounded in glibc since 2.41. The 4.7-stable binary carries its
+	// own (FreeBSD's), which is within one unit in the last place and takes about 20 cycles longer.
+	L_cusp := libc.cbrtf(1 / ok_fmax(ok_fmax(rgb.r, rgb.g), rgb.b))
 	return {L_cusp, L_cusp * S_cusp}
 }
 
@@ -487,8 +466,7 @@ color_to_html :: proc "contextless" (self: ^Color, with_alpha: bool) -> (out: St
 	K_1 :: f32(0.206)
 	K_2 :: f32(0.03)
 	K_3 :: f32(0h3f95df31)
-	a_ := libc.cosf(TWO_PI * h)
-	b_ := libc.sinf(TWO_PI * h)
+	b_, a_ := m_sincos(TWO_PI * h)
 	L := (l * l + K_1 * l) / (K_3 * (l + K_2))
 	cs := ok_cs(L, a_, b_)
 	C_0, C_mid, C_max := cs[0], cs[1], cs[2]

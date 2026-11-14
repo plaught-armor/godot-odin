@@ -3,8 +3,10 @@ package godot
 // Transform2D and Transform3D methods and constructors computed in place, under the names and
 // signatures the bindings generated before. Each follows the engine's own code in
 // core/math/transform_2d.cpp, transform_3d.cpp and their headers in Godot 4.7-stable:
-// single-precision operations in the same order and the same libm calls (sinf, cosf, atan2f,
-// acosf, fmodf), so results match bit for bit. The checks the engine makes under MATH_CHECKS (on
+// single-precision operations in the same order and the same libm calls (atan2f, acosf, fmodf),
+// so results match bit for bit, except those built on a sine or cosine: trig.odin rounds those
+// two correctly, which the C library does not always do, so such a result may differ from the
+// engine's in its last bits. The checks the engine makes under MATH_CHECKS (on
 // in editor and debug builds) are made here too, with the same fallback results: a singular
 // Transform2D's affine inverse is the copy unchanged, a singular Transform3D's keeps its basis,
 // and Transform3D.looking_at at its own origin gives the identity.
@@ -62,9 +64,11 @@ import "core:math"
 	return {{cr, sr}, {-sr, cr}, pos}
 }
 @(private) t2_from_rotation_scale_skew :: #force_inline proc "contextless" (rot: f32, scale: Vector2, skew: f32, pos: Vector2) -> Transform2D {
+	sx, cx := m_sincos(rot)
+	sy, cy := m_sincos(rot + skew)
 	return {
-		{libc.cosf(rot) * scale.x, libc.sinf(rot) * scale.x},
-		{-libc.sinf(rot + skew) * scale.y, libc.cosf(rot + skew) * scale.y},
+		{cx * scale.x, sx * scale.x},
+		{-sy * scale.y, cy * scale.y},
 		pos,
 	}
 }
@@ -163,9 +167,8 @@ transform2d_is_conformal :: proc "contextless" (self: ^Transform2D) -> bool {
 		(m_is_equal_approx(t.x.x, -t.y.y) && m_is_equal_approx(t.x.y, t.y.x))
 }
 transform2d_is_equal_approx :: proc "contextless" (self: ^Transform2D, xform: Transform2D) -> bool {
-	m, o := transmute([6]f32)self^, transmute([6]f32)xform
-	#unroll for i in 0 ..< 6 { if !m_is_equal_approx(m[i], o[i]) { return false } }
-	return true
+	xform := xform
+	return m_all_equal_approx(cast([^]f32)self, cast([^]f32)&xform, 6)
 }
 transform2d_is_finite :: proc "contextless" (self: ^Transform2D) -> bool {
 	return v_is_finite(self.x) && v_is_finite(self.y) && v_is_finite(self.origin)
@@ -255,9 +258,8 @@ transform3d_interpolate_with :: proc "contextless" (self: ^Transform3D, xform: T
 	return {b_mul(b_from_quaternion(q), basis_from_scale(s)), v_lerp(a.origin, b.origin, w)}
 }
 transform3d_is_equal_approx :: proc "contextless" (self: ^Transform3D, xform: Transform3D) -> bool {
-	m, o := transmute([12]f32)self^, transmute([12]f32)xform
-	#unroll for i in 0 ..< 12 { if !m_is_equal_approx(m[i], o[i]) { return false } }
-	return true
+	xform := xform
+	return m_all_equal_approx(cast([^]f32)self, cast([^]f32)&xform, 12)
 }
 transform3d_is_finite :: proc "contextless" (self: ^Transform3D) -> bool {
 	return basis_is_finite(&self.basis) && v_is_finite(self.origin)

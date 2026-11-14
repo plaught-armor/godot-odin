@@ -3,8 +3,10 @@ package godot
 // Quaternion methods and constructors computed in place, under the names and signatures the
 // bindings generated before. Each follows the engine's own code in core/math/quaternion.cpp and
 // quaternion.h of Godot 4.7-stable: single-precision operations in the same order, the same libm
-// calls (sinf, cosf, acosf), the double comparisons the engine's `CMP_EPSILON` literal makes, and
-// the double step of slerp, so results match bit for bit. The checks the engine makes under
+// call (acosf), the double comparisons the engine's `CMP_EPSILON` literal makes, and the double
+// step of slerp, so results match bit for bit, except those built on a sine or cosine: trig.odin
+// rounds those two correctly, which the C library does not always do, so such a result may differ
+// from the engine's in its last bits. The checks the engine makes under
 // MATH_CHECKS (on in editor and debug builds) are made here too, with the same fallback results:
 // the identity quaternion for a quaternion that must be normalized and is not, and the zero
 // vector from get_euler. tools/odin_bindgen.py leaves these names out of godot/gen_builtins.odin.
@@ -90,8 +92,9 @@ import gde "../gdextension"
 	}
 	d := m_sqrt(v_dot(axis, axis))
 	if d == 0 { return {} }
-	s := libc.sinf(angle * 0.5) / d
-	return {axis.x * s, axis.y * s, axis.z * s, libc.cosf(angle * 0.5)}
+	sine, cosine := m_sincos(angle * 0.5)
+	s := sine / d
+	return {axis.x * s, axis.y * s, axis.z * s, cosine}
 }
 
 // Quaternion::exp. `theta < CMP_EPSILON` compares in double.
@@ -265,9 +268,9 @@ quaternion_slerpni :: proc "contextless" (self: ^Quaternion, to: Quaternion, wei
 	dot := v_dot(from, to)
 	if m_abs(dot) > 0.9999 { return from }
 	theta := m_acos(dot)
-	sin_t := 1 / libc.sinf(theta)
-	new_factor := libc.sinf(w * theta) * sin_t
-	inv_factor := libc.sinf((1 - w) * theta) * sin_t
+	sin_t := 1 / m_sin(theta)
+	new_factor := m_sin(w * theta) * sin_t
+	inv_factor := m_sin((1 - w) * theta) * sin_t
 	return {
 		inv_factor * from.x + new_factor * to.x,
 		inv_factor * from.y + new_factor * to.y,

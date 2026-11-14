@@ -176,6 +176,8 @@ def pair(index, btype, m):
             out.append(f"\tdefer godot.string_destroy(&a{i})")
         # Reread once, so the Odin side cannot fold a constant argument into the method.
         out.append(f"\ta{i} = intrinsics.volatile_load(&a{i})")
+        if not (static and i == 0):
+            out.append(f"\tp{i} := &a{i}")
     if static:
         out.append("\tref = &a0")
     rt = odin_type(ret)
@@ -197,10 +199,12 @@ def pair(index, btype, m):
     out.append("\t} else {")
     out.append("\t\tstart = time.tick_now()")
     out.append("\t\tfor _ in 0 ..< n {")
-    call = [f"a{i}" for i in range(len(args))]
+    # Reread every argument each round: the engine recomputes whatever depends on an argument
+    # alone on every call, so the replacement must not get that work hoisted out of the loop.
+    # The reread is of a pointer, as the engine call gets one: rereading the value itself would
+    # charge the replacement a copy of the whole argument that the engine never makes.
+    call = [f"intrinsics.volatile_load(&p{i})^" for i in range(len(args))]
     if static:
-        # A static method has no value to reread, so reach its first argument through a pointer
-        # reread each round.
         call[0] = "intrinsics.volatile_load(&ref)^"
     else:
         call.insert(0, self_ptr)

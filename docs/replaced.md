@@ -40,7 +40,8 @@ equal one in separate storage.
 
 `REPLACED_TYPES` in `tools/odin_bindgen.py` leaves out every method and constructor of `Vector2`,
 `Vector3` and `Vector4`. `godot/vector.odin` defines all 140 under the same names and signatures
-as plain `f32` arithmetic that copies the engine's operation order, so results match bit for bit.
+as plain `f32` arithmetic that copies the engine's operation order, so results match bit for bit,
+except those built on a sine or cosine (see [Sine and cosine](#sine-and-cosine)).
 Checked against Godot 4.7-stable by `_check_replaced_vectors`, which calls every method from
 GDScript and from `Bag.replaced_vectors` on edge cases (signed zeros, units, halves, infinities,
 NaNs, tiny and huge values, normals that are not normalized, zero and normal lengths) and on 2000
@@ -112,7 +113,7 @@ and on 500 seeded random Strings and OkHSL inputs.
 | `Color.from_hsv` | 12.8 ns | 2.4 ns |
 | `Color.to_html` | 21.1 ns | 10.8 ns |
 | `Color.from_string` | 172 ns | 77 ns |
-| `Color.from_ok_hsl` | 116 ns | 105 ns |
+| `Color.from_ok_hsl` | 112 ns | 96 ns |
 
 The packings round each channel half away from zero as `roundf` does, but inline: within the
 `int32` range the fraction `x - trunc(x)` is exact, and the result matches `roundf` on every one of
@@ -139,13 +140,17 @@ encoded to UTF-8 as the engine encodes them, and the result is then `Color()`; t
 that every message is printed as often by the replacements as by the engine. The benched name is
 `"Dark Olive Green"`.
 
-`from_ok_hsl` follows `thirdparty/misc/ok_color.h` operation for operation, with glibc's `cosf`,
-`sinf` and `powf` as the engine imports them. The engine links its own `cbrtf`, FreeBSD's as musl
-carries it (two Newton steps in double), not glibc's, so `godot/color.odin` carries the same one;
-`fmin` and `fmax` follow the engine's inlined form, which returns the second argument when the
+`from_ok_hsl` follows `thirdparty/misc/ok_color.h` operation for operation, with glibc's `powf`
+as the engine imports it; the sine and cosine of the hue come from `godot/trig.odin` (see
+[Sine and cosine](#sine-and-cosine)). The cube root is the C library's `cbrtf`, correctly rounded in
+glibc since 2.41, which an engine built on the host calls too. The 4.7-stable binary links its
+own, FreeBSD's as musl carries it (two Newton steps in double): within one unit in the last
+place of the correct root, and about 20 cycles longer on a call that is one chain of dependent
+operations. `fmin` and `fmax` follow the engine's inlined form, which returns the second argument when the
 first is NaN. The constants the engine folds in single precision (`2 * pi`, `(1 + 0.206) / (1 +
-0.03)`) are written by their bits. Its cost stays near the engine's because those libm calls
-dominate it.
+0.03)`) are written by their bits. Its cost stays near the engine's because the whole call is one chain of
+about 530 cycles of dependent operations (nine divisions, the cube root, `powf`), the same in
+both.
 
 ## RID
 
@@ -175,9 +180,9 @@ now builds its rotation with the same `b_axis_angle` helper.
 | Method | Engine call | Replacement |
 |---|---|---|
 | `Basis.inverse` | 6.6 ns | 1.8 ns |
-| `Basis.rotated` | 16.7 ns | 4.4 ns |
+| `Basis.rotated` | 13.9 ns | 4.0 ns |
 | `Basis.get_euler` | 23 to 29 ns | 17.5 ns |
-| `Basis.slerp` | 66 ns | 45 ns |
+| `Basis.slerp` | 61 ns | 45 ns |
 
 `get_euler` and `slerp` keep most of their cost in the libm calls (`atan2f`, `asinf`, `acosf`,
 `sin`). The editor and debug builds of the engine compile with `MATH_CHECKS`, and the replacements
@@ -202,7 +207,8 @@ basis and origin, four columns, a Projection), `inverse`, `affine_inverse`, `ort
 `rotated`, `rotated_local`, `scaled`, `scaled_local`, `translated`, `translated_local`,
 `looking_at`, `interpolate_with`, `is_equal_approx` and `is_finite`. Each follows
 `core/math/transform_2d.cpp` and `transform_3d.cpp` of Godot 4.7-stable with the same
-single-precision operation order and libm calls, including `Math::acos`'s clamp in `get_skew` and
+single-precision operation order and libm calls (sine and cosine excepted, see
+[Sine and cosine](#sine-and-cosine)), including `Math::acos`'s clamp in `get_skew` and
 the two `fmodf` calls of `Math::lerp_angle`; the Transform3D methods reuse the Basis helpers in
 `godot/basis.odin`. Checked against Godot 4.7-stable by `_check_replaced_transforms`, which
 compares every result from GDScript and from `Bag.replaced_transforms2d` and
@@ -215,13 +221,13 @@ vectors) and on 1500 seeded random cases of each type.
 | Method | Engine call | Replacement |
 |---|---|---|
 | `Transform2D.affine_inverse` | 3.9 ns | 0.8 ns |
-| `Transform2D.interpolate_with` | 75 ns | 26 ns |
+| `Transform2D.interpolate_with` | 70 ns | 28 ns |
 | `Transform3D.affine_inverse` | 9.5 ns | 1.8 ns |
-| `Transform3D.interpolate_with` | 144 ns | 111 ns |
+| `Transform3D.interpolate_with` | 135 ns | 106 ns |
 
 `Transform3D.interpolate_with` keeps most of its cost in two serial chains of square roots and
 divisions, one per basis, as each is orthonormalized and turned into a quaternion, and in the
-slerp's libm calls. Both chains are inlined so they run side by side, which also speeds up
+slerp's `acosf` and sines. Both chains are inlined so they run side by side, which also speeds up
 `Basis.slerp`. The replacements reproduce the engine's `MATH_CHECKS`:
 `affine_inverse` of a singular Transform2D prints an error and returns the transform unchanged,
 that of a singular Transform3D prints an error, keeps the basis and still carries the origin
@@ -237,7 +243,8 @@ shortest arc between two vectors, four components), `length`, `length_squared`, 
 `is_normalized`, `is_equal_approx`, `is_finite`, `inverse`, `log`, `exp`, `angle_to`, `dot`,
 `slerp`, `slerpni`, `spherical_cubic_interpolate`, `spherical_cubic_interpolate_in_time`,
 `get_euler`, `from_euler`, `get_axis` and `get_angle`. Each follows `core/math/quaternion.cpp` and
-`quaternion.h` of Godot 4.7-stable with the same single-precision operation order and libm calls.
+`quaternion.h` of Godot 4.7-stable with the same single-precision operation order and libm calls
+(sine and cosine excepted, see [Sine and cosine](#sine-and-cosine)).
 Godot 4.8 changed three of them: `log` returns twice the x, y and z of a quaternion near the
 identity, and the two spherical cubic interpolations end in `Quaternion::blend_log` instead of a
 slerp. The library reads the engine's version once at load and runs the 4.8 code on 4.8 or later.
@@ -256,18 +263,18 @@ every Euler order and invalid ones) and on 1500 seeded random cases.
 | Method | Engine call | Replacement |
 |---|---|---|
 | `Quaternion.inverse` | 2.7 ns | 1.1 ns |
-| `Quaternion.slerp` | 20 ns | 18 ns |
+| `Quaternion.slerp` | 19.6 ns | 19.3 ns |
 | `Quaternion.get_euler` | 23 ns | 20 ns |
 | `Quaternion.log` | 9.1 ns | 4.5 ns |
-| `Quaternion.exp` | 11 ns | 6.0 ns |
-| `Quaternion.spherical_cubic_interpolate` | 345 ns | 246 ns |
-| `Quaternion.spherical_cubic_interpolate_in_time` | 338 ns | 248 ns |
+| `Quaternion.exp` | 10.9 ns | 6.4 ns |
+| `Quaternion.spherical_cubic_interpolate` | 345 ns | 249 ns |
+| `Quaternion.spherical_cubic_interpolate_in_time` | 337 ns | 246 ns |
 
 On the Godot 4.8 beta build, where the 4.8 code runs, the same rows read 6.9 ns and 4.8 ns for
-`log`, 387 ns and 251 ns for the spherical cubic, and 391 ns and 254 ns for the one in time.
+`log`, 381 ns and 253 ns for the spherical cubic, and 384 ns and 257 ns for the one in time.
 
-`slerp`, `get_euler` and the spherical cubic keep most of their cost in libm (`sinf`, `cosf`,
-`acosf`, `atan2f`, `asinf`, and `sin` in double for `slerp`), so the gain is the call overhead and
+`slerp`, `get_euler` and the spherical cubic keep most of their cost in sines, cosines and
+libm (`acosf`, `atan2f`, `asinf`, and `sin` in double for `slerp`), so the gain is the call overhead and
 the inlined Basis round trips. The replacements reproduce the engine's `MATH_CHECKS`: `inverse`,
 `slerpni`, `exp`'s axis and both quaternion arguments of the spherical cubic print an error and give
 the identity when not normalized, `get_euler` gives a zero vector, `Quaternion(axis, angle)` with an
@@ -385,10 +392,11 @@ four columns), the static `create_depth_correction`, `create_light_atlas_rect`,
 `get_viewport_half_extents`, `get_far_plane_half_extents`, `inverse`, `get_pixels_per_meter` and
 `get_lod_multiplier`. Each follows `core/math/projection.cpp` and `projection.h` of Godot
 4.7-stable with the same operation order, so results match bit for bit, NaN and signed zero
-included. Where a double literal in the engine's code widens an expression to double (`/ 2.0`,
+included, except `create_perspective`, which takes a sine and cosine (see
+[Sine and cosine](#sine-and-cosine)). Where a double literal in the engine's code widens an expression to double (`/ 2.0`,
 `* 0.5`, `1.0 /`, the double overload of `Math::deg_to_rad`), the replacement computes that step
-in double too, and it calls the same libm functions: `sinf`, `cosf` and `atan2f` on floats, `tan`
-and `atan` on doubles. Products such as `-2 * far * near` keep the engine's order, since the first
+in double too, and it calls the same libm functions: `atan2f` on floats, `tan` and `atan` on
+doubles. Products such as `-2 * far * near` keep the engine's order, since the first
 product can overflow on its own. Plane and eye indices keep only their low 32 bits, as the engine's
 `int` parameters do: a plane outside the enum gives the zero plane, and an eye other than 1 or 2
 gives the mono projection, or the identity from `create_for_hmd`.
@@ -409,7 +417,7 @@ takes most matrix entries from 0, -0, ±1 and ±2, so pivot candidates tie in ma
 | `Projection.inverse` | 34.9 ns | 13.7 ns |
 | `Projection.determinant` | 11.3 ns | 8.6 ns |
 | `Projection.get_projection_plane` | 15.2 ns | 2.5 ns |
-| `Projection.create_perspective` | 13.2 ns | 3.4 ns |
+| `Projection.create_perspective` | 11.2 ns | 6.0 ns |
 
 The errors the engine prints when it refuses a frustum (`p_right <= p_left`, `p_top <= p_bottom`,
 `p_far <= p_near`) or meets a zero pivot in `inverse` (`0.0 == r0[0]` to `0.0 == r3[3]`) are
@@ -476,6 +484,51 @@ Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an ar
 and `find` of "12" in a PackedStringArray of "0" to "15". The rows from `PackedByteArray.count`
 down search 64 ascending elements for element 40, `rfind` from the end.
 
+## Sine and cosine
+
+`godot/trig.odin` computes the sine and cosine of an `f32` correctly rounded: each result is the
+float nearest the exact value, for every input, checked against MPFR over all 2^32 for both. It
+follows CORE-MATH's `sincosf`: the angle is reduced to a multiple of pi/16 plus a remainder in
+double precision, a 32-entry sine table and two cubic polynomials in the squared remainder give
+the pair, and a separate path handles tiny, huge, infinite and NaN inputs and the four inputs the
+main path rounds wrongly. Below pi/4 two polynomials in double precision answer instead, with no
+reduction and no table: the six-coefficient kernels of fdlibm's `sin` and `cos`. glibc takes the
+same shortcut, and without it the methods fed small angles ran behind the engine.
+
+The engine calls the C library's `sinf` and `cosf`, which glibc does not round correctly for
+every input. The replacements built on a sine or cosine therefore do not promise the engine's
+bits; they promise the result of the engine's formula on correctly rounded sines and cosines.
+Those are `Vector2.from_angle`, `rotated` and `slerp` of Vector2 and Vector3, the axis-angle and
+Euler constructors of Basis and Quaternion, `rotated`, `rotated_local`, `slerp` and
+`interpolate_with` of Basis, Transform2D and Transform3D, the Transform2D rotation constructors
+and `looking_at`, `Quaternion.exp`, `slerp`, `slerpni` and both spherical cubics,
+`Projection.create_perspective` and `Color.from_ok_hsl`. Every other replacement still matches bit
+for bit.
+
+The tests wrap the engine's result of each such call in `_trig`, and accept a difference of up to
+16 units in the last place of the result's largest finite component there; the largest seen is 4.
+Everything else is still compared by bits. `_check_sine_cosine` checks the sine and cosine
+themselves on 4000 seeded angles from 2^-30 to 2^40 and near multiples of pi/2, bit for bit
+against GDScript's double `sin` and `cos` rounded to single.
+
+The pair takes 2.7 ns below pi/4 and 4.1 ns above, against 3.8 ns and 4.1 ns for separate calls
+of glibc's `sinf` and `cosf`. The methods built on it are at or ahead of the engine, since they
+take the pair in one call and skip the engine's call overhead: `Quaternion.from_euler` takes
+7.6 ns against 9.2 ns, `Basis.from_euler` 11.5 ns against 14.5 ns, `Vector2.from_angle` 2.0 ns
+against 3.7 ns, `Vector2.slerp` 13.4 ns against 13.8 ns on 4.7-stable and 13.1 ns on both sides
+on a locally built 4.8.
+
+Three things in the code are there for speed and all were rechecked against MPFR over all 2^32
+inputs. The products of the remainder with the table values start beside the polynomials instead
+of after them, which shortens the chain of dependent operations: `Quaternion.from_euler` went
+from 15.5 ns to 11.5 ns. The path below pi/4 took it from there to 7.6 ns. That path computes
+both polynomials in one two-lane vector, sine in lane 0 and cosine in lane 1, because the
+compiler left to itself emits scalar code for both. The count matters where the angle comes from
+`atan2f`, as in `Vector2.slerp`: each call is then one long chain of dependent operations, the
+processor overlaps fewer than two calls, and every pending operation costs time. With
+eight-term Taylor series in scalar code that method ran behind the 4.8 engine, 13.8 ns against
+13.1 ns.
+
 ## Benching every replacement
 
 `tools/bench_gen.py` writes `bench/src/gen_replaced.odin`: one engine-against-replacement pair
@@ -483,8 +536,24 @@ for every method in `REPLACED` and `REPLACED_TYPES` that `bench/project/bench.gd
 by hand, with sample arguments picked by type and argument name. Run it after adding a
 replacement, then `bench/build.sh`; a replacement slower than its engine call is a defect to fix
 or drop. On Godot 4.7-stable every pair is at or ahead of the engine within run-to-run noise of
-about 5%, and so is every pair on a locally built 4.8. `PackedVector3Array.count` was the last one
-behind there: it now compares four elements as three vectors of four floats and counts the
+about 5%, and the same holds on a locally built 4.8. One row swings further between builds
+without a change in its code: `PackedVector4Array.rfind` shares its machine code with
+`PackedColorArray.rfind` and has read 8.6 ns and 9.8 ns in two builds of the bench library, so
+where the loop lands in the library accounts for the difference.
+
+The replacement's loop rereads a pointer to every argument each round and loads through it, as
+the engine call must. Passing an argument as a loop constant lets the compiler hoist whatever
+depends on it alone, which once made `Transform3D.interpolate_with` read 77 ns when it takes
+106 ns; rereading the value instead of a pointer hides the cost of loading it.
+
+Two replacements are written for the compiler rather than for the reader. `is_equal_approx` of
+Basis, Transform2D and Transform3D compares through pointers, so that a mismatch returns before
+the rest is loaded: 1.8 ns against the engine's 2.6 ns for Transform3D, where comparing loaded
+values took 2.8 ns. `Vector2.cubic_interpolate` uses explicit four-lane vectors with two lanes
+unused, 1.9 ns against 2.8 ns; as plain code the compiler emits scalar instructions for two
+lanes, 3.0 ns.
+
+`PackedVector3Array.count` compares four elements as three vectors of four floats and counts the
 matches from the twelve-bit mask, 16 ns against the engine's 20 ns on 4.8.
 
 Timings of branch-dense loops move with code placement, so a change elsewhere in a file can put
@@ -495,15 +564,9 @@ takes 2.5 ns.
 
 Two findings from that pass apply beyond one method. Normalizing tests the squared length alone
 when it is finite and not zero, since an infinite or NaN component cannot give such a length;
-that took `Basis.looking_at` from 12.9 ns to 9.9 ns (engine 11.8 ns) and
-`Transform3D.interpolate_with` from 109 ns to 77 ns (engine 138 ns). And glibc's `sincosf`
-returns the bits of `sinf` and `cosf` for every input, checked over all 2^32, but is faster only
-where the pair is the result or nearly so (`Vector2.from_angle` 2.6 ns to 1.6 ns,
-`Vector2.rotated`, `Quaternion.from_euler`, the Transform2D rotation and the perspective
-Projection). Where the pair feeds a longer computation, as in `Basis.from_euler` and the
-axis-angle constructors, two separate calls measured faster and stay: pairing them inside
-`Basis(axis, angle)` cost `Transform3D.rotated` 1 ns. The Vector3 rotation takes the pair, which
-is level for `Vector3.rotated` and took `Vector3.slerp` from 28.0 ns to 26.4 ns on 4.7.
+that took `Basis.looking_at` from 12.9 ns to 9.9 ns (engine 11.8 ns). And a method that needs both
+the sine and the cosine of one angle takes them as a pair from `m_sincos`, which shares the
+argument reduction.
 
 ## Array
 
