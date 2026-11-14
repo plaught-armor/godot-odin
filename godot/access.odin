@@ -1357,14 +1357,17 @@ rune_lower :: #force_inline proc "contextless" (c: rune) -> rune {
 }
 
 // The value paired with `c` in a sorted case table, or `c` when it has none. Halving 1500 keys
-// takes 11 rounds; 16 bounds it.
+// takes 11 steps; 16 bounds it, counted once per eight unrolled steps as `packed_bsearch` counts
+// its own, so the bound is not a branch on every step.
 @(private)
 caps_find :: proc "contextless" (from, to: []u32, c: rune) -> rune {
 	lo, hi := 0, len(from)
-	for _ in 0 ..< 16 {
-		if lo >= hi { break }
-		mid := (lo + hi) / 2
-		if from[mid] < u32(c) { lo = mid + 1 } else { hi = mid }
+	rounds: for _ in 0 ..< 2 {
+		#unroll for _ in 0 ..< 8 {
+			if lo >= hi { break rounds }
+			mid := (lo + hi) / 2
+			if from[mid] < u32(c) { lo = mid + 1 } else { hi = mid }
+		}
 	}
 	if lo < len(from) && from[lo] == u32(c) { return rune(to[lo]) }
 	return c
