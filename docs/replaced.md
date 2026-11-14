@@ -439,8 +439,14 @@ these and `packed_read` fall back to engine calls.
 
 `find` and `rfind` test whole blocks of eight elements with no branch per element, so the
 compares vectorize, and search the block holding a match one by one. Vector4 and Color elements
-are the exception: each is compared as one four-float vector, element by element. `count` adds
-bytes up 255 at a time in a byte, so those compares stay sixteen to an instruction. `<` has no
+are the exception: each is compared as one four-float vector, element by element. Vector3
+elements go four at a time: their twelve floats are compared as three vectors of four against the
+value repeated in step, and the twelve-bit mask is folded to one bit per whole element, which
+`find` and `rfind` scan for the first or last bit and `count` counts. `count` adds
+bytes up 255 at a time in a byte, so those compares stay sixteen to an instruction. `bsearch`
+checks its 64-step bound once per eight unrolled steps: tested on every step, the counter is a
+third branch in a two-branch loop and cost about half as much again as the engine's unbounded
+loop, and how much depended on where the loop fell in its 64-byte lines. `<` has no
 branch per component: two-component vectors combine the scalar compares, and three- and
 four-component ones compare all lanes at once and take the answer of the first lane that differs.
 Checked against Godot
@@ -457,12 +463,13 @@ seeded random sets, half of them of up to 40 elements with a value set at random
 | `PackedInt64Array.find` | 12.0 ns | 5.1 ns |
 | `PackedStringArray.find` | 13.3 ns | 11.7 ns |
 | `PackedByteArray.count` | 25.0 ns | 2.5 ns |
-| `PackedByteArray.bsearch` | 5.3 ns | 3.4 ns |
+| `PackedByteArray.bsearch` | 4.6 ns | 2.5 ns |
 | `PackedVector2Array.rfind` | 13.4 ns | 7.1 ns |
 | `PackedVector4Array.find` | 18.3 ns | 11.9 ns |
+| `PackedVector3Array.find` | 18.0 ns | 11.0 ns |
 | `PackedVector3Array.count` | 26.0 ns | 16.0 ns |
 | `PackedVector4Array.count` | 26.2 ns | 22.6 ns |
-| `PackedVector4Array.bsearch` | 7.2 ns | 4.1 ns |
+| `PackedVector4Array.bsearch` | 7.2 ns | 4.0 ns |
 | `PackedStringArray.bsearch` | 13.9 ns | 10.3 ns |
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an array of 0 to 63,
@@ -479,6 +486,12 @@ or drop. On Godot 4.7-stable every pair is at or ahead of the engine within run-
 about 5%, and so is every pair on a locally built 4.8. `PackedVector3Array.count` was the last one
 behind there: it now compares four elements as three vectors of four floats and counts the
 matches from the twelve-bit mask, 16 ns against the engine's 20 ns on 4.8.
+
+Timings of branch-dense loops move with code placement, so a change elsewhere in a file can put
+an untouched pair behind. `bsearch` did that when the Vector3 `find` was added: the same loop
+went from 2.9 ns to 4.6 ns for 64 floats, with no mispredicted branch and the front end starved.
+Counting the bound once per eight steps removed the branch that made it sensitive, and it now
+takes 2.5 ns.
 
 Two findings from that pass apply beyond one method. Normalizing tests the squared length alone
 when it is finite and not zero, since an infinite or NaN component cannot give such a length;

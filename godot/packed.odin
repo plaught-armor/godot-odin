@@ -206,6 +206,28 @@ string_less :: #force_inline proc "contextless" (a, b: ^String) -> bool {
 	#no_bounds_check return len(x) == n && n < len(y) && y[n] != 0
 }
 
+// Four Vector3 elements are twelve floats, read as three vectors and compared with the value's
+// components in the order they fall there. `v3_needles` gives those three orders and
+// `v3_group_hits` the answer for the four elements at `floats`: bits 0, 3, 6 and 9, one per
+// element, set where all three of its components equal the value's.
+@(private)
+v3_needles :: #force_inline proc "contextless" (v: ^Vector3) -> [3]#simd[4]f32 {
+	x, y, z := v[0], v[1], v[2]
+	return {
+		intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{x, y, z, x})),
+		intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{y, z, x, y})),
+		intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{z, x, y, z})),
+	}
+}
+@(private)
+v3_group_hits :: #force_inline proc "contextless" (floats: [^]f32, needles: [3]#simd[4]f32) -> u32 {
+	a := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&floats[0])), needles[0])))
+	b := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&floats[4])), needles[1])))
+	c := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&floats[8])), needles[2])))
+	m := a | b << 4 | c << 8
+	return m & (m >> 1) & (m >> 2) & 0b001001001001
+}
+
 // Vector::find: the first `v` at or after `from`, a negative `from` counting back from the end, or
 // -1, also for a `from` outside the array.
 @(private)
@@ -214,7 +236,16 @@ packed_find :: proc "contextless" (xs: []$E, v: ^E, from: i64) -> i64 {
 	from := from + n if from < 0 else from
 	if from < 0 || from >= n { return -1 }
 	start := from
-	when E != String && E != Vector4 && E != Color {
+	when E == Vector3 {
+		// Four at a time by `v3_group_hits`; the lowest set bit is the first match.
+		needles := v3_needles(v)
+		floats := ([^]f32)(raw_data(xs))
+		#no_bounds_check for _ in 0 ..< (n - from) / 4 {
+			hits := v3_group_hits(floats[start * 3:], needles)
+			if hits != 0 { return start + i64(intrinsics.count_trailing_zeros(hits) / 3) }
+			start += 4
+		}
+	} else when E != String && E != Vector4 && E != Color {
 		// Whole blocks of PACKED_BLOCK tested with no branch per element, so the compares vectorize;
 		// the block holding the first `v` is then searched one by one. Not for Vector4 and Color:
 		// one of those is a whole vector compare already, and searching a block twice costs more.
@@ -236,7 +267,16 @@ packed_rfind :: proc "contextless" (xs: []$E, v: ^E, from: i64) -> i64 {
 	from := from + n if from < 0 else from
 	if from < 0 || from >= n { return -1 }
 	last := from
-	when E != String && E != Vector4 && E != Color {
+	when E == Vector3 {
+		// Four at a time ending at `last`; the highest set bit is the last match.
+		needles := v3_needles(v)
+		floats := ([^]f32)(raw_data(xs))
+		#no_bounds_check for _ in 0 ..< (from + 1) / 4 {
+			hits := v3_group_hits(floats[(last - 3) * 3:], needles)
+			if hits != 0 { return last - 3 + i64((31 - intrinsics.count_leading_zeros(hits)) / 3) }
+			last -= 4
+		}
+	} else when E != String && E != Vector4 && E != Color {
 		// Blocks ending at `last`, tested as in `packed_find`, going down.
 		#no_bounds_check for _ in 0 ..< (from + 1) / PACKED_BLOCK {
 			hit := false
@@ -267,22 +307,12 @@ packed_count :: proc "contextless" (xs: []$E, v: ^E) -> (c: i64) {
 			rest = rest[len(part):]
 		}
 	} else when E == Vector3 {
-		// Four elements are twelve floats, read as three vectors and compared with the value's
-		// components in the order they fall there. The twelve answers make one mask, and an
-		// element counts when its three neighbouring bits are all set.
-		x, y, z := v[0], v[1], v[2]
-		first := intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{x, y, z, x}))
-		second := intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{y, z, x, y}))
-		third := intrinsics.unaligned_load((^#simd[4]f32)(&[4]f32{z, x, y, z}))
+		// Four at a time by `v3_group_hits`, whose set bits are the matches.
+		needles := v3_needles(v)
 		floats := ([^]f32)(raw_data(xs))
 		groups := len(xs) / 4
 		#no_bounds_check for g in 0 ..< groups {
-			f := floats[g * 12:]
-			a := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&f[0])), first)))
-			b := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&f[4])), second)))
-			d := u32(transmute(u8)intrinsics.simd_extract_msbs(intrinsics.simd_lanes_eq(intrinsics.unaligned_load((^#simd[4]f32)(&f[8])), third)))
-			m := a | b << 4 | d << 8
-			c += i64(intrinsics.count_ones(m & (m >> 1) & (m >> 2) & 0b001001001001))
+			c += i64(intrinsics.count_ones(v3_group_hits(floats[g * 12:], needles)))
 		}
 		for &e in xs[groups * 4:] { c += i64(elem_eq(&e, v)) }
 	} else {
@@ -296,19 +326,26 @@ packed_count :: proc "contextless" (xs: []$E, v: ^E) -> (c: i64) {
 @(private)
 packed_bsearch :: proc "contextless" (xs: []$E, v: ^E, before: bool) -> i64 {
 	lo, hi := 0, len(xs)
-	// Each step halves hi - lo, so 64 steps cover any length. One loop per `before`, so the choice
-	// is made once, and mid is always below len(xs).
+	// Each step halves hi - lo, so 64 steps cover any length. The bound is counted once per eight
+	// unrolled steps and not once per step: a counter test on every step is a third branch in a
+	// two-branch loop and cost 4.2 to 4.6 ns for 64 elements where the engine's unbounded loop
+	// takes 3.0 to 3.3 ns. Eight rounds of eight steps take 2.8 to 3.6 ns, the spread being where
+	// the loop lands in its 64-byte lines. One loop per `before`, so the choice is made once.
 	if before {
-		#no_bounds_check for _ in 0 ..< 64 {
-			if lo >= hi { break }
-			mid := int(uint(lo + hi) >> 1)
-			if elem_less(&xs[mid], v) { lo = mid + 1 } else { hi = mid }
+		rounds_before: for _ in 0 ..< 8 {
+			#unroll for _ in 0 ..< 8 {
+				if lo >= hi { break rounds_before }
+				mid := int(uint(lo + hi) >> 1)
+				#no_bounds_check if elem_less(&xs[mid], v) { lo = mid + 1 } else { hi = mid }
+			}
 		}
 	} else {
-		#no_bounds_check for _ in 0 ..< 64 {
-			if lo >= hi { break }
-			mid := int(uint(lo + hi) >> 1)
-			if !elem_less(v, &xs[mid]) { lo = mid + 1 } else { hi = mid }
+		rounds_after: for _ in 0 ..< 8 {
+			#unroll for _ in 0 ..< 8 {
+				if lo >= hi { break rounds_after }
+				mid := int(uint(lo + hi) >> 1)
+				#no_bounds_check if !elem_less(v, &xs[mid]) { lo = mid + 1 } else { hi = mid }
+			}
 		}
 	}
 	return i64(lo)
