@@ -501,7 +501,9 @@ returns the bits of `sinf` and `cosf` for every input, checked over all 2^32, bu
 where the pair is the result or nearly so (`Vector2.from_angle` 2.6 ns to 1.6 ns,
 `Vector2.rotated`, `Quaternion.from_euler`, the Transform2D rotation and the perspective
 Projection). Where the pair feeds a longer computation, as in `Basis.from_euler` and the
-axis-angle constructors, two separate calls measured faster and stay.
+axis-angle constructors, two separate calls measured faster and stay: pairing them inside
+`Basis(axis, angle)` cost `Transform3D.rotated` 1 ns. The Vector3 rotation takes the pair, which
+is level for `Vector3.rotated` and took `Vector3.slerp` from 28.0 ns to 26.4 ns on 4.7.
 
 ## Array
 

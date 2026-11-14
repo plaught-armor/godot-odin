@@ -432,7 +432,12 @@ vector3_octahedron_decode :: proc "contextless" (uv: Vector2) -> Vector3 {
 // An axis that is not normalized leaves the identity basis, whose rows still dot with `v`: an
 // infinite or NaN component makes NaNs of the others, as 0 * inf does.
 @(private) v3_rotated :: #force_inline proc "contextless" (v, axis: Vector3, angle: f32) -> Vector3 {
-	b := b_axis_angle(axis, angle)
+	if !v_is_normalized(axis) {
+		math_error("The axis Vector3 must be normalized.")
+		return {v_dot(B_IDENTITY.x, v), v_dot(B_IDENTITY.y, v), v_dot(B_IDENTITY.z, v)}
+	}
+	sine, cosine := m_sincos(angle)
+	b := b_axis_sin_cos(axis, sine, cosine)
 	return {v_dot(b.x, v), v_dot(b.y, v), v_dot(b.z, v)}
 }
 

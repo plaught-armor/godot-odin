@@ -62,9 +62,11 @@ import gde "../gdextension"
 		math_error("The axis Vector3 must be normalized.")
 		return B_IDENTITY
 	}
+	return b_axis_sin_cos(axis, libc.sinf(angle), libc.cosf(angle))
+}
+// The rotation about a normalized `axis` from the sine and cosine of its angle.
+@(private) b_axis_sin_cos :: #force_inline proc "contextless" (axis: Vector3, sine, cosine: f32) -> Basis {
 	sq := axis * axis
-	cosine := libc.cosf(angle)
-	sine := libc.sinf(angle)
 	t := 1 - cosine
 	m: Basis_Rows
 	m[0].x = sq.x + cosine * (1 - sq.x)
