@@ -397,44 +397,6 @@ string_bin_to_int :: proc "contextless" (self: ^String) -> i64 {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_lpad :: proc "contextless" (self: ^String, min_length: i64, character: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "lpad", 248737229) }
-	__a_min_length := min_length
-	__a_character := transmute([1]uintptr)character
-	__args := [2]gde.ConstTypePtr{&__a_min_length, &__a_character}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_rpad :: proc "contextless" (self: ^String, min_length: i64, character: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "rpad", 248737229) }
-	__a_min_length := min_length
-	__a_character := transmute([1]uintptr)character
-	__args := [2]gde.ConstTypePtr{&__a_min_length, &__a_character}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_pad_decimals :: proc "contextless" (self: ^String, digits: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "pad_decimals", 2162347432) }
-	__a_digits := digits
-	__args := [1]gde.ConstTypePtr{&__a_digits}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_pad_zeros :: proc "contextless" (self: ^String, digits: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "pad_zeros", 2162347432) }
-	__a_digits := digits
-	__args := [1]gde.ConstTypePtr{&__a_digits}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_to_ascii_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_ascii_buffer", 247621236) }
@@ -1436,6 +1398,7 @@ string_name_bin_to_int :: proc "contextless" (self: ^StringName) -> i64 {
 	return __ret
 }
 string_name_lpad :: proc "contextless" (self: ^StringName, min_length: i64, character: String) -> String {
+	if dict_layout_known { return string_lpad(name_text(self), min_length, character) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "lpad", 248737229) }
 	__a_min_length := min_length
@@ -1446,6 +1409,7 @@ string_name_lpad :: proc "contextless" (self: ^StringName, min_length: i64, char
 	return __ret
 }
 string_name_rpad :: proc "contextless" (self: ^StringName, min_length: i64, character: String) -> String {
+	if dict_layout_known { return string_rpad(name_text(self), min_length, character) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rpad", 248737229) }
 	__a_min_length := min_length
@@ -1456,6 +1420,7 @@ string_name_rpad :: proc "contextless" (self: ^StringName, min_length: i64, char
 	return __ret
 }
 string_name_pad_decimals :: proc "contextless" (self: ^StringName, digits: i64) -> String {
+	if dict_layout_known { return string_pad_decimals(name_text(self), digits) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "pad_decimals", 2162347432) }
 	__a_digits := digits
@@ -1465,6 +1430,7 @@ string_name_pad_decimals :: proc "contextless" (self: ^StringName, digits: i64) 
 	return __ret
 }
 string_name_pad_zeros :: proc "contextless" (self: ^StringName, digits: i64) -> String {
+	if dict_layout_known { return string_pad_zeros(name_text(self), digits) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "pad_zeros", 2162347432) }
 	__a_digits := digits

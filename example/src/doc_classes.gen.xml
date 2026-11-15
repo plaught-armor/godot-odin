@@ -258,6 +258,9 @@
 		<method name="replaced_path_join">
 			<description>path_join of [code]path[/code] to [code]s[/code], then the same through the StringName method on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
+		<method name="replaced_pads">
+			<description>lpad, rpad, pad_zeros and pad_decimals of [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
+		</method>
 		<method name="replaced_char_sets">
 			<description>replace_chars and remove_chars of [code]s[/code] with [code]keys[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>

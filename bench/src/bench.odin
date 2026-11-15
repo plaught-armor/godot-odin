@@ -2083,6 +2083,14 @@ String_Op :: enum i64 {
 	REMOVE_CHARS_LONG, // string_remove_chars of the same
 	REMOVE_CHAR_LONG_CALL, // the engine's String.remove_char of '/' from the same 1040 characters
 	REMOVE_CHAR_LONG, // string_remove_char of the same
+	LPAD_CALL, // the engine's String.lpad of "12.5" to 10 characters with "0", the result destroyed
+	LPAD, // string_lpad of the same
+	RPAD_CALL, // the engine's String.rpad of "12.5" to 10 characters with "0", the result destroyed
+	RPAD, // string_rpad of the same
+	PAD_ZEROS_CALL, // the engine's String.pad_zeros of "12.5" to 6 digits, the result destroyed
+	PAD_ZEROS, // string_pad_zeros of the same
+	PAD_DECIMALS_CALL, // the engine's String.pad_decimals of "12.5" to 4 digits, the result destroyed
+	PAD_DECIMALS, // string_pad_decimals of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2116,6 +2124,9 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	defer godot.destroy[.STRING](&dir)
 	defer godot.destroy[.STRING](&leaf)
 	keys := godot.string_of("/_")
+	number, zero := godot.string_of("12.5"), godot.string_of("0")
+	defer godot.destroy[.STRING](&number)
+	defer godot.destroy[.STRING](&zero)
 	long := godot.string_repeat(sc, 40)
 	defer godot.destroy[.STRING](&long)
 	defer godot.destroy[.STRING](&keys)
@@ -2475,6 +2486,40 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			case .REMOVE_CHAR, .REMOVE_CHAR_LONG: r = godot.string_remove_char(s, '/')
 			case .REPLACE_CHARS: r = godot.string_replace_chars(s, keys, '-')
 			case .REMOVE_CHARS, .REMOVE_CHARS_LONG: r = godot.string_remove_chars(s, keys)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .LPAD_CALL, .RPAD_CALL, .PAD_ZEROS_CALL, .PAD_DECIMALS_CALL:
+		x: i64 = 10
+		args := [2]gde.ConstTypePtr{&x, &zero}
+		name: cstring
+		hash: i64 = 248737229
+		argc: i32 = 2
+		#partial switch kind {
+		case .LPAD_CALL: name = "lpad"
+		case .RPAD_CALL: name = "rpad"
+		case .PAD_ZEROS_CALL: name, hash, argc, x = "pad_zeros", 2162347432, 1, 6
+		case .PAD_DECIMALS_CALL: name, hash, argc, x = "pad_decimals", 2162347432, 1, 4
+		}
+		fn := godot.builtin_method(.STRING, name, hash)
+		text := &number
+		for _ in 0 ..< n {
+			r: godot.String
+			fn(intrinsics.volatile_load(&text), &args[0], &r, argc)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .LPAD, .RPAD, .PAD_ZEROS, .PAD_DECIMALS:
+		text := &number
+		for _ in 0 ..< n {
+			s := intrinsics.volatile_load(&text)
+			r: godot.String
+			#partial switch kind {
+			case .LPAD: r = godot.string_lpad(s, 10, zero)
+			case .RPAD: r = godot.string_rpad(s, 10, zero)
+			case .PAD_ZEROS: r = godot.string_pad_zeros(s, 6)
+			case .PAD_DECIMALS: r = godot.string_pad_decimals(s, 4)
 			}
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)

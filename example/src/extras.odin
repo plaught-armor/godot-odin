@@ -135,6 +135,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_file_paths", bag_replaced_file_paths, {"s", "n"})
 	godot.method(b, "replaced_naturals", bag_replaced_naturals, {"s", "n", "to"})
 	godot.method(b, "replaced_path_join", bag_replaced_path_join, {"s", "n", "path"})
+	godot.method(b, "replaced_pads", bag_replaced_pads, {"s", "n", "min_length", "character", "digits"})
 	godot.method(b, "replaced_char_sets", bag_replaced_char_sets, {"s", "n", "keys", "with"})
 	godot.method(b, "replaced_edits", bag_replaced_edits, {"s", "n", "count", "position", "what", "chars", "key", "with"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
@@ -819,6 +820,28 @@ bag_replaced_naturals :: proc(self: ^Bag, s: godot.String, n: godot.StringName, 
 bag_replaced_path_join :: proc(self: ^Bag, s: godot.String, n: godot.StringName, path: godot.String) -> godot.PackedStringArray {
 	s, n := s, n
 	r := [2]godot.String{godot.string_path_join(&s, path), godot.string_name_path_join(&n, path)}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
+	return out
+}
+
+// lpad, rpad, pad_zeros and pad_decimals of `s`, then the same through the StringName methods on
+// `n`. test.gd builds the same array from the engine's.
+bag_replaced_pads :: proc(self: ^Bag, s: godot.String, n: godot.StringName, min_length: i64, character: godot.String, digits: i64) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [8]godot.String {
+		godot.string_lpad(&s, min_length, character),
+		godot.string_rpad(&s, min_length, character),
+		godot.string_pad_zeros(&s, digits),
+		godot.string_pad_decimals(&s, digits),
+		godot.string_name_lpad(&n, min_length, character),
+		godot.string_name_rpad(&n, min_length, character),
+		godot.string_name_pad_zeros(&n, digits),
+		godot.string_name_pad_decimals(&n, digits),
+	}
 	out := godot.packed_string_array_new()
 	for &v in r {
 		godot.packed_string_array_append(&out, v)

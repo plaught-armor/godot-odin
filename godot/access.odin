@@ -1024,13 +1024,92 @@ string_repeat :: proc "contextless" (self: ^String, count: i64) -> (out: String)
 	if count == 1 || len(a) == 0 { return string_copy(self) }
 	n := len(a) * int(count)
 	w := string_storage(&out, n + 1)
-	copy(w[:len(a)], a)
+	runes_fill_repeat(w[:n], a)
+	w[n] = 0
+	return
+}
+
+// Fills `w` with `pattern` over and over, cut off where `w` ends. `pattern` is not empty.
+@(private)
+runes_fill_repeat :: proc "contextless" (w: []rune, pattern: []rune) {
+	done := min(len(w), len(pattern))
+	copy(w[:done], pattern)
 	// Each round copies what is written so far, so the written part doubles.
-	for done := len(a); done < n; {
-		step := min(done, n - done)
+	for done < len(w) {
+		step := min(done, len(w) - done)
 		copy(w[done:][:step], w[:step])
 		done += step
 	}
+}
+
+// `self` with `character` before it once for each character it is short of `min_length`: the
+// engine's `lpad`, which repeats all of `character` when that holds more than one. The caller
+// destroys the result.
+string_lpad :: proc "contextless" (self: ^String, min_length: i64, character: String) -> (out: String) {
+	a, c := string_read(self), string_chars(character)
+	padding := i64(i32(min_length)) - i64(len(a))
+	if padding <= 0 || len(c) == 0 { return string_copy(self) }
+	pad := int(padding) * len(c)
+	n := pad + len(a)
+	w := string_storage(&out, n + 1)
+	runes_fill_repeat(w[:pad], c)
+	copy(w[pad:n], a)
+	w[n] = 0
+	return
+}
+
+// `string_lpad` with the padding after `self`: the engine's `rpad`. The caller destroys the
+// result.
+string_rpad :: proc "contextless" (self: ^String, min_length: i64, character: String) -> (out: String) {
+	a, c := string_read(self), string_chars(character)
+	padding := i64(i32(min_length)) - i64(len(a))
+	if padding <= 0 || len(c) == 0 { return string_copy(self) }
+	n := len(a) + int(padding) * len(c)
+	w := string_storage(&out, n + 1)
+	copy(w[:len(a)], a)
+	runes_fill_repeat(w[len(a):n], c)
+	w[n] = 0
+	return
+}
+
+// `self` with zeros put in before its first digit until `digits` characters stand between there
+// and the first `.`, or the end: the engine's `pad_zeros`. The caller destroys the result.
+string_pad_zeros :: proc "contextless" (self: ^String, digits: i64) -> (out: String) {
+	a := string_read(self)
+	dot := runes_index(a, '.', 0)
+	end := len(a) if dot < 0 else dot
+	begin := 0
+	for begin < end && !rune_is_digit(a[begin]) { begin += 1 }
+	zeros := i64(i32(digits)) - i64(end - begin)
+	if end == 0 || zeros <= 0 { return string_copy(self) }
+	n := len(a) + int(zeros)
+	w := string_storage(&out, n + 1)
+	copy(w[:begin], a[:begin])
+	for i in begin ..< begin + int(zeros) { w[i] = '0' }
+	copy(w[begin + int(zeros):n], a[begin:])
+	w[n] = 0
+	return
+}
+
+// `self` with exactly `digits` characters after its first `.`, cut off or filled with zeros, a
+// `.` added when it has none; with a `digits` of 0 or less, `self` up to the `.`: the engine's
+// `pad_decimals`. The caller destroys the result.
+string_pad_decimals :: proc "contextless" (self: ^String, digits: i64) -> (out: String) {
+	a := string_read(self)
+	digits := i64(i32(digits))
+	dot := runes_index(a, '.', 0)
+	if digits <= 0 { return string_copy(self) if dot < 0 else head_of(self, a, dot) }
+	// The `.` to add, and how many characters follow the `.` now.
+	add := int(dot < 0)
+	after := 0 if dot < 0 else len(a) - (dot + 1)
+	if i64(after) > digits { return head_of(self, a, dot + 1 + int(digits)) }
+	zeros := int(digits) - after
+	if zeros == 0 { return string_copy(self) }
+	n := len(a) + add + zeros
+	w := string_storage(&out, n + 1)
+	copy(w[:len(a)], a)
+	if add == 1 { w[len(a)] = '.' }
+	for i in len(a) + add ..< n { w[i] = '0' }
 	w[n] = 0
 	return
 }

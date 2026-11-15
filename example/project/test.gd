@@ -924,6 +924,47 @@ func _check_replaced_edits(b2: Bag) -> int:
 	return failures
 
 
+# Compares Bag.replaced_pads with the engine's lpad, rpad, pad_zeros and pad_decimals of `s`, as
+# String and as StringName.
+func _check_replaced_pad(b2: Bag, s: String, min_length: int, character: String, digits: int) -> int:
+	var n := StringName(s)
+	var want := PackedStringArray([s.lpad(min_length, character), s.rpad(min_length, character), s.pad_zeros(digits),
+			s.pad_decimals(digits), n.lpad(min_length, character), n.rpad(min_length, character), n.pad_zeros(digits),
+			n.pad_decimals(digits)])
+	var got: PackedStringArray = b2.replaced_pads(s, n, min_length, character, digits)
+	if got == want:
+		return 0
+	print("FAIL: Bag.replaced_pads(%s, %d, %s, %d) gave %s, not %s" % [s.c_escape(), min_length, character.c_escape(), digits,
+			got, want])
+	return 1
+
+
+# _check_replaced_pad on fixed Strings with every fixed length and padding, with lengths past 32
+# bits, then on 20000 seeded random rounds over digits, `.`, `-` and a letter. The seed is fixed
+# so a failure repeats.
+func _check_replaced_pads(b2: Bag) -> int:
+	var failures := 0
+	for s: String in ["", "a", "abc", "12", "12.5", "-12.345", ".5", "5.", ".", "x12.5", "1.2.3", "abc.def", "héllo", "+007.10",
+			"a.1b2"]:
+		for length: int in [-1, 0, 1, 2, 3, 4, 5, 8, 12]:
+			for character: String in ["", " ", "0", "ab", "héé"]:
+				failures += _check_replaced_pad(b2, s, length, character, length)
+		# The engine takes the low 32 bits of each number.
+		failures += _check_replaced_pad(b2, s, (1 << 32) + 6, "0", (1 << 32) + 6)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261125
+	var alphabet: Array[String] = ["1", "2", "0", ".", "-", "a"]
+	for round: int in 20000:
+		var s := ""
+		for i: int in rng.randi_range(0, 8):
+			s += alphabet[rng.randi_range(0, 5)]
+		var character := ""
+		for i: int in rng.randi_range(0, 2):
+			character += alphabet[rng.randi_range(0, 5)]
+		failures += _check_replaced_pad(b2, s, rng.randi_range(-1, 12), character, rng.randi_range(-1, 10))
+	return failures
+
+
 # Compares Bag.replaced_char_sets with the engine's replace_chars and remove_chars of `s`, as
 # String and as StringName.
 func _check_replaced_char_set(b2: Bag, s: String, keys: String, with: int) -> int:
@@ -1112,6 +1153,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 	failures += _check_replaced_naturals(b2)
 	failures += _check_replaced_edits(b2)
 	failures += _check_replaced_char_sets(b2)
+	failures += _check_replaced_pads(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

@@ -69,6 +69,10 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.remove_char` | `string_remove_char` | Godot 4.7-stable | 28 ns | 16 ns |
 | `String.replace_chars` | `string_replace_chars` | Godot 4.7-stable | 52 ns | 32 ns |
 | `String.remove_chars` | `string_remove_chars` | Godot 4.7-stable | 44 ns | 34 ns |
+| `String.lpad` | `string_lpad` | Godot 4.7-stable | 59 ns | 18 ns |
+| `String.rpad` | `string_rpad` | Godot 4.7-stable | 55 ns | 20 ns |
+| `String.pad_zeros` | `string_pad_zeros` | Godot 4.7-stable | 63 ns | 12 ns |
+| `String.pad_decimals` | `string_pad_decimals` | Godot 4.7-stable | 68 ns | 12 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -154,6 +158,15 @@ the same path, and `remove_char` and `remove_chars` are also benched on that pat
 (1040 characters: 467 ns to 340 ns and 1192 ns to 977 ns). `_check_replaced_char_sets` checks
 both, as String and as StringName, on every pair of 9 fixed Strings and 11 sets, on longer
 Strings, on the refused NUL replacement and on 20000 seeded random rounds.
+
+`string_lpad`, `string_rpad`, `string_pad_zeros` and `string_pad_decimals` work out the length of
+the result and write it once, where the engine builds the padding as a String of its own and then
+joins or inserts it. `lpad` and `rpad` repeat the whole padding String once for each missing
+character, as the engine does, so a padding of two characters overshoots the length. They are
+timed on `12.5`: padded to 10 characters with `0`, to 6 digits and to 4 decimals.
+`_check_replaced_pads` checks all four, as String and as StringName, on 15 fixed Strings with 9
+lengths and 5 paddings, on a number past 32 bits and on 20000 seeded random rounds. A digit count
+near the 32-bit limits is not checked, since the engine itself overflows and crashes on one.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step
