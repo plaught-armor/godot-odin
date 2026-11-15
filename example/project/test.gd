@@ -477,6 +477,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_container_flags(b2)
 	failures += _check_replaced_validity(b2)
 	failures += _check_replaced_same_typed(b2)
+	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
 		"/root/a/b:c:d", ":x", ":x:y", "../b", "a/b/c/d/e/f:g", "Body:position:x", "\u00f1/\u00fc:\u00f6",
 		"/root/check_node_path/layout:position:x", "a//b", "a/./b/../c"]))
@@ -883,6 +884,45 @@ func _check_replaced_container_flags(b2: Bag) -> int:
 		if got != want:
 			print("FAIL: Bag.replaced_container_flags of pair %d gave %s, not %s" % [i, got, want])
 			return 1
+	return 0
+
+
+# What Callables and Signals say of themselves, from Bag.replaced_callables, against the engine's
+# methods called from GDScript: null ones, ones naming members of live and freed objects, members
+# that do not exist, lambdas, and bound and unbound Callables, which are custom. Returns 1 on a
+# mismatch, or when the Callables were not of all three kinds.
+func _check_replaced_callables(b2: Bag) -> int:
+	var node := Node.new()
+	var counted := RefCounted.new()
+	var freed := Node.new()
+	var freed_call := Callable(freed, "queue_free")
+	var freed_signal := Signal(freed, "ready")
+	freed.free()
+	var callables: Array[Callable] = [Callable(), Callable(node, "queue_free"),
+		Callable(node, "no_such_method"), Callable(counted, "get_reference_count"), freed_call,
+		func() -> void: pass, func(x: int) -> int: return x + counted.get_reference_count(),
+		node.queue_free, node.queue_free.bind(1), Callable(node, "add_child").bind(node).unbind(1),
+		Callable(counted, "no_such_method").bind(1, 2), b2.replaced_validity,
+		Callable.create(node, "queue_free"), Callable().bind(1)]
+	var signals: Array[Signal] = [Signal(), Signal(node, "ready"), node.ready, node.tree_exited,
+		Signal(node, "no_such_signal"), freed_signal, Signal(counted, "no_such_signal")]
+	var kinds: PackedInt64Array = [0, 0, 0]
+	for i: int in callables.size() * signals.size():
+		var c: Callable = callables[i % callables.size()]
+		var s: Signal = signals[i % signals.size()]
+		var want: PackedInt64Array = [int(c.is_null()), int(c.is_custom()), int(c.is_standard()),
+			c.get_object_id(), int(s.is_null()), s.get_object_id()]
+		var got: PackedInt64Array = b2.replaced_callables(c, s)
+		if got != want:
+			print("FAIL: Bag.replaced_callables of pair %d gave %s, not %s" % [i, got, want])
+			node.free()
+			return 1
+		for k: int in 3:
+			kinds[k] += want[k]
+	node.free()
+	if kinds[0] == 0 or kinds[1] < 3 * signals.size() or kinds[2] < 3 * signals.size():
+		print("FAIL: Bag.replaced_callables saw kinds %s, not enough of each" % kinds)
+		return 1
 	return 0
 
 

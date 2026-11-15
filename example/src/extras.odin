@@ -133,6 +133,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_container_flags", bag_replaced_container_flags, {"a", "d"})
 	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
 	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
+	godot.method(b, "replaced_callables", bag_replaced_callables, {"c", "s"})
 	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "name_copies_counted", bag_name_copies_counted, {"texts"})
 	godot.method(b, "string_copies_counted", bag_string_copies_counted, {"texts"})
@@ -1098,6 +1099,23 @@ bag_replaced_same_typed :: proc(self: ^Bag, a, b: godot.Array, d, e: godot.Dicti
 		i64(godot.dictionary_is_same_typed(&d, e)),
 		i64(godot.dictionary_is_same_typed_key(&d, e)),
 		i64(godot.dictionary_is_same_typed_value(&d, e)),
+	}
+	for v in r { godot.packed_int64_array_append(&out, v) }
+	return out
+}
+
+// What `c` and `s` say of themselves: Callable is_null, is_custom, is_standard and get_object_id,
+// then Signal is_null and get_object_id. test.gd builds the same array from the engine's methods.
+bag_replaced_callables :: proc(self: ^Bag, c: godot.Callable, s: godot.Signal) -> godot.PackedInt64Array {
+	c, s := c, s
+	out := godot.packed_int64_array_new()
+	r := [6]i64{
+		i64(godot.callable_is_null(&c)),
+		i64(godot.callable_is_custom(&c)),
+		i64(godot.callable_is_standard(&c)),
+		godot.callable_get_object_id(&c),
+		i64(godot.signal_is_null(&s)),
+		godot.signal_get_object_id(&s),
 	}
 	for v in r { godot.packed_int64_array_append(&out, v) }
 	return out

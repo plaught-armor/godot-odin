@@ -2013,6 +2013,7 @@ callable_callv :: proc "contextless" (self: ^Callable, arguments: Array) -> Vari
 	return __ret
 }
 callable_is_null :: proc "contextless" (self: ^Callable) -> bool {
+	if callable_layout_known { return callable_stored_is_null(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.CALLABLE, "is_null", 3918633141) }
 	__ret: u8
@@ -2020,6 +2021,7 @@ callable_is_null :: proc "contextless" (self: ^Callable) -> bool {
 	return __ret != 0
 }
 callable_is_custom :: proc "contextless" (self: ^Callable) -> bool {
+	if callable_layout_known { return callable_stored_is_custom(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.CALLABLE, "is_custom", 3918633141) }
 	__ret: u8
@@ -2027,6 +2029,7 @@ callable_is_custom :: proc "contextless" (self: ^Callable) -> bool {
 	return __ret != 0
 }
 callable_is_standard :: proc "contextless" (self: ^Callable) -> bool {
+	if callable_layout_known { return callable_stored_is_standard(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.CALLABLE, "is_standard", 3918633141) }
 	__ret: u8
@@ -2048,6 +2051,7 @@ callable_get_object :: proc "contextless" (self: ^Callable) -> Object {
 	return __ret
 }
 callable_get_object_id :: proc "contextless" (self: ^Callable) -> i64 {
+	if callable_layout_known { if id, ok := callable_stored_object_id(self); ok { return id } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.CALLABLE, "get_object_id", 3173160232) }
 	__ret: i64
@@ -2211,6 +2215,7 @@ signal_destroy :: proc "contextless" (self: ^Signal) {
 	__fn(self)
 }
 signal_is_null :: proc "contextless" (self: ^Signal) -> bool {
+	if callable_layout_known { return signal_stored_is_null(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.SIGNAL, "is_null", 3918633141) }
 	__ret: u8
@@ -2225,6 +2230,7 @@ signal_get_object :: proc "contextless" (self: ^Signal) -> Object {
 	return __ret
 }
 signal_get_object_id :: proc "contextless" (self: ^Signal) -> i64 {
+	if callable_layout_known { return signal_stored_object_id(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.SIGNAL, "get_object_id", 3173160232) }
 	__ret: i64

@@ -742,6 +742,11 @@ kept as the fallback when the check fails and wherever the engine prints an erro
   class registered when the checks run; on an engine without that class only these four methods
   go back to the engine. The other container is read from its by-value argument,
   never through its address (see below).
+- `Callable.is_null`, `is_custom`, `is_standard` and `get_object_id`, and `Signal.is_null` and
+  `get_object_id`, read the two words of the value: a name, then an object id or, on a Callable
+  with no name, a custom callable (`godot/callable.odin`). `check_callable_layout` proves both
+  layouts on null values, on ones naming a member of an object, and on a custom Callable.
+  `get_object_id` of a custom Callable goes to the engine, which asks the custom callable.
 
 `String.hash` is djb2 up to the first 0 character, as the engine's. `string_djb2` takes two
 characters a step, which is the same sum with half the multiplies in a row; hashing a String key
@@ -761,7 +766,8 @@ Checked against Godot 4.7-stable and 4.8 by `_check_replaced_scalars`,
 every 16-bit pattern), `_check_replaced_container_flags`, `_check_replaced_validity` (fixed
 colours and addresses, then 12,000 texts made from them by one to three edits) and
 `_check_replaced_same_typed` (every pair of containers untyped and typed to builtin types,
-classes and scripts), each against the engine's methods called from GDScript.
+classes and scripts) and `_check_replaced_callables` (null, standard and custom Callables, and
+Signals, of live and freed objects), each against the engine's methods called from GDScript.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -776,11 +782,15 @@ classes and scripts), each against the engine's methods called from GDScript.
 | `Array.is_typed` | 2.25 ns | 0.94 ns |
 | `Array.is_same_typed` | 2.35 ns | 0.85 ns |
 | `Dictionary.is_same_typed` | 2.58 ns | 1.34 ns |
+| `Callable.is_null` | 2.34 ns | 0.97 ns |
+| `Callable.get_object_id` | 2.53 ns | 1.17 ns |
+| `Signal.is_null` | 2.33 ns | 0.97 ns |
 
 Timings are from `bench/build.sh` on 4.7-stable: the decodes at offset 4 of 16 bytes, the String
 reads of "7fffABCD1234", `is_valid_html_color` of "#7fffABCD", `is_valid_ip_address` of
 "2001:db8:85a3::8a2e:370:7334", `is_typed` of an empty Array, `is_same_typed` of two empty
-Arrays and of two empty Dictionaries.
+Arrays and of two empty Dictionaries, the Callable and Signal reads of ones naming a member of an
+Object.
 
 ## NodePath
 

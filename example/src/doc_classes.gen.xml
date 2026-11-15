@@ -252,6 +252,9 @@
 		<method name="replaced_same_typed">
 			<description>Whether [code]a[/code] and [code]b[/code], then [code]d[/code] and [code]e[/code], are typed alike: Array is_same_typed, then Dictionary is_same_typed, is_same_typed_key and is_same_typed_value. test.gd builds the same array from the engine's methods.</description>
 		</method>
+		<method name="replaced_callables">
+			<description>What [code]c[/code] and [code]s[/code] say of themselves: Callable is_null, is_custom, is_standard and get_object_id, then Signal is_null and get_object_id. test.gd builds the same array from the engine's methods.</description>
+		</method>
 		<method name="replaced_paths">
 			<description></description>
 		</method>

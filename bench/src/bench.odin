@@ -637,6 +637,12 @@ Ident :: enum i64 {
 	ARRAY_SAME,        // the generated array_is_same_typed of the same, read from their data
 	DICT_SAME_CALL,    // the engine's Dictionary.is_same_typed of two empty Dictionaries, the same way
 	DICT_SAME,         // the generated dictionary_is_same_typed of the same, read from their data
+	CALLABLE_NULL_CALL, // the engine's Callable.is_null of a Callable naming a method, the same way
+	CALLABLE_NULL,      // the generated callable_is_null of the same, read from its two words
+	CALLABLE_ID_CALL,   // the engine's Callable.get_object_id of the same
+	CALLABLE_ID,        // the generated callable_get_object_id of the same
+	SIGNAL_NULL_CALL,   // the engine's Signal.is_null of a Signal naming a signal of an object
+	SIGNAL_NULL,        // the generated signal_is_null of the same
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1315,6 +1321,39 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			args := [1]gde.ConstTypePtr{intrinsics.volatile_load(&q)}
 			fn(intrinsics.volatile_load(&p), &args[0], &v, 1)
 			sum += i64(v)
+		}
+	case .CALLABLE_NULL_CALL, .CALLABLE_NULL, .CALLABLE_ID_CALL, .CALLABLE_ID, .SIGNAL_NULL_CALL, .SIGNAL_NULL:
+		obj := godot.construct(godot.Object)
+		defer gde.object_destroy(gde.ObjectPtr(obj))
+		name := godot.name_of("free")
+		defer godot.destroy[.STRING_NAME](&name)
+		c := godot.callable_new_from_object_string_name(obj, name)
+		defer godot.destroy[.CALLABLE](&c)
+		s := godot.signal_new_from_object_string_name(obj, name)
+		defer godot.destroy[.SIGNAL](&s)
+		p, q := &c, &s
+		#partial switch kind {
+		case .CALLABLE_NULL:
+			for _ in 0 ..< n { sum += i64(godot.callable_is_null(intrinsics.volatile_load(&p))) }
+		case .CALLABLE_ID:
+			for _ in 0 ..< n { sum += godot.callable_get_object_id(intrinsics.volatile_load(&p)) & 1 }
+		case .SIGNAL_NULL:
+			for _ in 0 ..< n { sum += i64(godot.signal_is_null(intrinsics.volatile_load(&q))) }
+		case .CALLABLE_ID_CALL:
+			fn := godot.builtin_method(.CALLABLE, "get_object_id", 3173160232)
+			for _ in 0 ..< n {
+				v: i64
+				fn(intrinsics.volatile_load(&p), nil, &v, 0)
+				sum += v & 1
+			}
+		case:
+			of: rawptr = p if kind == .CALLABLE_NULL_CALL else q
+			fn := godot.builtin_method(.CALLABLE if kind == .CALLABLE_NULL_CALL else .SIGNAL, "is_null", 3918633141)
+			for _ in 0 ..< n {
+				v: u8
+				fn(intrinsics.volatile_load(&of), nil, &v, 0)
+				sum += i64(v)
+			}
 		}
 	case .DICT_SAME_CALL, .DICT_SAME:
 		a, o := godot.dictionary_new(), godot.dictionary_new()

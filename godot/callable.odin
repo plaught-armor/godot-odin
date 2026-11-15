@@ -121,6 +121,101 @@ make_hook :: proc(f: $P, $SELF: bool, self: rawptr, id: u64, binds: []Variant) -
 	return
 }
 
+// Callable and Signal reads answered from the value itself, with no call, once
+// `check_callable_layout` proved it at load: the generated Callable `is_null`, `is_custom`,
+// `is_standard` and `get_object_id` and Signal `is_null` and `get_object_id` try these first
+// (tools/odin_bindgen.py IN_PLACE). Each answers as Godot 4.7-stable does
+// (core/variant/callable.h, callable.cpp). A Callable is two words: its method name, nil for none,
+// then the instance id of its object or, with no method name, the pointer to its custom callable.
+// A Signal is its name, then the instance id of its object.
+
+// True when a Callable and a Signal are the two words the reads below take them for.
+// `check_callable_layout` decides it at load; without it every read calls the engine.
+@(private)
+callable_layout_known: bool
+
+// Whether `c` has neither a method nor an object. Only when `callable_layout_known`.
+@(private)
+callable_stored_is_null :: #force_inline proc "contextless" (c: ^Callable) -> bool {
+	w := (^[2]uintptr)(c)
+	return w[0] == 0 && w[1] == 0
+}
+
+// Whether `c` is a custom callable: no method name, and a pointer. Only when
+// `callable_layout_known`.
+@(private)
+callable_stored_is_custom :: #force_inline proc "contextless" (c: ^Callable) -> bool {
+	w := (^[2]uintptr)(c)
+	return w[0] == 0 && w[1] != 0
+}
+
+// Whether `c` names a method of an object. Only when `callable_layout_known`.
+@(private)
+callable_stored_is_standard :: #force_inline proc "contextless" (c: ^Callable) -> bool {
+	return (^[2]uintptr)(c)[0] != 0
+}
+
+// The instance id of `c`'s object, 0 for a null Callable. False for a custom one, which the engine
+// asks for its object. Only when `callable_layout_known`.
+@(private)
+callable_stored_object_id :: #force_inline proc "contextless" (c: ^Callable) -> (id: i64, ok: bool) {
+	w := (^[2]uintptr)(c)
+	if w[0] == 0 && w[1] != 0 { return 0, false }
+	return i64(w[1]), true
+}
+
+// Whether `s` has neither a name nor an object. Only when `callable_layout_known`.
+@(private)
+signal_stored_is_null :: #force_inline proc "contextless" (s: ^Signal) -> bool {
+	w := (^[2]uintptr)(s)
+	return w[0] == 0 && w[1] == 0
+}
+
+// The instance id of `s`'s object, 0 for none. Only when `callable_layout_known`.
+@(private)
+signal_stored_object_id :: #force_inline proc "contextless" (s: ^Signal) -> i64 {
+	return i64((^[2]uintptr)(s)[1])
+}
+
+// Sets `callable_layout_known` from Callables and Signals of known contents: a null one of each,
+// one of each naming a member of a new Object, and a custom Callable.
+check_callable_layout :: proc "contextless" () {
+	callable_layout_known = false
+	class := name_of("Object")
+	obj := gde.classdb_construct_object3(&class)
+	destroy[.STRING_NAME](&class)
+	if obj == nil { return }
+	defer gde.object_destroy(obj)
+	object_notification(Object(obj), 0, false)
+	id := uintptr(gde.object_get_instance_id(gde.ConstObjectPtr(obj)))
+	name := name_of("check_callable_layout")
+	defer destroy[.STRING_NAME](&name)
+	text := uintptr((^rawptr)(&name)^)
+
+	none := callable_new()
+	defer destroy[.CALLABLE](&none)
+	standard := callable_new_from_object_string_name(Object(obj), name)
+	defer destroy[.CALLABLE](&standard)
+	// A custom callable that is never called and owns nothing.
+	never :: proc "c" (userdata: rawptr, args: [^]gde.ConstVariantPtr, count: gde.Int, ret: gde.VariantPtr, err: ^gde.CallError) {}
+	custom: Callable
+	info := gde.CallableCustomInfo2{token = library, call_func = never}
+	gde.callable_custom_create2(&custom, &info)
+	defer destroy[.CALLABLE](&custom)
+	no_signal := signal_new()
+	defer destroy[.SIGNAL](&no_signal)
+	signal := signal_new_from_object_string_name(Object(obj), name)
+	defer destroy[.SIGNAL](&signal)
+
+	// The engine's answers, which the generated methods give while the layout is not known.
+	callable_layout_known = id != 0 && text != 0 &&
+		(^[2]uintptr)(&none)^ == {0, 0} && callable_is_null(&none) &&
+		(^[2]uintptr)(&standard)^ == {text, id} && callable_is_standard(&standard) && uintptr(callable_get_object_id(&standard)) == id &&
+		callable_stored_is_custom(&custom) && callable_is_custom(&custom) && !callable_is_null(&custom) && !callable_is_standard(&custom) &&
+		(^[2]uintptr)(&no_signal)^ == {0, 0} && signal_is_null(&no_signal) &&
+		(^[2]uintptr)(&signal)^ == {text, id} && !signal_is_null(&signal) && uintptr(signal_get_object_id(&signal)) == id
+}
+
 @(private)
 hook_free :: proc "c" (userdata: rawptr) {
 	context = ctx

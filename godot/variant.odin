@@ -36,6 +36,7 @@ load_variants :: proc "contextless" () {
 	check_array_layout()
 	check_dict_layout()
 	check_node_path_layout()
+	check_callable_layout()
 }
 
 // Whether every layout check at load passed: those of String, the packed arrays, Array,

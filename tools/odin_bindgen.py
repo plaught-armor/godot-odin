@@ -117,6 +117,13 @@ IN_PLACE = {
     ("Dictionary", "is_same_typed_key"): "\tif dict_same_typed_known { return dict_same_typed(self, dictionary, DICT_KEY_TYPE_OFFSET) }\n",
     ("Dictionary", "is_same_typed_value"): "\tif dict_same_typed_known { return dict_same_typed(self, dictionary, DICT_VALUE_TYPE_OFFSET) }\n",
     ("Dictionary", "size"): "\tif dict_layout_known { return dict_stored_size(self) }\n",
+    # godot/callable.odin: a Callable and a Signal read as their two words.
+    ("Callable", "is_null"): "\tif callable_layout_known { return callable_stored_is_null(self) }\n",
+    ("Callable", "is_custom"): "\tif callable_layout_known { return callable_stored_is_custom(self) }\n",
+    ("Callable", "is_standard"): "\tif callable_layout_known { return callable_stored_is_standard(self) }\n",
+    ("Callable", "get_object_id"): "\tif callable_layout_known { if id, ok := callable_stored_object_id(self); ok { return id } }\n",
+    ("Signal", "is_null"): "\tif callable_layout_known { return signal_stored_is_null(self) }\n",
+    ("Signal", "get_object_id"): "\tif callable_layout_known { return signal_stored_object_id(self) }\n",
     ("Dictionary", "is_empty"): "\tif dict_layout_known { return dict_stored_size(self) == 0 }\n",
     ("Dictionary", "has"): "\tif r, ok := dict_stored_has(self, key); ok { return r }\n",
     ("Dictionary", "has_all"): "\tif r, ok := dict_stored_has_all(self, keys); ok { return r }\n",
