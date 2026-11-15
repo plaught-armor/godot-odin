@@ -162,6 +162,8 @@ func _initialize() -> void:
 	_report("Odin string_filecasecmp_to, two numbered file names", func() -> float: return b.string_ns(63, N))
 	_report("Engine String.filenocasecmp_to call, two numbered file names", func() -> float: return b.string_ns(64, N))
 	_report("Odin string_filenocasecmp_to, two numbered file names", func() -> float: return b.string_ns(65, N))
+	_report("Engine String.path_join call, a folder and a file name", func() -> float: return b.string_ns(66, N))
+	_report("Odin string_path_join, a folder and a file name", func() -> float: return b.string_ns(67, N))
 	_report("Engine String.split call, cached String on a sentence", func() -> float: return b.ident_ns(52, N))
 	_report("Engine StringName.length call", func() -> float: return b.ident_ns(53, N))
 	_report("Odin string_name_length", func() -> float: return b.ident_ns(54, N))

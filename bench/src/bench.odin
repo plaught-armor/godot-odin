@@ -2057,6 +2057,8 @@ String_Op :: enum i64 {
 	FILECMP, // string_filecasecmp_to of the same
 	FILECMPN_CALL, // the engine's String.filenocasecmp_to of "_scene_010_boss_fight.tscn" to "_scene_10_boss_fight.tscn"
 	FILECMPN, // string_filenocasecmp_to of the same
+	PATH_JOIN_CALL, // the engine's String.path_join of "res://scenes" and "level_01.tscn", the result destroyed
+	PATH_JOIN, // string_path_join of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2086,6 +2088,10 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	defer godot.destroy[.STRING](&numbered)
 	defer godot.destroy[.STRING](&numbered_to)
 	nu := &numbered
+	dir, leaf := godot.string_of("res://scenes"), godot.string_of("level_01.tscn")
+	defer godot.destroy[.STRING](&dir)
+	defer godot.destroy[.STRING](&leaf)
+	d := &dir
 	sum: i64
 	start := time.tick_now()
 	switch kind {
@@ -2361,6 +2367,21 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 		for _ in 0 ..< n { sum += godot.string_filecasecmp_to(intrinsics.volatile_load(&nu), numbered_to) }
 	case .FILECMPN:
 		for _ in 0 ..< n { sum += godot.string_filenocasecmp_to(intrinsics.volatile_load(&nu), numbered_to) }
+	case .PATH_JOIN_CALL:
+		fn := godot.builtin_method(.STRING, "path_join", 3134094431)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&leaf}
+			r: godot.String
+			fn(intrinsics.volatile_load(&d), &args[0], &r, 1)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .PATH_JOIN:
+		for _ in 0 ..< n {
+			r := godot.string_path_join(intrinsics.volatile_load(&d), leaf)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
 	case .EXTENSION_CALL, .BASENAME_CALL, .FILE_CALL, .BASE_DIR_CALL:
 		name: cstring
 		#partial switch kind {

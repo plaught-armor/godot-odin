@@ -874,7 +874,8 @@ func _check_replaced_file_path(b2: Bag, s: String) -> int:
 	return 0
 
 
-# _check_replaced_file_path on fixed paths of each kind of start the engine keeps whole, then on 6000
+# _check_replaced_file_path on fixed paths of each kind of start the engine keeps whole, path_join
+# of every pair of fixed parts against the engine's, then _check_replaced_file_path on 6000
 # seeded random Strings over the characters the methods look for and two letters. The seed is
 # fixed so a failure repeats.
 func _check_replaced_file_paths(b2: Bag) -> int:
@@ -885,6 +886,17 @@ func _check_replaced_file_paths(b2: Bag) -> int:
 			"//server/", "//server/share", "//server/share/", "//server/share/a/b.c", "\\\\server\\share\\a",
 			"\\\\server/share", "//a\\b/c", "\\\\", "\\\\a", "/a.b/c.d.e", "héllo/wörld.é"]:
 		failures += _check_replaced_file_path(b2, s)
+	# path_join of every pair of these, as String and as StringName.
+	var parts: Array[String] = ["", "a", "/", "a/", "/a", "//", "a//", "\\", "a\\", "res://", "res://scenes", "level_01.tscn",
+			"/level_01.tscn", "é", "a\u0000b"]
+	for s: String in parts:
+		for path: String in parts:
+			var n := StringName(s)
+			var want := PackedStringArray([s.path_join(path), n.path_join(path)])
+			var got: PackedStringArray = b2.replaced_path_join(s, n, path)
+			if got != want:
+				print("FAIL: Bag.replaced_path_join(%s, %s) gave %s, not %s" % [s.c_escape(), path.c_escape(), got, want])
+				failures += 1
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261121
 	var alphabet: Array[String] = [".", "/", "\\", ":", "a", "b"]

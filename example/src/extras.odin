@@ -134,6 +134,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_recase", bag_replaced_recase, {"s", "n"})
 	godot.method(b, "replaced_file_paths", bag_replaced_file_paths, {"s", "n"})
 	godot.method(b, "replaced_naturals", bag_replaced_naturals, {"s", "n", "to"})
+	godot.method(b, "replaced_path_join", bag_replaced_path_join, {"s", "n", "path"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -808,6 +809,19 @@ bag_replaced_naturals :: proc(self: ^Bag, s: godot.String, n: godot.StringName, 
 	}
 	out := godot.packed_int64_array_new()
 	for v in r { godot.packed_int64_array_append(&out, v) }
+	return out
+}
+
+// path_join of `path` to `s`, then the same through the StringName method on `n`. test.gd builds
+// the same array from the engine's.
+bag_replaced_path_join :: proc(self: ^Bag, s: godot.String, n: godot.StringName, path: godot.String) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [2]godot.String{godot.string_path_join(&s, path), godot.string_name_path_join(&n, path)}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
 	return out
 }
 

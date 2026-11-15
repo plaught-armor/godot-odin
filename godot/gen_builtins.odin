@@ -194,15 +194,6 @@ string_strip_escapes :: proc "contextless" (self: ^String) -> String {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_path_join :: proc "contextless" (self: ^String, path: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "path_join", 3134094431) }
-	__a_path := transmute([1]uintptr)path
-	__args := [1]gde.ConstTypePtr{&__a_path}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_unicode_at :: proc "contextless" (self: ^String, at: i64) -> i64 {
 	if string_layout_known { if c := string_read(self); at >= 0 && at < i64(len(c)) { return i64(u32(c[at])) } }
 	@(static) __fn: gde.PtrBuiltInMethod
@@ -1195,6 +1186,7 @@ string_name_get_basename :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_path_join :: proc "contextless" (self: ^StringName, path: String) -> String {
+	if dict_layout_known { return string_path_join(name_text(self), path) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "path_join", 3134094431) }
 	__a_path := transmute([1]uintptr)path

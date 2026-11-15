@@ -891,6 +891,24 @@ string_get_base_dir :: proc "contextless" (self: ^String) -> String {
 	return head_of(self, chars, base + max(runes_last_separator(chars[base:]), 0))
 }
 
+// Path `self` with `path` after it and one `/` between them, unless `self` ends with one or `path`
+// starts with one; a copy of `path` when `self` is empty: the engine's `path_join`. The caller
+// destroys the result.
+string_path_join :: proc "contextless" (self: ^String, path: String) -> (out: String) {
+	path := path
+	a, b := string_read(self), string_chars(path)
+	if len(a) == 0 { return string_copy(&path) }
+	slash := int(a[len(a) - 1] != '/' && (len(b) == 0 || b[0] != '/'))
+	if len(b) == 0 && slash == 0 { return string_copy(self) }
+	n := len(a) + slash + len(b)
+	w := string_storage(&out, n + 1)
+	copy(w[:len(a)], a)
+	if slash == 1 { w[len(a)] = '/' }
+	copy(w[len(a) + slash:n], b)
+	w[n] = 0
+	return
+}
+
 // Whether `c` is one of `set`.
 runes_has :: proc "contextless" (set: []rune, c: rune) -> bool {
 	for s in set {

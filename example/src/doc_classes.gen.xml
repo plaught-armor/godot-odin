@@ -255,6 +255,9 @@
 		<method name="replaced_naturals">
 			<description>naturalcasecmp_to, naturalnocasecmp_to, filecasecmp_to and filenocasecmp_to of [code]s[/code] to [code]to[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
+		<method name="replaced_path_join">
+			<description>path_join of [code]path[/code] to [code]s[/code], then the same through the StringName method on [code]n[/code]. test.gd builds the same array from the engine's.</description>
+		</method>
 		<method name="replaced_name_ops">
 			<description>bag_replaced_ops through the StringName methods on [code]n[/code], then its length, is_empty as 0 or 1 and hash. test.gd builds the same array from the engine's StringName methods.</description>
 		</method>
