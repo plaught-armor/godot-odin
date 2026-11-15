@@ -133,6 +133,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_strips", bag_replaced_strips, {"s", "n", "chars"})
 	godot.method(b, "replaced_recase", bag_replaced_recase, {"s", "n"})
 	godot.method(b, "replaced_file_paths", bag_replaced_file_paths, {"s", "n"})
+	godot.method(b, "replaced_naturals", bag_replaced_naturals, {"s", "n", "to"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -788,6 +789,25 @@ bag_replaced_recase :: proc(self: ^Bag, s: godot.String, n: godot.StringName) ->
 		godot.packed_string_array_append(&out, v)
 		godot.destroy[.STRING](&v)
 	}
+	return out
+}
+
+// naturalcasecmp_to, naturalnocasecmp_to, filecasecmp_to and filenocasecmp_to of `s` to `to`, then
+// the same through the StringName methods on `n`. test.gd builds the same array from the engine's.
+bag_replaced_naturals :: proc(self: ^Bag, s: godot.String, n: godot.StringName, to: godot.String) -> godot.PackedInt64Array {
+	s, n := s, n
+	r := [8]i64{
+		godot.string_naturalcasecmp_to(&s, to),
+		godot.string_naturalnocasecmp_to(&s, to),
+		godot.string_filecasecmp_to(&s, to),
+		godot.string_filenocasecmp_to(&s, to),
+		godot.string_name_naturalcasecmp_to(&n, to),
+		godot.string_name_naturalnocasecmp_to(&n, to),
+		godot.string_name_filecasecmp_to(&n, to),
+		godot.string_name_filenocasecmp_to(&n, to),
+	}
+	out := godot.packed_int64_array_new()
+	for v in r { godot.packed_int64_array_append(&out, v) }
 	return out
 }
 

@@ -55,6 +55,10 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.get_basename` | `string_get_basename` | Godot 4.7-stable | 32 ns | 12 ns |
 | `String.get_file` | `string_get_file` | Godot 4.7-stable | 31 ns | 14 ns |
 | `String.get_base_dir` | `string_get_base_dir` | Godot 4.7-stable | 88 ns | 19 ns |
+| `String.naturalcasecmp_to` | `string_naturalcasecmp_to` | Godot 4.7-stable | 17 ns | 15 ns |
+| `String.naturalnocasecmp_to` | `string_naturalnocasecmp_to` | Godot 4.7-stable | 694 ns | 14 ns |
+| `String.filecasecmp_to` | `string_filecasecmp_to` | Godot 4.7-stable | 17 ns | 14 ns |
+| `String.filenocasecmp_to` | `string_filenocasecmp_to` | Godot 4.7-stable | 666 ns | 14 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -107,6 +111,15 @@ returns one slice up to the last separator after it. The timings are of
 `res://scenes/level_01.tscn`. `_check_replaced_file_paths` checks all four, as String and as
 StringName, on fixed paths of each kind of start and on 6000 seeded random Strings over
 `.`, `/`, `\`, `:` and two letters.
+
+`string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
+`string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step
+and reads through each String's terminator as the engine does. It skips characters that are the
+same in both and are neither a digit nor a zero four at a time, which is where the time under the
+engine's comes from; the engine's two that ignore case look every character up in the case table.
+The timings are of `_scene_010_boss_fight.tscn` to `_scene_10_boss_fight.tscn`, which compare
+equal. `_check_replaced_naturals` checks all four, as String and as StringName, on every pair of
+47 fixed Strings and on 20000 seeded random pairs, half of them one edit apart.
 
 `string_capitalize`, `string_to_camel_case`, `string_to_pascal_case`, `string_to_snake_case` and
 `string_to_kebab_case` share `runes_recase`, which splits words where the engine's

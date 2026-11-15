@@ -814,6 +814,53 @@ func _check_replaced_trims(b2: Bag) -> int:
 	return failures
 
 
+# naturalcasecmp_to, naturalnocasecmp_to, filecasecmp_to and filenocasecmp_to of `s` to `to`, as
+# String and as StringName, from Bag.replaced_naturals against the engine's. Returns the number of
+# mismatches.
+func _check_replaced_natural(b2: Bag, s: String, to: String) -> int:
+	var n := StringName(s)
+	var want := PackedInt64Array([s.naturalcasecmp_to(to), s.naturalnocasecmp_to(to), s.filecasecmp_to(to),
+			s.filenocasecmp_to(to), n.naturalcasecmp_to(to), n.naturalnocasecmp_to(to), n.filecasecmp_to(to),
+			n.filenocasecmp_to(to)])
+	var got: PackedInt64Array = b2.replaced_naturals(s, n, to)
+	if got != want:
+		print("FAIL: Bag.replaced_naturals(%s, %s) gave %s, not %s" % [s.c_escape(), to.c_escape(), got, want])
+		return 1
+	return 0
+
+
+# _check_replaced_natural on every pair of fixed Strings, then on 20000 seeded random pairs over
+# the characters the compares treat apart, two letters in both cases and one outside ASCII, the
+# second of a pair being a changed copy of the first half the time so the walk goes deep. The seed
+# is fixed so a failure repeats.
+func _check_replaced_naturals(b2: Bag) -> int:
+	var failures := 0
+	var fixed: Array[String] = ["", "a", "A", "b", ".", "..", ".a", "a.", "_", "__", "_a", "_.", "._", "a_", "0", "00",
+			"1", "01", "10", "9", "a1", "a01", "a10", "a9", "a1b", "a01b", "a1B", "A10", "a 1", "1a", "file2.txt",
+			"file10.txt", "File2.txt", "file02.txt", "_file", ".file", "é1", "É1", "12345678901234567890",
+			"12345678901234567891", "a\u0000b", "a\u00001", "scene_boss_fight_010.tscn", "scene_boss_fight_10.tscn",
+			"scene_boss_fight_10.tscx", "Scene_Boss_Fight_9.tscn", "scene_boss_fight"]
+	for s: String in fixed:
+		for to: String in fixed:
+			failures += _check_replaced_natural(b2, s, to)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261122
+	var alphabet: Array[String] = [".", "_", "0", "0", "1", "2", "9", "a", "A", "b", "B", "é", "É", " "]
+	for round: int in 20000:
+		var s := ""
+		for i: int in rng.randi_range(0, 8):
+			s += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		var to := ""
+		if rng.randi_range(0, 1) == 0:
+			for i: int in rng.randi_range(0, 8):
+				to += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		else:
+			var at := rng.randi_range(0, s.length())
+			to = s.substr(0, at) + alphabet[rng.randi_range(0, alphabet.size() - 1)] + s.substr(at + rng.randi_range(0, 1))
+		failures += _check_replaced_natural(b2, s, to)
+	return failures
+
+
 # get_extension, get_basename, get_file and get_base_dir of `s`, as String and as StringName, from
 # Bag.replaced_file_paths against the engine's. Returns the number of mismatches.
 func _check_replaced_file_path(b2: Bag, s: String) -> int:
@@ -946,6 +993,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 	failures += _check_replaced_trims(b2)
 	failures += _check_replaced_recases(b2)
 	failures += _check_replaced_file_paths(b2)
+	failures += _check_replaced_naturals(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

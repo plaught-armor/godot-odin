@@ -2049,6 +2049,14 @@ String_Op :: enum i64 {
 	FILE, // string_get_file of the same
 	BASE_DIR_CALL, // the engine's String.get_base_dir of "res://scenes/level_01.tscn", the result destroyed
 	BASE_DIR, // string_get_base_dir of the same
+	NATURAL_CALL, // the engine's String.naturalcasecmp_to of "_scene_010_boss_fight.tscn" to "_scene_10_boss_fight.tscn"
+	NATURAL, // string_naturalcasecmp_to of the same
+	NATURALN_CALL, // the engine's String.naturalnocasecmp_to of "_scene_010_boss_fight.tscn" to "_scene_10_boss_fight.tscn"
+	NATURALN, // string_naturalnocasecmp_to of the same
+	FILECMP_CALL, // the engine's String.filecasecmp_to of "_scene_010_boss_fight.tscn" to "_scene_10_boss_fight.tscn"
+	FILECMP, // string_filecasecmp_to of the same
+	FILECMPN_CALL, // the engine's String.filenocasecmp_to of "_scene_010_boss_fight.tscn" to "_scene_10_boss_fight.tscn"
+	FILECMPN, // string_filenocasecmp_to of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2074,6 +2082,10 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	scene := godot.string_of("res://scenes/level_01.tscn")
 	defer godot.destroy[.STRING](&scene)
 	sc := &scene
+	numbered, numbered_to := godot.string_of("_scene_010_boss_fight.tscn"), godot.string_of("_scene_10_boss_fight.tscn")
+	defer godot.destroy[.STRING](&numbered)
+	defer godot.destroy[.STRING](&numbered_to)
+	nu := &numbered
 	sum: i64
 	start := time.tick_now()
 	switch kind {
@@ -2326,6 +2338,29 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}
+	case .NATURAL_CALL, .NATURALN_CALL, .FILECMP_CALL, .FILECMPN_CALL:
+		name: cstring
+		#partial switch kind {
+		case .NATURAL_CALL: name = "naturalcasecmp_to"
+		case .NATURALN_CALL: name = "naturalnocasecmp_to"
+		case .FILECMP_CALL: name = "filecasecmp_to"
+		case .FILECMPN_CALL: name = "filenocasecmp_to"
+		}
+		fn := godot.builtin_method(.STRING, name, 2920860731)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&numbered_to}
+			r: i64
+			fn(intrinsics.volatile_load(&nu), &args[0], &r, 1)
+			sum += r
+		}
+	case .NATURAL:
+		for _ in 0 ..< n { sum += godot.string_naturalcasecmp_to(intrinsics.volatile_load(&nu), numbered_to) }
+	case .NATURALN:
+		for _ in 0 ..< n { sum += godot.string_naturalnocasecmp_to(intrinsics.volatile_load(&nu), numbered_to) }
+	case .FILECMP:
+		for _ in 0 ..< n { sum += godot.string_filecasecmp_to(intrinsics.volatile_load(&nu), numbered_to) }
+	case .FILECMPN:
+		for _ in 0 ..< n { sum += godot.string_filenocasecmp_to(intrinsics.volatile_load(&nu), numbered_to) }
 	case .EXTENSION_CALL, .BASENAME_CALL, .FILE_CALL, .BASE_DIR_CALL:
 		name: cstring
 		#partial switch kind {

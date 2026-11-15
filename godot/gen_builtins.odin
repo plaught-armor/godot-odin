@@ -39,42 +39,6 @@ string_destroy :: proc "contextless" (self: ^String) {
 	if __fn == nil { __fn = gde.variant_get_ptr_destructor(.STRING) }
 	__fn(self)
 }
-string_naturalcasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "naturalcasecmp_to", 2920860731) }
-	__a_to := transmute([1]uintptr)to
-	__args := [1]gde.ConstTypePtr{&__a_to}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_naturalnocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "naturalnocasecmp_to", 2920860731) }
-	__a_to := transmute([1]uintptr)to
-	__args := [1]gde.ConstTypePtr{&__a_to}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_filecasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "filecasecmp_to", 2920860731) }
-	__a_to := transmute([1]uintptr)to
-	__args := [1]gde.ConstTypePtr{&__a_to}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_filenocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "filenocasecmp_to", 2920860731) }
-	__a_to := transmute([1]uintptr)to
-	__args := [1]gde.ConstTypePtr{&__a_to}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_length :: proc "contextless" (self: ^String) -> i64 {
 	if string_layout_known { return string_stored_length(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
@@ -719,6 +683,7 @@ string_name_nocasecmp_to :: proc "contextless" (self: ^StringName, to: String) -
 	return __ret
 }
 string_name_naturalcasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
+	if dict_layout_known { return string_naturalcasecmp_to(name_text(self), to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "naturalcasecmp_to", 2920860731) }
 	__a_to := transmute([1]uintptr)to
@@ -728,6 +693,7 @@ string_name_naturalcasecmp_to :: proc "contextless" (self: ^StringName, to: Stri
 	return __ret
 }
 string_name_naturalnocasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
+	if dict_layout_known { return string_naturalnocasecmp_to(name_text(self), to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "naturalnocasecmp_to", 2920860731) }
 	__a_to := transmute([1]uintptr)to
@@ -737,6 +703,7 @@ string_name_naturalnocasecmp_to :: proc "contextless" (self: ^StringName, to: St
 	return __ret
 }
 string_name_filecasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
+	if dict_layout_known { return string_filecasecmp_to(name_text(self), to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "filecasecmp_to", 2920860731) }
 	__a_to := transmute([1]uintptr)to
@@ -746,6 +713,7 @@ string_name_filecasecmp_to :: proc "contextless" (self: ^StringName, to: String)
 	return __ret
 }
 string_name_filenocasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
+	if dict_layout_known { return string_filenocasecmp_to(name_text(self), to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "filenocasecmp_to", 2920860731) }
 	__a_to := transmute([1]uintptr)to

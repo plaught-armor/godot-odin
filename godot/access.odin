@@ -385,6 +385,121 @@ string_ends_with :: proc "contextless" (self: ^String, text: String) -> bool {
 	return len(t) <= len(chars) && runes_equal(raw_data(chars[len(chars) - len(t):]), raw_data(t), len(t))
 }
 
+// What an empty String's characters start at: the terminator alone.
+@(private)
+rune_end: rune
+
+// Where the characters of a String start, which its terminator follows, so a walk that stops at
+// a zero character needs no length. `chars` is the whole of a String's characters.
+@(private)
+runes_terminated :: #force_inline proc "contextless" (chars: []rune) -> [^]rune {
+	return raw_data(chars) if len(chars) > 0 else ([^]rune)(&rune_end)
+}
+
+@(private)
+rune_is_digit :: #force_inline proc "contextless" (c: rune) -> bool {
+	return c >= '0' && c <= '9'
+}
+
+// Walks `a` and `b` as the engine's natural compares do, and with FILE as its file compares do.
+// Either ends at its first zero character. In order:
+// - FILE only: while both start with `_` it is skipped, and where one does and the other has a
+//   character left, the `_` sorts first unless the other character is `.`.
+// - While either starts with `.`: the one that does sorts first, and when both do the `.` is
+//   skipped and the one that ends there sorts first, `b` checked before `a`.
+// - Then character by character, uppercased with NOCASE. A run of digits sorts before any other
+//   character, and two runs compare as numbers: without their leading zeros the shorter is less,
+//   and equal lengths compare digit by digit.
+@(private)
+compare_natural :: proc "contextless" (a, b: []rune, $NOCASE: bool, $FILE: bool) -> i64 {
+	// Read through the terminators, as the engine does: nothing below steps past one.
+	na, nb := len(a), len(b)
+	a, b := runes_terminated(a), runes_terminated(b)
+	i, j := 0, 0
+	when FILE {
+		for (a[i] == '_' && b[j] != 0) || (a[i] != 0 && b[j] == '_') {
+			x, y := a[i], b[j]
+			if x != '_' { return -1 if x == '.' else 1 }
+			if y != '_' { return 1 if y == '.' else -1 }
+			i += 1
+			j += 1
+		}
+	}
+	for a[i] == '.' || b[j] == '.' {
+		if a[i] != '.' { return 1 }
+		if b[j] != '.' { return -1 }
+		i += 1
+		j += 1
+		if b[j] == 0 { return 1 }
+		if a[i] == 0 { return -1 }
+	}
+	for {
+		// Four characters at a time while they are the same in both, none a digit or a zero: the
+		// steps below would only skip them one by one.
+		for i + 4 <= na && j + 4 <= nb {
+			x := intrinsics.unaligned_load((^#simd[4]u32)(&a[i]))
+			y := intrinsics.unaligned_load((^#simd[4]u32)(&b[j]))
+			stop := intrinsics.simd_bit_or(intrinsics.simd_lanes_ne(x, y), intrinsics.simd_lanes_eq(x, (#simd[4]u32)(0)))
+			stop = intrinsics.simd_bit_or(stop, intrinsics.simd_lanes_lt(x - (#simd[4]u32)('0'), (#simd[4]u32)(10)))
+			if intrinsics.simd_reduce_or(stop) != 0 { break }
+			i += 4
+			j += 4
+		}
+		x, y := a[i], b[j]
+		// The common step first: the same character in both, not a digit and not the end.
+		if x == y && x != 0 && !rune_is_digit(x) {
+			i += 1
+			j += 1
+			continue
+		}
+		if x == 0 { return -1 if y != 0 else 0 }
+		if y == 0 { return 1 }
+		if !rune_is_digit(x) {
+			if rune_is_digit(y) { return 1 }
+			when NOCASE { x, y = rune_upper(x), rune_upper(y) }
+			if x != y { return -1 if u32(x) < u32(y) else 1 }
+			i += 1
+			j += 1
+			continue
+		}
+		if !rune_is_digit(y) { return -1 }
+		// Both runs of digits: `i` and `j` go to their ends, `i0` and `j0` past their leading
+		// zeros, which stop at the end of the run at the latest.
+		i0, j0 := i, j
+		for rune_is_digit(a[i]) { i += 1 }
+		for rune_is_digit(b[j]) { j += 1 }
+		for a[i0] == '0' { i0 += 1 }
+		for b[j0] == '0' { j0 += 1 }
+		if i - i0 != j - j0 { return -1 if i - i0 < j - j0 else 1 }
+		for k in 0 ..< i - i0 {
+			if a[i0 + k] != b[j0 + k] { return -1 if a[i0 + k] < b[j0 + k] else 1 }
+		}
+	}
+}
+
+// The engine's `naturalcasecmp_to`: -1, 0 or 1 as `self` sorts before, with or after `to`, with
+// runs of digits compared as numbers and a leading `.` first.
+string_naturalcasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
+	return compare_natural(string_read(self), string_chars(to), false, false)
+}
+
+// `string_naturalcasecmp_to` with characters uppercased first: the engine's
+// `naturalnocasecmp_to`.
+string_naturalnocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
+	return compare_natural(string_read(self), string_chars(to), true, false)
+}
+
+// `string_naturalcasecmp_to` with a leading `_` before everything but `.`: the engine's
+// `filecasecmp_to`.
+string_filecasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
+	return compare_natural(string_read(self), string_chars(to), false, true)
+}
+
+// `string_filecasecmp_to` with characters uppercased first: the engine's `filenocasecmp_to`.
+string_filenocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
+	return compare_natural(string_read(self), string_chars(to), true, true)
+}
+
 // The engine's `casecmp_to`: -1, 0 or 1 as `self` sorts before, with or after `to`, character by
 // character by code point, a shorter String first.
 string_casecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
