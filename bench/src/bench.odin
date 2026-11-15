@@ -651,6 +651,10 @@ Ident :: enum i64 {
 	ENCODE_U32,         // the generated packed_byte_array_encode_u32 of the same, stored in place
 	ENCODE_HALF_CALL,   // the engine's PackedByteArray.encode_half the same way
 	ENCODE_HALF,        // the generated packed_byte_array_encode_half of the same
+	BSWAP32_CALL,       // the engine's PackedByteArray.bswap32 of 2 values at offset 4 of 16 bytes, the storage not shared
+	BSWAP32,            // the generated packed_byte_array_bswap32 of the same, swapped in place
+	BSWAP16_LONG_CALL,  // the engine's PackedByteArray.bswap16 of all 4096 bytes, the storage not shared
+	BSWAP16_LONG,       // the generated packed_byte_array_bswap16 of the same
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1429,6 +1433,25 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			}
 		}
 		sum += godot.packed_byte_array_decode_u16(&a, 4)
+	case .BSWAP32_CALL, .BSWAP32, .BSWAP16_LONG_CALL, .BSWAP16_LONG:
+		long := kind == .BSWAP16_LONG_CALL || kind == .BSWAP16_LONG
+		a := godot.packed_byte_array_new()
+		defer godot.packed_byte_array_destroy(&a)
+		godot.packed_byte_array_resize(&a, long ? 4096 : 16)
+		godot.packed_byte_array_encode_u32(&a, 4, 0x01020304)
+		p := &a
+		offset, count: i64 = long ? 0 : 4, long ? -1 : 2
+		#partial switch kind {
+		case .BSWAP32:
+			for _ in 0 ..< n { godot.packed_byte_array_bswap32(intrinsics.volatile_load(&p), offset, count) }
+		case .BSWAP16_LONG:
+			for _ in 0 ..< n { godot.packed_byte_array_bswap16(intrinsics.volatile_load(&p), offset, count) }
+		case:
+			fn := godot.builtin_method(.PACKED_BYTE_ARRAY, long ? "bswap16" : "bswap32", 3638975848)
+			args := [2]gde.ConstTypePtr{&offset, &count}
+			for _ in 0 ..< n { fn(intrinsics.volatile_load(&p), &args[0], nil, 2) }
+		}
+		sum += godot.packed_byte_array_decode_u32(&a, 4)
 	case .DICT_SAME_CALL, .DICT_SAME:
 		a, o := godot.dictionary_new(), godot.dictionary_new()
 		defer godot.destroy[.DICTIONARY](&a)

@@ -3565,6 +3565,7 @@ packed_byte_array_to_color_array :: proc "contextless" (self: ^PackedByteArray) 
 	return __ret
 }
 packed_byte_array_bswap16 :: proc "contextless" (self: ^PackedByteArray, offset: i64, count: i64) {
+	if packed_bswap(u16, self, offset, count) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "bswap16", 3638975848) }
 	__a_offset := offset
@@ -3573,6 +3574,7 @@ packed_byte_array_bswap16 :: proc "contextless" (self: ^PackedByteArray, offset:
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_bswap32 :: proc "contextless" (self: ^PackedByteArray, offset: i64, count: i64) {
+	if packed_bswap(u32, self, offset, count) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "bswap32", 3638975848) }
 	__a_offset := offset
@@ -3581,6 +3583,7 @@ packed_byte_array_bswap32 :: proc "contextless" (self: ^PackedByteArray, offset:
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_bswap64 :: proc "contextless" (self: ^PackedByteArray, offset: i64, count: i64) {
+	if packed_bswap(u64, self, offset, count) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "bswap64", 3638975848) }
 	__a_offset := offset

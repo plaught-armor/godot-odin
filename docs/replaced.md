@@ -741,6 +741,10 @@ kept as the fallback when the check fails and wherever the engine prints an erro
   reference count is 1. The engine is called for an offset out of range, where it prints, and for
   storage shared with another array, which it copies first. `float_to_half` gives the bits of the
   engine's `Math::make_half_float`. `encode_var` always calls the engine.
+- `PackedByteArray.bswap16`, `bswap32` and `bswap64` reverse the bytes of each value in place
+  (`packed_bswap` in `godot/packed.odin`) under the same two conditions, and do nothing for an
+  empty array or a count of zero, as the engine does. The engine is called for an offset or a
+  count out of range and for shared storage.
 - String and StringName `unicode_at`, `is_absolute_path`, `is_relative_path`,
   `is_valid_ascii_identifier`, `is_valid_identifier`, `is_valid_hex_number`, `is_valid_filename`,
   `hex_to_int` and `bin_to_int`, and `String.hash`, read the text in place (`godot/access.odin`).
@@ -778,15 +782,16 @@ takes the value itself (`transmute`), and every generated wrapper copies an opaq
 words (`transmute([N]uintptr)`): `Array.is_same_typed` forwarded to the engine went from 2.84 ns
 to 1.90 ns on 4.8, against 1.71 ns for the bare call.
 
-Checked against Godot 4.7-stable and 4.8 by `_check_replaced_scalars`,
-`_check_replaced_decodes` (every offset from one before the first byte to one past the last, and
-every 16-bit pattern), `_check_replaced_encodes` (shared and unshared storage at every offset
-from one before the first byte to one past the last, the limits of every integer width, every
-half float, floats a half cannot hold and NaNs), `_check_replaced_container_flags`, `_check_replaced_validity` (fixed
+Checked against Godot 4.7-stable and 4.8 by `_check_replaced_scalars`, `_check_replaced_decodes`
+(every offset from one before the first byte to one past the last, and every 16-bit pattern),
+`_check_replaced_encodes` (shared and unshared storage at every offset from one before the first
+byte to one past the last, the limits of every integer width, every half float, floats a half cannot
+hold and NaNs), `_check_replaced_bswaps` (shared and unshared storage at every offset with counts of
+all, none, some and too many), `_check_replaced_container_flags`, `_check_replaced_validity` (fixed
 colours and addresses, then 12,000 texts made from them by one to three edits) and
-`_check_replaced_same_typed` (every pair of containers untyped and typed to builtin types,
-classes and scripts) and `_check_replaced_callables` (null, standard and custom Callables, and
-Signals, of live and freed objects), each against the engine's methods called from GDScript.
+`_check_replaced_same_typed` (every pair of containers untyped and typed to builtin types, classes
+and scripts) and `_check_replaced_callables` (null, standard and custom Callables, and Signals, of
+live and freed objects), each against the engine's methods called from GDScript.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -794,6 +799,8 @@ Signals, of live and freed objects), each against the engine's methods called fr
 | `PackedByteArray.decode_half` | 1.91 ns | 1.14 ns |
 | `PackedByteArray.encode_u32` | 3.26 ns | 0.57 ns |
 | `PackedByteArray.encode_half` | 3.14 ns | 1.16 ns |
+| `PackedByteArray.bswap32` | 2.87 ns | 1.81 ns |
+| `PackedByteArray.bswap16`, 4096 bytes | 532 ns | 49.1 ns |
 | `String.unicode_at` | 2.46 ns | 1.14 ns |
 | `String.hex_to_int` | 9.50 ns | 6.84 ns |
 | `String.hash` | 4.57 ns | 3.55 ns |
@@ -807,11 +814,13 @@ Signals, of live and freed objects), each against the engine's methods called fr
 | `Callable.get_object_id` | 2.53 ns | 1.17 ns |
 | `Signal.is_null` | 2.33 ns | 0.97 ns |
 
-Timings are from `bench/build.sh` on 4.7-stable: the decodes and encodes at offset 4 of 16
-bytes not shared, the String reads of "7fffABCD1234", `is_valid_html_color` of "#7fffABCD", `is_valid_ip_address` of
-"2001:db8:85a3::8a2e:370:7334", `is_typed` of an empty Array, `is_same_typed` of two empty
-Arrays and of two empty Dictionaries, the Callable and Signal reads of ones naming a member of an
-Object.
+Timings are from `bench/build.sh` on 4.7-stable: the decodes and encodes at offset 4 of 16 bytes not
+shared, `bswap32` of two values at offset 4 of the same, the String reads of "7fffABCD1234",
+`is_valid_html_color` of "#7fffABCD", `is_valid_ip_address` of "2001:db8:85a3::8a2e:370:7334",
+`is_typed` of an empty Array, `is_same_typed` of two empty Arrays and of two empty Dictionaries, the
+Callable and Signal reads of ones naming a member of an Object. The 4.7-stable build swaps the 4096
+bytes one value at a time; a 4.8 build from source swaps several to a pass and takes 54.4 ns against
+51.3 ns.
 
 ## NodePath
 

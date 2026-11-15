@@ -475,6 +475,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_scalars(b2, scalar_texts)
 	failures += _check_replaced_decodes(b2)
 	failures += _check_replaced_encodes(b2)
+	failures += _check_replaced_bswaps(b2)
 	failures += _check_replaced_container_flags(b2)
 	failures += _check_replaced_validity(b2)
 	failures += _check_replaced_same_typed(b2)
@@ -866,6 +867,54 @@ func _check_encodes_case(b2: Bag, bytes: PackedByteArray, ints: PackedInt64Array
 	while i < mini(got.size(), want.size()) and got[i] == want[i]:
 		i += 1
 	print("FAIL: Bag.replaced_encodes at %d then %d differs at byte %d of %d (%d wanted), copy %d" % [at, other, i, got.size(), want.size(), i / bytes.size()])
+	return 1
+
+
+# The PackedByteArray byte swaps, from Bag.replaced_bswaps, against the engine's methods called
+# from GDScript. Ten bytes take every offset from one before the first byte to one past the last
+# with counts of all, none, some and too many, once as the first swap of a copy, which shares its
+# storage, and once as the second after a swap of the whole copy, which leaves it alone. An empty
+# array and 100 bytes, long enough for a swap done several values at a time, follow. Returns 1 on a
+# mismatch.
+func _check_replaced_bswaps(b2: Bag) -> int:
+	var ten: PackedByteArray = []
+	for i: int in 10:
+		ten.append((i * 151 + 77) & 0xff)
+	for offset: int in range(-1, ten.size() + 1):
+		for count: int in [-1, 0, 1, 2, 6]:
+			if _check_bswaps_case(b2, ten, offset, count, 0, -1) != 0:
+				return 1
+			if _check_bswaps_case(b2, ten, 0, -1, offset, count) != 0:
+				return 1
+	var long: PackedByteArray = []
+	for i: int in 100:
+		long.append((i * 89 + 5) & 0xff)
+	for places: Array in [[0, -1, 0, 0], [0, 0, 5, 3], [0, -1, 3, -1], [1, 11, 0, 12], [0, 12, 3, 12]]:
+		if _check_bswaps_case(b2, PackedByteArray(), places[0], places[1], places[2], places[3]) != 0:
+			return 1
+		if _check_bswaps_case(b2, long, places[0], places[1], places[2], places[3]) != 0:
+			return 1
+	return 0
+
+
+# Bag.replaced_bswaps against the engine's bswap16, bswap32 and bswap64, each on its own copy of
+# `bytes` at `offset` for `count` values and then at `other` for `other_count`; `bytes` must come
+# back unchanged itself.
+func _check_bswaps_case(b2: Bag, bytes: PackedByteArray, offset: int, count: int, other: int, other_count: int) -> int:
+	var before: PackedByteArray = bytes.duplicate()
+	var want: PackedByteArray = []
+	for width: int in 3:
+		var c: PackedByteArray = bytes.duplicate()
+		for place: Array in [[offset, count], [other, other_count]]:
+			match width:
+				0: c.bswap16(place[0], place[1])
+				1: c.bswap32(place[0], place[1])
+				2: c.bswap64(place[0], place[1])
+		want.append_array(c)
+	var got: PackedByteArray = b2.replaced_bswaps(bytes, offset, count, other, other_count)
+	if got == want and bytes == before:
+		return 0
+	print("FAIL: Bag.replaced_bswaps(%s, %d, %d, %d, %d) gave %s, not %s" % [before, offset, count, other, other_count, got, want])
 	return 1
 
 

@@ -479,6 +479,30 @@ packed_encode :: #force_inline proc "contextless" (a: ^PackedByteArray, offset: 
 	return true
 }
 
+// Reverses the bytes of each of `count` values of type `T` from byte `offset` of `a`, as the
+// generated `bswap16`, `bswap32` and `bswap64` of PackedByteArray do, a negative `count` standing
+// for every whole value from `offset` on. True when done, which for an empty array or a `count` of
+// zero is nothing, as in the engine. False with nothing changed when the engine is to be called:
+// the layout is unknown, the offset or the count is out of range, where the engine prints its
+// error, or the storage is shared with another array, which the engine copies first.
+packed_bswap :: proc "contextless" ($T: typeid, a: ^PackedByteArray, offset, count: i64) -> bool {
+	if !packed_layout_known { return false }
+	p := ([^]rawptr)(a)[PACKED_DATA_WORD]
+	if p == nil || count == 0 { return true }
+	h := ([^]i64)(uintptr(p) - PACKED_DATA_OFFSET)
+	size := h[2]
+	if size == 0 { return true }
+	if offset < 0 || offset > size - size_of(T) { return false }
+	most := (size - offset) / size_of(T)
+	n := count < 0 ? most : count
+	if n > most || intrinsics.atomic_load(&h[0]) != 1 { return false }
+	w := ([^]T)(uintptr(p) + uintptr(offset))
+	#no_bounds_check for i in 0 ..< n {
+		intrinsics.unaligned_store(&w[i], intrinsics.byte_swap(intrinsics.unaligned_load(&w[i])))
+	}
+	return true
+}
+
 // The 16-bit half float for `f`, as Math::make_half_float of the engine gives it: the significand
 // cut to ten bits, not rounded, zero for a magnitude of 2^-15 or less, infinity for one of 65536 or
 // more, and a NaN with all ten significand bits set.

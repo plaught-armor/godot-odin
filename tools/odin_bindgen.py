@@ -94,6 +94,10 @@ IN_PLACE = {
                     ("PackedFloat64Array", "value"), ("PackedVector2Array", "value"),
                     ("PackedVector3Array", "value"), ("PackedColorArray", "value"),
                     ("PackedVector4Array", "value"))},
+    # godot/packed.odin: the engine is called for an offset or count out of range, where it prints an
+    # error, and for shared storage, which it copies.
+    **{("PackedByteArray", f"bswap{n}"): f"\tif packed_bswap(u{n}, self, offset, count) {{ return }}\n"
+       for n in (16, 32, 64)},
     # godot/packed.odin: the value converted as the engine's encode converts it. The engine is called
     # for an offset out of range, where it prints an error, and for shared storage, which it copies.
     **{("PackedByteArray", f"encode_{m}"): f"\tif packed_encode(self, byte_offset, {v}) {{ return }}\n"

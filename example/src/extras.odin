@@ -131,6 +131,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
 	godot.method(b, "replaced_decodes", bag_replaced_decodes, {"bytes"})
 	godot.method(b, "replaced_encodes", bag_replaced_encodes, {"bytes", "ints", "floats", "at", "other"})
+	godot.method(b, "replaced_bswaps", bag_replaced_bswaps, {"bytes", "offset", "count", "other", "other_count"})
 	godot.method(b, "replaced_container_flags", bag_replaced_container_flags, {"a", "d"})
 	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
 	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
@@ -1091,6 +1092,25 @@ bag_replaced_encodes :: proc(self: ^Bag, bytes: godot.PackedByteArray, ints: god
 	}
 	for i in 0 ..< godot.packed_float64_array_size(&floats) {
 		for encode in float_encodes { put_encoded(&out, bytes, at, other, godot.packed_float64_array_get(&floats, i), encode) }
+	}
+	return out
+}
+
+// The bytes a copy of `bytes` holds after the generated PackedByteArray bswap16, then of another
+// copy after bswap32, then of a third after bswap64. Each copy is swapped at `offset` for `count`
+// values and then at `other` for `other_count`: the first swap finds the copy sharing its storage
+// with `bytes`, the second finds it alone when the first changed it.
+bag_replaced_bswaps :: proc(self: ^Bag, bytes: godot.PackedByteArray, offset, count, other, other_count: i64) -> godot.PackedByteArray {
+	out := godot.packed_byte_array_new()
+	swaps := [3]proc "contextless" (_: ^godot.PackedByteArray, _: i64, _: i64) {
+		godot.packed_byte_array_bswap16, godot.packed_byte_array_bswap32, godot.packed_byte_array_bswap64,
+	}
+	for swap in swaps {
+		x := godot.packed_byte_array_new_from_packed_byte_array(bytes)
+		swap(&x, offset, count)
+		swap(&x, other, other_count)
+		godot.packed_byte_array_append_array(&out, x)
+		godot.packed_byte_array_destroy(&x)
 	}
 	return out
 }
