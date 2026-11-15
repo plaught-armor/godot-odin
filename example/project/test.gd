@@ -735,6 +735,31 @@ func _check_replaced_matches(b2: Bag, s: String, other: String) -> int:
 	return 0
 
 
+# substr, left and right of `s`, as String and as StringName, from Bag.replaced_slices against the
+# engine's: every start and count either side of 0 and of each end of `s`, and ones that wrap to
+# those as 32-bit ints, then the largest count from the start. Returns the number of mismatches.
+func _check_replaced_slices(b2: Bag, s: String) -> int:
+	var failures := 0
+	var n := StringName(s)
+	var size := s.length()
+	var edges: Array[int] = [-(1 << 32) - 1, -(1 << 32), -size - 1, -size, -3, -2, -1, 0, 1, 2, 3,
+			size - 1, size, size + 1, 1 << 32, (1 << 32) + 2]
+	var cases: Array = [[0, 2147483647]]
+	for from: int in edges:
+		for count: int in edges:
+			cases.append([from, count])
+	for c: Array in cases:
+		var from: int = c[0]
+		var count: int = c[1]
+		var want := PackedStringArray([s.substr(from, count), s.left(count), s.right(count),
+				n.substr(from, count), n.left(count), n.right(count)])
+		var got: PackedStringArray = b2.replaced_slices(s, n, from, count)
+		if got != want:
+			print("FAIL: Bag.replaced_slices(%s, %d, %d) gave %s, not %s" % [s, from, count, got, want])
+			failures += 1
+	return failures
+
+
 # _check_replaced_matches on fixed patterns and then on seeded random Strings over a small alphabet
 # with both cases, the two wildcards and the full stop that `?` does not stand for, so patterns
 # with several `*` meet texts they fit and texts they nearly fit. The seed is fixed so a failure
@@ -746,6 +771,8 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 			["res://*level_??.tscn", "res://scenes/level_01.tscn"], ["RES://*", "res://x"], ["É*", "éa"],
 			["*a*a*a*a*a*b", "a".repeat(24)], ["ace", "abcde"], ["aec", "abcde"], ["ÉA", "xéxa"], ["", "abc"]]:
 		failures += _check_replaced_matches(b2, c[0], c[1])
+	for s: String in ["", "a", "ab", "héllo wörld", "res://scenes/level_01.tscn", "a".repeat(70)]:
+		failures += _check_replaced_slices(b2, s)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

@@ -412,6 +412,55 @@ string_split :: proc "contextless" (self: ^String, delimiter: String, allow_empt
 	return split_make(string_read(self), rune_needle_of(string_chars(delimiter), false), allow_empty, maxsplit)
 }
 
+// The `len` characters of `self` from character `from`, or the rest when `len` is -1: the engine's
+// `substr`. Empty when `from` is outside `self` or no characters are asked for, and a count past
+// the end stops there. Both are 32-bit ints in the engine, so they wrap here as they do there;
+// their sum is taken in 64 bits, where the engine's overflows. The caller destroys the result.
+string_substr :: proc "contextless" (self: ^String, from: i64, len: i64) -> String {
+	return substr_of(self, from, len)
+}
+
+// `string_substr`, whose `len` parameter hides the builtin this needs.
+@(private)
+substr_of :: #force_inline proc "contextless" (self: ^String, from, count: i64) -> String {
+	chars := string_read(self)
+	length := i64(len(chars))
+	from, n := i64(i32(from)), i64(i32(count))
+	if n == -1 { n = length - from }
+	if from < 0 || from >= length || n <= 0 { return {} }
+	return slice_of(self, chars, from, min(n, length - from))
+}
+
+// The first `length` characters of `self`, or all but the last `-length` when negative: the
+// engine's `left`, `length` wrapped to 32 bits as there. The caller destroys the result.
+string_left :: proc "contextless" (self: ^String, length: i64) -> String {
+	chars := string_read(self)
+	n := i64(i32(length))
+	if n < 0 { n += i64(len(chars)) }
+	if n <= 0 { return {} }
+	return slice_of(self, chars, 0, min(n, i64(len(chars))))
+}
+
+// The last `length` characters of `self`, or all but the first `-length` when negative: the
+// engine's `right`, `length` wrapped to 32 bits as there. The caller destroys the result.
+string_right :: proc "contextless" (self: ^String, length: i64) -> String {
+	chars := string_read(self)
+	n := i64(i32(length))
+	if n < 0 { n += i64(len(chars)) }
+	if n <= 0 { return {} }
+	n = min(n, i64(len(chars)))
+	return slice_of(self, chars, i64(len(chars)) - n, n)
+}
+
+// A String of the `n` characters of `chars` from `from`, which lie inside it, `n` at least 1.
+// All of `chars`, the characters of `self`, is a copy that shares its storage, as the engine
+// returns.
+@(private)
+slice_of :: #force_inline proc "contextless" (self: ^String, chars: []rune, from, n: i64) -> String {
+	if n == i64(len(chars)) { return string_copy(self) }
+	return string_of_runes(chars[from:][:n])
+}
+
 // Walks `a` and `b` as the engine's `casecmp_to` and `nocasecmp_to` do: an empty String sorts
 // first, and either ends at its first zero character, so one embedded ends the comparison there.
 @(private)

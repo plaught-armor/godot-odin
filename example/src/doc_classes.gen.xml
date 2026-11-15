@@ -234,6 +234,9 @@
 		<method name="replaced_matches">
 			<description>get_slice_count, match, matchn, is_subsequence_of and is_subsequence_ofn of [code]s[/code] with [code]other[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
+		<method name="replaced_slices">
+			<description>substr of [code]len[/code] characters from [code]from[/code], then left and right of [code]len[/code], of [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
+		</method>
 		<method name="replaced_name_ops">
 			<description>bag_replaced_ops through the StringName methods on [code]n[/code], then its length, is_empty as 0 or 1 and hash. test.gd builds the same array from the engine's StringName methods.</description>
 		</method>

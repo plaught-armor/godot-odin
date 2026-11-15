@@ -197,7 +197,8 @@ IN_PLACE = {
            ("replace", "what, forwhat"), ("replacen", "what, forwhat"),
            ("split", "delimiter, allow_empty, maxsplit"),
            ("get_slice_count", "delimiter"), ("match", "expr"), ("matchn", "expr"),
-           ("is_subsequence_of", "text"), ("is_subsequence_ofn", "text"))},
+           ("is_subsequence_of", "text"), ("is_subsequence_ofn", "text"),
+           ("substr", "from, len"), ("left", "length"), ("right", "length"))},
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
@@ -225,6 +226,9 @@ REPLACED = {
     ("String", "matchn"),
     ("String", "is_subsequence_of"),
     ("String", "is_subsequence_ofn"),
+    ("String", "substr"),
+    ("String", "left"),
+    ("String", "right"),
     ("Basis", "inverse"),
     ("Basis", "transposed"),
     ("Basis", "orthonormalized"),

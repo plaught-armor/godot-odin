@@ -35,6 +35,9 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.matchn` | `string_matchn` | Godot 4.7-stable | 379 ns | 42 ns |
 | `String.is_subsequence_of` | `string_is_subsequence_of` | Godot 4.7-stable | 12 ns | 11 ns |
 | `String.is_subsequence_ofn` | `string_is_subsequence_ofn` | Godot 4.7-stable | 346 ns | 20 ns |
+| `String.substr` | `string_substr` | Godot 4.7-stable | 18.5 ns | 10.5 ns |
+| `String.left` | `string_left` | Godot 4.7-stable | 18.3 ns | 10.1 ns |
+| `String.right` | `string_right` | Godot 4.7-stable | 18.3 ns | 10.5 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -42,7 +45,15 @@ sentence split on spaces into nine Strings, which making those Strings dominates
 and `ends_with` of a two-word start and end of the sentence; `casecmp_to` of the sentence and an
 equal one in separate storage; `get_slice_count` of "/" in "res://scenes/level_01.tscn", that path
 matched with "res://*level_??.tscn", and "lvl01" as a subsequence of it, the argument in upper
-case for `matchn` and `is_subsequence_ofn`.
+case for `matchn` and `is_subsequence_ofn`; `substr` of 5 characters from character 4 of the
+sentence, `left` of 9 and `right` of 8, the result destroyed each round.
+
+`string_substr`, `string_left` and `string_right` copy the characters into storage they allocate
+themselves, and return a copy that shares the storage when the slice is the whole String, as the
+engine does. The start and count wrap to 32 bits as the engine's `int` parameters do. A start
+plus a count past 2^31 overflows in the engine; here the sum is taken in 64 bits and the slice
+stops at the end. `_check_replaced_slices` checks them on every start and count either side of
+0 and of each end, and on ones that wrap to those.
 
 `string_match` and `string_matchn` do not call themselves as the engine's matcher does. They
 remember the last `*` and how many characters it has taken, and give it one more on a mismatch,

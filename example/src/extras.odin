@@ -127,6 +127,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_ops", bag_replaced_ops, {"s", "part", "from", "to"})
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_matches", bag_replaced_matches, {"s", "n", "other"})
+	godot.method(b, "replaced_slices", bag_replaced_slices, {"s", "n", "from", "len"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -697,6 +698,26 @@ bag_replaced_matches :: proc(self: ^Bag, s: godot.String, n: godot.StringName, o
 	}
 	out := godot.packed_int64_array_new()
 	for v in r { godot.packed_int64_array_append(&out, v) }
+	return out
+}
+
+// substr of `len` characters from `from`, then left and right of `len`, of `s`, then the same
+// through the StringName methods on `n`. test.gd builds the same array from the engine's.
+bag_replaced_slices :: proc(self: ^Bag, s: godot.String, n: godot.StringName, from: i64, len: i64) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [6]godot.String{
+		godot.string_substr(&s, from, len),
+		godot.string_left(&s, len),
+		godot.string_right(&s, len),
+		godot.string_name_substr(&n, from, len),
+		godot.string_name_left(&n, len),
+		godot.string_name_right(&n, len),
+	}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
 	return out
 }
 

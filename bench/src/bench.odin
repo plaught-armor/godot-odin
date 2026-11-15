@@ -2009,6 +2009,12 @@ String_Op :: enum i64 {
 	CASECMP,        // string_casecmp_to of the same
 	REPLACEN_CALL,  // the engine's String.replacen of "THE" by "a" in the sentence, the result destroyed
 	REPLACEN,       // string_replacen of the same
+	SUBSTR_CALL,    // the engine's String.substr of 5 characters from 4 of the sentence, the result destroyed
+	SUBSTR,         // string_substr of the same
+	LEFT_CALL,      // the engine's String.left of 9 characters of the sentence, the result destroyed
+	LEFT,           // string_left of the same
+	RIGHT_CALL,     // the engine's String.right of 8 characters of the sentence, the result destroyed
+	RIGHT,          // string_right of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2023,6 +2029,7 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	head, tail := godot.intern_text("the quick"), godot.intern_text("lazy dog")
 	from, to := i64(0), i64(0)
 	last := i64(-1)
+	slice_from, slice_len, left_len, right_len := i64(4), i64(5), i64(9), i64(8)
 	sum: i64
 	start := time.tick_now()
 	switch kind {
@@ -2095,6 +2102,43 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .REPLACEN:
 		for _ in 0 ..< n {
 			r := godot.string_replacen(intrinsics.volatile_load(&h), the_upper, a)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .SUBSTR_CALL:
+		fn := godot.builtin_method(.STRING, "substr", 787537301)
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&slice_from, &slice_len}
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 2)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .SUBSTR:
+		for _ in 0 ..< n {
+			r := godot.string_substr(intrinsics.volatile_load(&h), slice_from, slice_len)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .LEFT_CALL, .RIGHT_CALL:
+		count := &left_len if kind == .LEFT_CALL else &right_len
+		fn := godot.builtin_method(.STRING, "left" if kind == .LEFT_CALL else "right", 2162347432)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{count}
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 1)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .LEFT:
+		for _ in 0 ..< n {
+			r := godot.string_left(intrinsics.volatile_load(&h), left_len)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .RIGHT:
+		for _ in 0 ..< n {
+			r := godot.string_right(intrinsics.volatile_load(&h), right_len)
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}

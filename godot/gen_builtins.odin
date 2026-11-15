@@ -83,16 +83,6 @@ string_length :: proc "contextless" (self: ^String) -> i64 {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_substr :: proc "contextless" (self: ^String, from: i64, len: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "substr", 787537301) }
-	__a_from := from
-	__a_len := len
-	__args := [2]gde.ConstTypePtr{&__a_from, &__a_len}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 string_get_slice :: proc "contextless" (self: ^String, delimiter: String, slice: i64) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "get_slice", 3535100402) }
@@ -290,24 +280,6 @@ string_to_lower :: proc "contextless" (self: ^String) -> String {
 	if __fn == nil { __fn = builtin_method(.STRING, "to_lower", 3942272618) }
 	__ret: String
 	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_left :: proc "contextless" (self: ^String, length: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "left", 2162347432) }
-	__a_length := length
-	__args := [1]gde.ConstTypePtr{&__a_length}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_right :: proc "contextless" (self: ^String, length: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "right", 2162347432) }
-	__a_length := length
-	__args := [1]gde.ConstTypePtr{&__a_length}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
 string_strip_edges :: proc "contextless" (self: ^String, left: bool, right: bool) -> String {
@@ -924,6 +896,7 @@ string_name_length :: proc "contextless" (self: ^StringName) -> i64 {
 	return __ret
 }
 string_name_substr :: proc "contextless" (self: ^StringName, from: i64, len: i64) -> String {
+	if dict_layout_known { return string_substr(name_text(self), from, len) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "substr", 787537301) }
 	__a_from := from
@@ -1305,6 +1278,7 @@ string_name_to_lower :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_left :: proc "contextless" (self: ^StringName, length: i64) -> String {
+	if dict_layout_known { return string_left(name_text(self), length) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "left", 2162347432) }
 	__a_length := length
@@ -1314,6 +1288,7 @@ string_name_left :: proc "contextless" (self: ^StringName, length: i64) -> Strin
 	return __ret
 }
 string_name_right :: proc "contextless" (self: ^StringName, length: i64) -> String {
+	if dict_layout_known { return string_right(name_text(self), length) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "right", 2162347432) }
 	__a_length := length
