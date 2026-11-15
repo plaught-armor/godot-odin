@@ -89,6 +89,11 @@ IN_PLACE = {
     # error. The engine takes the base as a 32-bit int and the character as 32 bits.
     ("String", "num_int64"): "\tif b := i64(i32(base)); b >= 2 && b <= 36 { return string_of_int(number, b, capitalize_hex) }\n",
     ("String", "num_uint64"): "\tif b := i64(i32(base)); b >= 2 && b <= 36 { return string_of_uint(u64(number), b, capitalize_hex) }\n",
+    # godot/access.odin: each gives false where the engine prints an error, and the engine is called.
+    ("String", "xml_unescape"): "\tif out, ok := xml_unescaped(self); ok { return out }\n",
+    ("String", "uri_encode"): "\tif out, ok := uri_encoded(self); ok { return out }\n",
+    ("StringName", "xml_unescape"): "\tif dict_layout_known { if out, ok := xml_unescaped(name_text(self)); ok { return out } }\n",
+    ("StringName", "uri_encode"): "\tif dict_layout_known { if out, ok := uri_encoded(name_text(self)); ok { return out } }\n",
     ("String", "chr"): "\tif c := u32(code); c != 0 && c <= 0x10ffff && c & 0xfffff800 != 0xd800 { return string_of_runes([]rune{rune(c)}) }\n",
     **{(t, "size"): "\tif packed_layout_known { return packed_stored_size(self) }\n" for t in PACKED_TYPES},
     **{(t, "is_empty"): "\tif packed_layout_known { return packed_stored_size(self) == 0 }\n" for t in PACKED_TYPES},
@@ -217,14 +222,16 @@ IN_PLACE = {
            ("pad_zeros", "digits"), ("pad_decimals", "digits"),
            ("indent", "prefix"), ("get_slicec", "delimiter, slice"), ("similarity", "text"),
            ("rsplit", "delimiter, allow_empty, maxsplit"),
-           ("split_floats", "delimiter, allow_empty"), ("join", "parts"))},
+           ("split_floats", "delimiter, allow_empty"), ("join", "parts"),
+           ("xml_escape", "escape_quotes"))},
     ("StringName", "to_upper"): "\tif dict_layout_known { return string_to_upper(name_text(self)) }\n",
     ("StringName", "to_lower"): "\tif dict_layout_known { return string_to_lower(name_text(self)) }\n",
     **{("StringName", m): f"\tif dict_layout_known {{ return string_{m}(name_text(self)) }}\n"
        for m in ("capitalize", "to_camel_case", "to_pascal_case", "to_snake_case", "to_kebab_case",
                  "get_extension", "get_basename", "get_file", "get_base_dir", "simplify_path",
                  "reverse", "dedent", "strip_escapes", "bigrams",
-                 "validate_node_name", "validate_filename")},
+                 "validate_node_name", "validate_filename",
+                 "c_escape", "c_unescape", "json_escape")},
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
@@ -293,6 +300,8 @@ REPLACED = {
     ("String", "rsplit"), ("String", "split_floats"), ("String", "join"),
     ("String", "validate_node_name"), ("String", "validate_filename"),
     ("String", "num"), ("String", "num_scientific"),
+    ("String", "c_escape"), ("String", "c_unescape"), ("String", "json_escape"),
+    ("String", "xml_escape"),
     ("String", "get_extension"),
     ("String", "get_basename"),
     ("String", "get_file"),

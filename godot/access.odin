@@ -1531,6 +1531,244 @@ string_join :: proc "contextless" (self: ^String, parts: PackedStringArray) -> (
 	return
 }
 
+// Which characters `string_escaped` escapes.
+@(private)
+Escape :: enum { C, JSON, XML }
+
+// What `c` becomes when escaped, or "" when it is kept. `quotes` makes XML escape ' and " too.
+@(private)
+escape_text :: #force_inline proc "contextless" (c: rune, $KIND: Escape, quotes: bool) -> string {
+	when KIND == .XML {
+		switch c {
+		case '&': return "&amp;"
+		case '<': return "&lt;"
+		case '>': return "&gt;"
+		case '\'': return "&apos;" if quotes else ""
+		case '"': return "&quot;" if quotes else ""
+		}
+	} else {
+		switch c {
+		case '\\': return "\\\\"
+		case '\b': return "\\b"
+		case '\f': return "\\f"
+		case '\n': return "\\n"
+		case '\r': return "\\r"
+		case '\t': return "\\t"
+		case '\v': return "\\v"
+		case '"': return "\\\""
+		}
+		when KIND == .C {
+			switch c {
+			case '\a': return "\\a"
+			case '\'': return "\\'"
+			}
+		}
+	}
+	return ""
+}
+
+// `self` with each character `escape_text` names written as its escape, in one counting pass and
+// one writing pass. `self` itself, sharing its storage, when it holds none. The engine replaces
+// one kind of character at a time, which gives the same text: no escape holds a character that a
+// later replacement looks for.
+@(private)
+string_escaped :: #force_inline proc "contextless" (self: ^String, $KIND: Escape, quotes: bool) -> (out: String) {
+	chars := string_read(self)
+	first, extra := len(chars), 0
+	for c, i in chars {
+		if n := len(escape_text(c, KIND, quotes)); n > 0 {
+			first = min(first, i)
+			extra += n - 1
+		}
+	}
+	if extra == 0 { return string_copy(self) }
+	w := string_storage(&out, len(chars) + extra + 1)
+	copy(w[:first], chars[:first])
+	at := first
+	for c in chars[first:] {
+		text := escape_text(c, KIND, quotes)
+		if len(text) == 0 {
+			w[at] = c
+			at += 1
+			continue
+		}
+		for j in 0 ..< len(text) { w[at + j] = rune(text[j]) }
+		at += len(text)
+	}
+	w[at] = 0
+	return
+}
+
+// `self` with a backslash before each backslash, quote and control character C names, which are
+// \a \b \f \n \r \t \v ' and ": the engine's `c_escape`. The caller destroys the result.
+string_c_escape :: proc "contextless" (self: ^String) -> String {
+	return string_escaped(self, Escape.C, false)
+}
+
+// `self` escaped for a JSON string, which is `string_c_escape` without \a and ': the engine's
+// `json_escape`. The caller destroys the result.
+string_json_escape :: proc "contextless" (self: ^String) -> String {
+	return string_escaped(self, Escape.JSON, false)
+}
+
+// `self` with & < and > as XML entities, and ' and " too when `escape_quotes`: the engine's
+// `xml_escape`. The caller destroys the result.
+string_xml_escape :: proc "contextless" (self: ^String, escape_quotes: bool) -> String {
+	return string_escaped(self, Escape.XML, escape_quotes)
+}
+
+// `self` with the escapes of `string_c_escape` read back: the engine's `c_unescape`. The engine
+// replaces one escape at a time, \\ last, so "\\\\n" becomes a backslash and a line feed, not a
+// backslash and 'n'; this runs the same ten passes in the same order, in one buffer. The caller
+// destroys the result.
+string_c_unescape :: proc "contextless" (self: ^String) -> (out: String) {
+	chars := string_read(self)
+	if runes_index(chars, '\\', 0) < 0 { return string_copy(self) }
+	w := string_storage(&out, len(chars) + 1)
+	copy(w[:len(chars)], chars)
+	n := len(chars)
+	pairs := [10][2]rune {
+		{'a', '\a'}, {'b', '\b'}, {'f', '\f'}, {'n', '\n'}, {'r', '\r'},
+		{'t', '\t'}, {'v', '\v'}, {'\'', '\''}, {'"', '"'}, {'\\', '\\'},
+	}
+	for pair in pairs {
+		at := 0
+		for i := 0; i < n; i += 1 {
+			c := w[i]
+			if c == '\\' && i + 1 < n && w[i + 1] == pair[0] {
+				c = pair[1]
+				i += 1
+			}
+			w[at] = c
+			at += 1
+		}
+		n = at
+	}
+	w[n] = 0
+	if n < len(chars) { string_storage_trim(&out, n + 1) }
+	return
+}
+
+// `self` with its XML entities read back, as the engine's `xml_unescape` reads them: &gt; &lt;
+// &amp; &quot; &apos; and a number as &#65; or &#x41;, any other '&' kept. False where the engine
+// prints an error, which is a decimal number past 64 bits; the caller then asks the engine.
+@(private)
+xml_unescaped :: proc "contextless" (self: ^String) -> (out: String, ok: bool) {
+	chars := string_read(self)
+	if runes_index(chars, '&', 0) < 0 { return string_copy(self), true }
+	// An entity is never shorter than the character it stands for.
+	w := string_storage(&out, len(chars) + 1)
+	at := 0
+	for i := 0; i < len(chars); {
+		c, eat := chars[i], 1
+		if c == '&' {
+			c, eat = xml_entity(chars[i:])
+			if eat == 0 {
+				destroy[.STRING](&out)
+				return {}, false
+			}
+		}
+		w[at] = c
+		at += 1
+		i += eat
+	}
+	w[at] = 0
+	if at < len(chars) { string_storage_trim(&out, at + 1) }
+	return out, true
+}
+
+// The character the entity at the front of `src`, which starts with '&', stands for, and how many
+// characters it takes; '&' and 1 when it is not an entity. A count of 0 where the engine prints an
+// error. A numbered entity is valid from 1 to the top of 32 bits, and is not checked to be a
+// Unicode character.
+@(private)
+xml_entity :: proc "contextless" (src: []rune) -> (c: rune, eat: int) {
+	n := len(src)
+	if n >= 4 && src[1] == '#' {
+		value: u64
+		if src[2] == 'x' {
+			for i := 3; i < n; i += 1 {
+				eat = i + 1
+				d := hex_digit(src[i])
+				if d < 0 || value > 0x0fffffff { break }
+				value = value << 4 | u64(d)
+			}
+		} else {
+			for i := 2; i < n; i += 1 {
+				eat = i + 1
+				d := u64(src[i]) - '0'
+				if d > 9 { break }
+				if value > u64(max(i64) / 10) { return 0, 0 }
+				value = value * 10 + d
+			}
+		}
+		if src[eat - 1] == ';' && value > 0 && value <= 0xffffffff { return rune(u32(value)), eat }
+		return '&', 1
+	}
+	names := [5]string{"gt;", "lt;", "amp;", "quot;", "apos;"}
+	meant := [5]rune{'>', '<', '&', '"', '\''}
+	for name, k in names {
+		if n <= len(name) { continue }
+		same := true
+		for j in 0 ..< len(name) { same &&= src[1 + j] == rune(name[j]) }
+		if same { return meant[k], len(name) + 1 }
+	}
+	return '&', 1
+}
+
+// `self` as UTF-8 with every byte but an ASCII letter, a digit and - . _ ~ written as '%' and two
+// upper-case hexadecimal digits: the engine's `uri_encode`. False for a String holding a
+// character that is not a Unicode one, where the engine prints an error; the caller then asks the
+// engine.
+@(private)
+uri_encoded :: proc "contextless" (self: ^String) -> (out: String, ok: bool) {
+	chars := string_read(self)
+	total := 0
+	for c in chars {
+		u := u32(c)
+		switch {
+		case uri_keeps(u): total += 1
+		case u == 0 || u > 0x10ffff || u & 0xfffff800 == 0xd800: return {}, false
+		case u < 0x80: total += 3
+		case u < 0x800: total += 6
+		case u < 0x10000: total += 9
+		case: total += 12
+		}
+	}
+	if total == 0 { return {}, true }
+	w := string_storage(&out, total + 1)
+	at := 0
+	for c in chars {
+		u := u32(c)
+		if uri_keeps(u) {
+			w[at] = c
+			at += 1
+			continue
+		}
+		bytes: [4]u8
+		count := 1
+		switch {
+		case u < 0x80: bytes[0] = u8(u)
+		case u < 0x800: bytes, count = {u8(0xc0 | u >> 6), u8(0x80 | u & 0x3f), 0, 0}, 2
+		case u < 0x10000: bytes, count = {u8(0xe0 | u >> 12), u8(0x80 | u >> 6 & 0x3f), u8(0x80 | u & 0x3f), 0}, 3
+		case: bytes, count = {u8(0xf0 | u >> 18), u8(0x80 | u >> 12 & 0x3f), u8(0x80 | u >> 6 & 0x3f), u8(0x80 | u & 0x3f)}, 4
+		}
+		hex := "0123456789ABCDEF"
+		for b in bytes[:count] {
+			w[at], w[at + 1], w[at + 2] = '%', rune(hex[b >> 4]), rune(hex[b & 0xf])
+			at += 3
+		}
+	}
+	w[at] = 0
+	return out, true
+}
+
+// Whether `uri_encoded` writes character `u` as it is.
+@(private)
+uri_keeps :: #force_inline proc "contextless" (u: u32) -> bool {
+	return (u | 0x20) - 'a' < 26 || u - '0' < 10 || u == '-' || u == '.' || u == '_' || u == '~'
+}
+
 // `self` with '_' in place of each character a node name may not hold, which are . : @ / " and
 // %: the engine's `validate_node_name`. The caller destroys the result.
 string_validate_node_name :: proc "contextless" (self: ^String) -> String {

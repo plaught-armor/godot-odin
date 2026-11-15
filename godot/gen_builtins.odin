@@ -141,16 +141,8 @@ string_is_relative_path :: proc "contextless" (self: ^String) -> bool {
 	__fn(self, nil, &__ret, 0)
 	return __ret != 0
 }
-string_xml_escape :: proc "contextless" (self: ^String, escape_quotes: bool) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "xml_escape", 3429816538) }
-	__a_escape_quotes := u8(escape_quotes)
-	__args := [1]gde.ConstTypePtr{&__a_escape_quotes}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_xml_unescape :: proc "contextless" (self: ^String) -> String {
+	if out, ok := xml_unescaped(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "xml_unescape", 3942272618) }
 	__ret: String
@@ -158,6 +150,7 @@ string_xml_unescape :: proc "contextless" (self: ^String) -> String {
 	return __ret
 }
 string_uri_encode :: proc "contextless" (self: ^String) -> String {
+	if out, ok := uri_encoded(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "uri_encode", 3942272618) }
 	__ret: String
@@ -174,27 +167,6 @@ string_uri_decode :: proc "contextless" (self: ^String) -> String {
 string_uri_file_decode :: proc "contextless" (self: ^String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "uri_file_decode", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_c_escape :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "c_escape", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_c_unescape :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "c_unescape", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_json_escape :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "json_escape", 3942272618) }
 	__ret: String
 	__fn(self, nil, &__ret, 0)
 	return __ret
@@ -1122,6 +1094,7 @@ string_name_get_file :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_xml_escape :: proc "contextless" (self: ^StringName, escape_quotes: bool) -> String {
+	if dict_layout_known { return string_xml_escape(name_text(self), escape_quotes) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "xml_escape", 3429816538) }
 	__a_escape_quotes := u8(escape_quotes)
@@ -1131,6 +1104,7 @@ string_name_xml_escape :: proc "contextless" (self: ^StringName, escape_quotes: 
 	return __ret
 }
 string_name_xml_unescape :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { if out, ok := xml_unescaped(name_text(self)); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "xml_unescape", 3942272618) }
 	__ret: String
@@ -1138,6 +1112,7 @@ string_name_xml_unescape :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_uri_encode :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { if out, ok := uri_encoded(name_text(self)); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "uri_encode", 3942272618) }
 	__ret: String
@@ -1159,6 +1134,7 @@ string_name_uri_file_decode :: proc "contextless" (self: ^StringName) -> String 
 	return __ret
 }
 string_name_c_escape :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_c_escape(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "c_escape", 3942272618) }
 	__ret: String
@@ -1166,6 +1142,7 @@ string_name_c_escape :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_c_unescape :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_c_unescape(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "c_unescape", 3942272618) }
 	__ret: String
@@ -1173,6 +1150,7 @@ string_name_c_unescape :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_json_escape :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_json_escape(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "json_escape", 3942272618) }
 	__ret: String

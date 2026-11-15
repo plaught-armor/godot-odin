@@ -2139,6 +2139,18 @@ String_Op :: enum i64 {
 	CHR, // string_chr of the same
 	NUM_SCI_CALL, // the engine's String.num_scientific of -123.456
 	NUM_SCI, // string_num_scientific of the same
+	C_ESCAPE_CALL, // the engine's String.c_escape of a line with 5 characters to escape
+	C_ESCAPE, // string_c_escape of the same
+	JSON_ESCAPE_CALL, // the engine's String.json_escape of the same line
+	JSON_ESCAPE, // string_json_escape of the same
+	XML_ESCAPE_CALL, // the engine's String.xml_escape, quotes too, of a tag with 8 characters to escape
+	XML_ESCAPE, // string_xml_escape of the same
+	C_UNESCAPE_CALL, // the engine's String.c_unescape of a line with 5 escapes
+	C_UNESCAPE, // string_c_unescape of the same
+	XML_UNESCAPE_CALL, // the engine's String.xml_unescape of a tag with 8 entities
+	XML_UNESCAPE, // string_xml_unescape of the same
+	URI_ENCODE_CALL, // the engine's String.uri_encode of a file name with 7 characters to encode
+	URI_ENCODE, // string_uri_encode of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2658,6 +2670,45 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 				r = godot.string_num(intrinsics.volatile_load(&v), intrinsics.volatile_load(&places))
 			} else {
 				fn(nil, &args[0], &r, 2)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .C_ESCAPE_CALL, .C_ESCAPE, .JSON_ESCAPE_CALL, .JSON_ESCAPE, .XML_ESCAPE_CALL, .XML_ESCAPE, .C_UNESCAPE_CALL,
+	     .C_UNESCAPE, .XML_UNESCAPE_CALL, .XML_UNESCAPE, .URI_ENCODE_CALL, .URI_ENCODE:
+		source := "a line\twith \"quotes\" and a \\ in it\n"
+		name: cstring = "c_escape"
+		#partial switch kind {
+		case .JSON_ESCAPE_CALL, .JSON_ESCAPE: name = "json_escape"
+		case .XML_ESCAPE_CALL, .XML_ESCAPE: source, name = "<a href=\"x\">Tom & Jerry's</a>", "xml_escape"
+		case .C_UNESCAPE_CALL, .C_UNESCAPE: source, name = "a line\\twith \\\"quotes\\\" and a \\\\ in it\\n", "c_unescape"
+		case .XML_UNESCAPE_CALL, .XML_UNESCAPE:
+			source, name = "&lt;a href=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;", "xml_unescape"
+		case .URI_ENCODE_CALL, .URI_ENCODE: source, name = "a file name (1) \u00e9.txt", "uri_encode"
+		}
+		subject := godot.string_of(source)
+		defer godot.destroy[.STRING](&subject)
+		text := &subject
+		quotes := u8(1)
+		args := [1]gde.ConstTypePtr{&quotes}
+		fn: gde.PtrBuiltInMethod
+		argc := i32(0)
+		if kind == .XML_ESCAPE_CALL || kind == .XML_ESCAPE {
+			fn, argc = godot.builtin_method(.STRING, name, 3429816538), 1
+		} else {
+			fn = godot.builtin_method(.STRING, name, 3942272618)
+		}
+		for _ in 0 ..< n {
+			s := intrinsics.volatile_load(&text)
+			r: godot.String
+			#partial switch kind {
+			case .C_ESCAPE: r = godot.string_c_escape(s)
+			case .JSON_ESCAPE: r = godot.string_json_escape(s)
+			case .XML_ESCAPE: r = godot.string_xml_escape(s, true)
+			case .C_UNESCAPE: r = godot.string_c_unescape(s)
+			case .XML_UNESCAPE: r = godot.string_xml_unescape(s)
+			case .URI_ENCODE: r = godot.string_uri_encode(s)
+			case: fn(s, &args[0], &r, argc)
 			}
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)

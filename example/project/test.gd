@@ -480,6 +480,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_validity(b2)
 	failures += _check_replaced_validates(b2)
 	failures += _check_replaced_num_texts(b2)
+	failures += _check_replaced_escapes(b2)
 	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
@@ -1485,10 +1486,6 @@ func _check_bswaps_case(b2: Bag, bytes: PackedByteArray, offset: int, count: int
 	return 1
 
 
-# validate_node_name, validate_filename and is_valid_unicode_identifier of String and StringName,
-# from Bag.replaced_validates, against the engine's methods called from GDScript: fixed cases,
-# every character up to 0x3000 alone and after a letter, a sample of the higher ones, then 20000
-# seeded random texts. The seed is fixed so a failure repeats. Returns 1 on a mismatch.
 # String.num_int64, num_uint64, chr and num against the engine: the edges of the 64-bit and
 # character ranges, every base from 2 to 36 and bases the engine refuses, place counts past both
 # ends, and seeded random numbers.
@@ -1564,6 +1561,69 @@ func _check_replaced_num_texts(b2: Bag) -> int:
 	return failures
 
 
+# c_escape, json_escape, xml_escape, c_unescape, xml_unescape and uri_encode of String and
+# StringName, from Bag.replaced_escapes, against the engine's methods called from GDScript: fixed
+# cases, among them numbered entities at the ends of their ranges and the ones the engine prints
+# an error for, every character up to 0x3000 alone and between letters, a sample of the higher
+# ones, then 30000 seeded random texts built from pieces of escapes. The seed is fixed so a
+# failure repeats. Returns 1 on a mismatch.
+func _check_replaced_escapes(b2: Bag) -> int:
+	var texts: PackedStringArray = ["", "a", "\\", "\\\\", "\\n", "\\\\n", "\\\\\\n", "\\\\\\\\n", "\\", "a\\", "\\x",
+		"\a\b\f\n\r\t\v'\"", "\\a\\b\\f\\n\\r\\t\\v\\'\\\"", "\\\\a\\\\\\b", "it's \"quoted\"", "<a href=\"x\">Tom & Jerry's</a>",
+		"&amp;amp;", "&amp;lt;", "&gt;&lt;&amp;&quot;&apos;", "&gt", "&lt", "&amp", "&quot", "&apos", "&", "&&", "&;", "&#", "&#x",
+		"&#;", "&#x;", "&#;x", "&#65;", "&#x41;", "&#X41;", "&#x1F600;", "&#x1f600;", "&#128512;", "&#0;", "&#x0;", "&#00;",
+		"&#1;", "&#55296;", "&#xD800;", "&#x110000;", "&#4294967295;", "&#4294967296;", "&#xFFFFFFFF;", "&#x100000000;",
+		"&#x0000000041;", "&#xfffffffff", "&#65", "&#6a;", "&#x4g;", "&#-5;", "&#+5;", "&#00000000000000000000000065;",
+		"&#9223372036854775807;", "&#9223372036854775808;", "&#92233720368547758070;", "&#99999999999999999999999;",
+		"&#99999999999999999999999", "a&#65;b&#x42;c&unknown;d", "a b", "a+b", "a-b_c.d~e", "a/b?c=d&e=f#g", "100%", "héllo wörld",
+		"日本語", "😀", "a\u0001b", "\u007f", "\u0080", "\u07ff", "\u0800", "\uffff", "\U010000", "\U10ffff"]
+	for code: int in range(1, 0x3000):
+		texts.append(String.chr(code))
+		texts.append("a" + String.chr(code) + "b")
+	for code: int in range(0x3000, 0x110000, 97):
+		# No String holds half of a surrogate pair.
+		if code < 0xd800 or code > 0xdfff:
+			texts.append(String.chr(code))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261130
+	var alphabet: Array[String] = ["a", "\\", "\\", "n", "t", "'", "\"", "\n", "\t", "&", "&", "#", "x", ";", ";", "4", "1", "0",
+		"F", "gt;", "lt", "amp;", "quot;", "apos;", "<", ">", " ", "é", "日", "%", "&#", "&#x"]
+	for round: int in 30000:
+		var s := ""
+		for i: int in rng.randi_range(0, 12):
+			s += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		texts.append(s)
+	var want := PackedStringArray()
+	var changed := 0
+	for s: String in texts:
+		for v: Variant in [s, StringName(s)]:
+			want.append(v.c_escape())
+			want.append(v.json_escape())
+			want.append(v.xml_escape(false))
+			want.append(v.xml_escape(true))
+			want.append(v.c_unescape())
+			want.append(v.xml_unescape())
+			want.append(v.uri_encode())
+			changed += int(v.c_unescape() != s) + int(v.xml_unescape() != s)
+	var got: PackedStringArray = b2.replaced_escapes(texts)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_escapes gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	for i: int in want.size():
+		if got[i] != want[i]:
+			print("FAIL: Bag.replaced_escapes on %s, read %d, gave %s, not %s" % [texts[i / 14].c_escape(), i % 14,
+					got[i].c_escape(), want[i].c_escape()])
+			return 1
+	if changed < 5000:
+		print("FAIL: Bag.replaced_escapes saw only %d texts unescaped, too few to prove anything" % changed)
+		return 1
+	return 0
+
+
+# validate_node_name, validate_filename and is_valid_unicode_identifier of String and StringName,
+# from Bag.replaced_validates, against the engine's methods called from GDScript: fixed cases,
+# every character up to 0x3000 alone and after a letter, a sample of the higher ones, then 20000
+# seeded random texts. The seed is fixed so a failure repeats. Returns 1 on a mismatch.
 func _check_replaced_validates(b2: Bag) -> int:
 	var texts: PackedStringArray = ["", "a", "_", "1", "a1", "1a", "Player", "Player.Body:1", "@Node@2", "%Unique", "a/b\\c",
 		"  name  ", "\tmy file: draft?.txt\n", " ", "   ", "a b", "<a>|\"b\"*", "100%", "héllo_wörld2", "日本語", "приве́т", "a·b",

@@ -306,6 +306,9 @@
 		<method name="replaced_validates">
 			<description>validate_node_name and validate_filename of each text, "1" or "0" for its is_valid_unicode_identifier, then the same of its StringName, six per text. test.gd builds the same array from the engine's methods.</description>
 		</method>
+		<method name="replaced_escapes">
+			<description>c_escape, json_escape, xml_escape without and with quotes, c_unescape, xml_unescape and uri_encode of each text, then the same of its StringName, fourteen per text. test.gd builds the same array from the engine's methods.</description>
+		</method>
 		<method name="replaced_int_texts">
 			<description>The generated [code]string_num_int64[/code] and [code]string_num_uint64[/code] of each number, two Strings a number.</description>
 		</method>

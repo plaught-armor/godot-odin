@@ -90,6 +90,12 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.num` | `string_of_float` | Godot 4.7-stable | 173 ns | 54 ns |
 | `String.chr` | `string_of_runes` | Godot 4.7-stable | 17 ns | 9 ns |
 | `String.num_scientific` | `string_num_scientific` | Godot 4.7-stable | 40 ns | 25 ns |
+| `String.c_escape` | `string_c_escape` | Godot 4.7-stable | 410 ns | 57 ns |
+| `String.json_escape` | `string_json_escape` | Godot 4.7-stable | 362 ns | 47 ns |
+| `String.xml_escape` | `string_xml_escape` | Godot 4.7-stable | 347 ns | 54 ns |
+| `String.c_unescape` | `string_c_unescape` | Godot 4.7-stable | 435 ns | 117 ns |
+| `String.xml_unescape` | `string_xml_unescape` | Godot 4.7-stable | 52 ns | 27 ns |
+| `String.uri_encode` | `string_uri_encode` | Godot 4.7-stable | 234 ns | 40 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -238,6 +244,23 @@ written straight to their place where the C code moves them. It is timed on -123
 on every power of ten and of two a double holds, the doubles beside each power of ten, and
 100000 doubles of random bits, NaN and infinity among them. `String.humanize_size` stays with the
 engine: its unit names go through the project's translations.
+
+`string_c_escape`, `string_json_escape` and `string_xml_escape` share `string_escaped`: one pass
+counts, one writes into a single allocation, and a String with nothing to escape shares its
+storage. The engine replaces one kind of character at a time, a new String each, which gives the
+same text because no escape holds a character a later replacement looks for. That does not hold
+for `c_unescape`, whose ten replacements run in order with `\\` last, so a backslash made by one
+never pairs with the next character: `string_c_unescape` runs the same ten passes in one buffer.
+`string_xml_unescape` and `string_uri_encode` answer in place and call the engine only where it
+prints an error: a decimal entity past 64 bits, and a character that is 0, a surrogate or past
+U+10FFFF. A numbered entity is taken from 1 to 0xFFFFFFFF without a Unicode check, as the engine
+takes it. They are timed on a 35-character line with 5 characters to escape, on a 29-character
+tag with 8, on the escaped forms of both, and on a 21-character file name with 7 characters to
+encode. `_check_replaced_escapes` checks
+them, as String and as StringName, on fixed Strings, on every character up to 0x3000 alone and
+between letters, on every 97th character above, and on 30000 seeded random texts built from
+pieces of escapes. `String.hex_decode` stays with the engine: a fast path measured 35 ns against
+the engine's 25 ns, because making and sizing the byte array costs two engine calls more.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step
