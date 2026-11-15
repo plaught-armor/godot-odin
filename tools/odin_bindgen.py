@@ -94,6 +94,18 @@ IN_PLACE = {
                     ("PackedFloat64Array", "value"), ("PackedVector2Array", "value"),
                     ("PackedVector3Array", "value"), ("PackedColorArray", "value"),
                     ("PackedVector4Array", "value"))},
+    **{(t, "fill"): f"\tif packed_layout_known && packed_stored_fill(self, {v}) {{ return }}\n"
+       for t, v in (("PackedByteArray", "u8(value)"), ("PackedInt32Array", "i32(value)"),
+                    ("PackedInt64Array", "value"), ("PackedFloat32Array", "f32(value)"),
+                    ("PackedFloat64Array", "value"), ("PackedVector2Array", "value"),
+                    ("PackedVector3Array", "value"), ("PackedColorArray", "value"),
+                    ("PackedVector4Array", "value"))},
+    **{(t, "reverse"): f"\tif packed_layout_known && packed_stored_reverse({e}, self) {{ return }}\n"
+       for t, e in (("PackedByteArray", "u8"), ("PackedInt32Array", "i32"), ("PackedInt64Array", "i64"),
+                    ("PackedFloat32Array", "f32"), ("PackedFloat64Array", "f64"),
+                    ("PackedStringArray", "String"), ("PackedVector2Array", "Vector2"),
+                    ("PackedVector3Array", "Vector3"), ("PackedColorArray", "Color"),
+                    ("PackedVector4Array", "Vector4"))},
     # godot/packed.odin: the engine is called for an offset or count out of range, where it prints an
     # error, and for shared storage, which it copies.
     **{("PackedByteArray", f"bswap{n}"): f"\tif packed_bswap(u{n}, self, offset, count) {{ return }}\n"
@@ -115,6 +127,8 @@ IN_PLACE = {
     ("Array", "size"): "\tif array_layout_known { return array_stored_size(self) }\n",
     ("Array", "is_empty"): "\tif array_layout_known { return array_stored_size(self) == 0 }\n",
     ("Array", "set"): "\tif array_stored_set(self, index, value) { return }\n",
+    ("Array", "fill"): "\tif array_stored_fill(self, value) { return }\n",
+    ("Array", "reverse"): "\tif array_stored_reverse(self) { return }\n",
     ("Array", "get"): "\tif v, ok := array_stored_get(self, index); ok { return v }\n",
     ("Array", "front"): "\tif v, ok := array_stored_front(self); ok { return v }\n",
     ("Array", "back"): "\tif v, ok := array_stored_back(self); ok { return v }\n",

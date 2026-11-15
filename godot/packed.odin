@@ -73,6 +73,35 @@ packed_stored_set :: #force_inline proc "contextless" (a: rawptr, index: i64, v:
 	return true
 }
 
+// Vector::fill where it only stores: every element of packed array `a` becomes `v`. False with
+// nothing written when another array shares the storage, which the engine copies first. Not for a
+// String element, whose store counts references. Only when `packed_layout_known`; the generated
+// `fill` of the nine other packed types tries it first (tools/odin_bindgen.py IN_PLACE).
+packed_stored_fill :: #force_inline proc "contextless" (a: rawptr, v: $E) -> bool {
+	p := ([^]rawptr)(a)[PACKED_DATA_WORD]
+	if p == nil { return true }
+	h := ([^]i64)(uintptr(p) - PACKED_DATA_OFFSET)
+	if intrinsics.atomic_load(&h[0]) != 1 { return false }
+	#no_bounds_check for &x in ([^]E)(p)[:h[2]] { x = v }
+	return true
+}
+
+// Vector::reverse where it only swaps: the `E` elements of packed array `a` in the opposite order.
+// False with nothing written when another array shares the storage, which the engine copies first.
+// A String element moves as its one pointer, as the engine's swap moves it. Only when
+// `packed_layout_known`; the generated `reverse` tries it first (tools/odin_bindgen.py IN_PLACE).
+packed_stored_reverse :: #force_inline proc "contextless" ($E: typeid, a: rawptr) -> bool {
+	p := ([^]rawptr)(a)[PACKED_DATA_WORD]
+	if p == nil { return true }
+	h := ([^]i64)(uintptr(p) - PACKED_DATA_OFFSET)
+	if intrinsics.atomic_load(&h[0]) != 1 { return false }
+	xs := ([^]E)(p)[:h[2]]
+	#no_bounds_check for i in 0 ..< len(xs) / 2 {
+		xs[i], xs[len(xs) - 1 - i] = xs[len(xs) - 1 - i], xs[i]
+	}
+	return true
+}
+
 // Sets `packed_layout_known` from packed arrays of known size: one shared by two references, one
 // grown by a push so its capacity differs from its size, and one emptied by a resize.
 check_packed_layout :: proc "contextless" () {

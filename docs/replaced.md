@@ -465,6 +465,11 @@ place (`packed_stored_set`) when the index is in range and the reference count i
 another array, which it copies first. `PackedStringArray.set` always calls the engine: storing a
 String counts references.
 
+The generated `fill` of the same nine types (`packed_stored_fill`) and `reverse` of all ten
+(`packed_stored_reverse`) write the storage in place under the same condition, a reference count
+of 1, and call the engine for shared storage. `reverse` moves a String as its one pointer, as the
+engine's swap does; `PackedStringArray.fill` always calls the engine.
+
 `find` and `rfind` test whole blocks of eight elements with no branch per element, so the
 compares vectorize, and search the block holding a match one by one. Vector4 and Color elements
 are the exception: each is compared as one four-float vector, element by element, and `rfind`
@@ -485,7 +490,9 @@ holding repeats, NaN, -0 and the extremes; on values that hit, miss, or hit only
 conversion; on indices and starts either side of 0, of each end, and the `int64` extremes; on 600
 seeded random sets, half of them of up to 40 elements with a value set at random places. `set` is
 checked by `_check_packed_set_case`: two sets in turn on a copy of each array, in range and out of
-it, on storage shared and then not, against the engine's and with the original unchanged.
+it, on storage shared and then not, against the engine's and with the original unchanged. `fill`
+and `reverse` are checked by `_check_packed_fill_case` on three copies of each array, reversed
+twice, reversed then filled, and filled while the storage is still shared.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -504,12 +511,15 @@ it, on storage shared and then not, against the engine's and with the original u
 | `PackedVector4Array.bsearch` | 7.2 ns | 4.0 ns |
 | `PackedInt64Array.set` | 2.65 ns | 1.33 ns |
 | `PackedVector3Array.set` | 3.99 ns | 1.05 ns |
+| `PackedInt64Array.fill` of 16 | 5.7 ns | 1.5 ns |
+| `PackedInt64Array.reverse` of 16 | 5.6 ns | 4.3 ns |
+| `PackedByteArray.fill` of 256 | 105 ns | 1.7 ns |
 | `PackedStringArray.bsearch` | 13.9 ns | 10.3 ns |
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an array of 0 to 63,
 and `find` of "12" in a PackedStringArray of "0" to "15". The rows from `PackedByteArray.count`
 down search 64 ascending elements for element 40, `rfind` from the end. `set` stores at index 4
-of 16 in an array that shares its storage with no other.
+of 16 in an array that shares its storage with no other, as do the `fill` and `reverse` rows.
 
 ## Sine and cosine
 
@@ -628,6 +638,14 @@ case goes to the engine call, which prints its error, converts the value, copies
 releases the old element. The value is copied as its type and two words, not as one 24-byte block,
 which would wait on a value the caller has just written.
 
+`fill` and `reverse` write in place (`array_stored_fill`, `array_stored_reverse`) when the Array is
+not read-only and its storage is not shared with a duplicate. `reverse` swaps the elements as
+their 24 bytes, as the engine's swap moves a Variant. `fill` stores a value of a type the reads
+copy in place into an Array that is untyped or typed as that type, one more reference per element
+for a String or StringName; an element that holds something counted or allocated is first released
+through the engine's Variant destructor, as the engine's assignment releases it. A value of any
+other type, or of another type than a typed Array's, goes to the engine call with nothing written.
+
 Checked against Godot 4.7-stable by `_check_replaced_array`, which compares every read from
 GDScript and from `Bag.replaced_array`, the errors included, on empty, mixed and typed Arrays of
 every type, with NaN, -0, Strings and StringNames of the same texts, values that differ only in
@@ -636,7 +654,10 @@ bits and the `int64` extremes; and on 300 seeded random sets of four Arrays, hal
 `_check_replaced_array_set` stores every value of those types over every element of the same
 Arrays through `Bag.replaced_array_set` and through the engine's `set`, in storage shared with a
 duplicate and not, at indices either side of each end and the `int64` extremes, into a read-only
-Array, and on 300 more seeded random sets.
+Array, and on 300 more seeded random sets. `_check_replaced_array_fill` fills the same Arrays
+with every one of those values and reverses them through `Bag.replaced_array_fill` and through the
+engine, in storage shared and not, a read-only Array and a duplicate included, and on 300 more
+seeded random sets.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -645,12 +666,16 @@ Array, and on 300 more seeded random sets.
 | `Array.find` on ints | 109 ns | 24 ns |
 | `Array.find` on Strings | 66 ns | 17 ns |
 | `Array.set` | 9.5 ns | 2.6 ns |
+| `Array.fill` of 64 ints | 150 ns | 52 ns |
+| `Array.reverse` of 64 ints | 54 ns | 19 ns |
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an Array of the ints 0
 to 63, `find` of "12" in an Array of the Strings "0" to "15", and `set` of element 40 of the ints
 to 40. On a 4.8 source build the `set` call takes 5.9 ns. Storing a String or StringName over that
 int and then the int back takes 13.8 ns against 14.1 ns for the two engine calls: only the first
-store is in place, and the engine releases the String for the second.
+store is in place, and the engine releases the String for the second. `fill` and `reverse` run
+on the 64 ints; `fill` of an int after a String was stored as the last element takes 55 ns against
+118 ns.
 
 ## Dictionary
 

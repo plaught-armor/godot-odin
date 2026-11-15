@@ -665,6 +665,12 @@ Ident :: enum i64 {
 	SUBSEQ,             // string_is_subsequence_of of the same
 	SUBSEQN_CALL,       // the engine's String.is_subsequence_ofn of "LVL01" in that path
 	SUBSEQN,            // string_is_subsequence_ofn of the same
+	PACKED_FILL_CALL,   // the engine's PackedInt64Array.fill of 16, the storage not shared
+	PACKED_FILL,        // the generated packed_int64_array_fill of the same, stored in place
+	PACKED_REVERSE_CALL, // the engine's PackedInt64Array.reverse of 16
+	PACKED_REVERSE,     // the generated packed_int64_array_reverse of the same
+	BYTES_FILL_CALL,    // the engine's PackedByteArray.fill of 256
+	BYTES_FILL,         // the generated packed_byte_array_fill of the same
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1393,6 +1399,45 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			}
 		}
 		sum += godot.packed_int64_array_get(&a, 4)
+	case .PACKED_FILL_CALL, .PACKED_FILL, .PACKED_REVERSE_CALL, .PACKED_REVERSE:
+		a := godot.packed_int64_array_new()
+		defer godot.packed_int64_array_destroy(&a)
+		godot.packed_int64_array_resize(&a, 16)
+		godot.packed_int64_array_set(&a, 3, 9)
+		p := &a
+		#partial switch kind {
+		case .PACKED_FILL:
+			for i in 0 ..< n { godot.packed_int64_array_fill(intrinsics.volatile_load(&p), i) }
+		case .PACKED_FILL_CALL:
+			fn := godot.builtin_method(.PACKED_INT64_ARRAY, "fill", 2823966027)
+			for i in 0 ..< n {
+				value := i
+				args := [1]gde.ConstTypePtr{&value}
+				fn(intrinsics.volatile_load(&p), &args[0], nil, 1)
+			}
+		case .PACKED_REVERSE:
+			for _ in 0 ..< n { godot.packed_int64_array_reverse(intrinsics.volatile_load(&p)) }
+		case:
+			fn := godot.builtin_method(.PACKED_INT64_ARRAY, "reverse", 3218959716)
+			for _ in 0 ..< n { fn(intrinsics.volatile_load(&p), nil, nil, 0) }
+		}
+		sum += godot.packed_int64_array_get(&a, 4)
+	case .BYTES_FILL_CALL, .BYTES_FILL:
+		a := godot.packed_byte_array_new()
+		defer godot.packed_byte_array_destroy(&a)
+		godot.packed_byte_array_resize(&a, 256)
+		p := &a
+		if kind == .BYTES_FILL {
+			for i in 0 ..< n { godot.packed_byte_array_fill(intrinsics.volatile_load(&p), i) }
+		} else {
+			fn := godot.builtin_method(.PACKED_BYTE_ARRAY, "fill", 2823966027)
+			for i in 0 ..< n {
+				value := i
+				args := [1]gde.ConstTypePtr{&value}
+				fn(intrinsics.volatile_load(&p), &args[0], nil, 1)
+			}
+		}
+		sum += godot.packed_byte_array_get(&a, 4)
 	case .PACKED_SET_V3_CALL, .PACKED_SET_V3:
 		a := godot.packed_vector3_array_new()
 		defer godot.packed_vector3_array_destroy(&a)
@@ -2476,6 +2521,12 @@ Array_Op :: enum i64 {
 	SET_STRING,       // array_set of the same; the int back releases the String, so the engine stores it
 	SET_NAME_CALL,    // the engine's Array.set, a StringName over an int and then the int back
 	SET_NAME,         // array_set of the same
+	FILL_CALL,        // the engine's Array.fill, an int over 64 ints
+	FILL,             // array_fill of the same
+	FILL_LATE_CALL,   // the engine's Array.fill of an int after a String was set as the last of the 64
+	FILL_LATE,        // array_fill of the same, which releases the String through the engine
+	REVERSE_CALL,     // the engine's Array.reverse of 64 ints
+	REVERSE,          // array_reverse of the same
 }
 
 // Nanoseconds per `kind` round on the ints 0 to 63 in one Array and the Strings "0" to "15" in
@@ -2582,6 +2633,27 @@ array_ns :: proc(self: ^Bench, kind: Array_Op, n: i64) -> f64 {
 				godot.array_set(intrinsics.volatile_load(&ref), i, godot.variant(i))
 			}
 		}
+		sum += godot.array_size(&a)
+	case .FILL_CALL, .FILL, .FILL_LATE_CALL, .FILL_LATE:
+		fill_fn := godot.builtin_method(.ARRAY, "fill", 3316032543)
+		late := kind == .FILL_LATE_CALL || kind == .FILL_LATE
+		for i in 0 ..< n {
+			if late { godot.array_set(&a, 63, kv) }
+			v := godot.variant(i)
+			if kind == .FILL || kind == .FILL_LATE {
+				godot.array_fill(intrinsics.volatile_load(&ref), v)
+			} else {
+				args := [1]gde.ConstTypePtr{&v}
+				fill_fn(intrinsics.volatile_load(&ref), &args[0], nil, 1)
+			}
+		}
+		sum += godot.array_size(&a)
+	case .REVERSE_CALL:
+		reverse_fn := godot.builtin_method(.ARRAY, "reverse", 3218959716)
+		for _ in 0 ..< n { reverse_fn(intrinsics.volatile_load(&ref), nil, nil, 0) }
+		sum += godot.array_size(&a)
+	case .REVERSE:
+		for _ in 0 ..< n { godot.array_reverse(intrinsics.volatile_load(&ref)) }
 		sum += godot.array_size(&a)
 	}
 	ns := f64(time.tick_since(start)) / f64(n)

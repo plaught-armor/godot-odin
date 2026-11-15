@@ -138,6 +138,8 @@ register_extras :: proc() {
 	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
 	godot.method(b, "replaced_callables", bag_replaced_callables, {"c", "s"})
 	godot.method(b, "replaced_packed_set", bag_replaced_packed_set, {"arrays", "values", "index", "other"})
+	godot.method(b, "replaced_packed_fill", bag_replaced_packed_fill, {"arrays", "values"})
+	godot.method(b, "replaced_array_fill", bag_replaced_array_fill, {"a", "value", "reverse"})
 	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "name_copies_counted", bag_name_copies_counted, {"texts"})
 	godot.method(b, "string_copies_counted", bag_string_copies_counted, {"texts"})
@@ -2067,6 +2069,55 @@ bag_replaced_packed_set :: proc(self: ^Bag, arrays: godot.Array, values: godot.A
 	put_packed_set(&out, godot.PackedColorArray, godot.Color, &as[8], &vs[8], index, other, godot.packed_color_array_new_from_packed_color_array, godot.packed_color_array_set, godot.packed_color_array_destroy)
 	put_packed_set(&out, godot.PackedVector4Array, godot.Vector4, &as[9], &vs[9], index, other, godot.packed_vector4_array_new_from_packed_vector4_array, godot.packed_vector4_array_set, godot.packed_vector4_array_destroy)
 	return out
+}
+
+// Three copies of each of `arrays`, one array of each packed type in the order of their Variant
+// types, after the generated `reverse` and `fill` of the value at the same place in `values`:
+// reversed twice, reversed and then filled, and filled. The first call on a copy finds it sharing
+// its storage with the original, the second finds it alone.
+bag_replaced_packed_fill :: proc(self: ^Bag, arrays: godot.Array, values: godot.Array) -> godot.Array {
+	arrays, values := arrays, values
+	out := godot.array_new()
+	as, vs := godot.array_read(&arrays), godot.array_read(&values)
+	if len(as) != 10 || len(vs) != 10 { return out }
+	put_packed_fill(&out, godot.PackedByteArray, i64, &as[0], &vs[0], godot.packed_byte_array_new_from_packed_byte_array, godot.packed_byte_array_fill, godot.packed_byte_array_reverse, godot.packed_byte_array_destroy)
+	put_packed_fill(&out, godot.PackedInt32Array, i64, &as[1], &vs[1], godot.packed_int32_array_new_from_packed_int32_array, godot.packed_int32_array_fill, godot.packed_int32_array_reverse, godot.packed_int32_array_destroy)
+	put_packed_fill(&out, godot.PackedInt64Array, i64, &as[2], &vs[2], godot.packed_int64_array_new_from_packed_int64_array, godot.packed_int64_array_fill, godot.packed_int64_array_reverse, godot.packed_int64_array_destroy)
+	put_packed_fill(&out, godot.PackedFloat32Array, f64, &as[3], &vs[3], godot.packed_float32_array_new_from_packed_float32_array, godot.packed_float32_array_fill, godot.packed_float32_array_reverse, godot.packed_float32_array_destroy)
+	put_packed_fill(&out, godot.PackedFloat64Array, f64, &as[4], &vs[4], godot.packed_float64_array_new_from_packed_float64_array, godot.packed_float64_array_fill, godot.packed_float64_array_reverse, godot.packed_float64_array_destroy)
+	put_packed_fill(&out, godot.PackedStringArray, godot.String, &as[5], &vs[5], godot.packed_string_array_new_from_packed_string_array, godot.packed_string_array_fill, godot.packed_string_array_reverse, godot.packed_string_array_destroy)
+	put_packed_fill(&out, godot.PackedVector2Array, godot.Vector2, &as[6], &vs[6], godot.packed_vector2_array_new_from_packed_vector2_array, godot.packed_vector2_array_fill, godot.packed_vector2_array_reverse, godot.packed_vector2_array_destroy)
+	put_packed_fill(&out, godot.PackedVector3Array, godot.Vector3, &as[7], &vs[7], godot.packed_vector3_array_new_from_packed_vector3_array, godot.packed_vector3_array_fill, godot.packed_vector3_array_reverse, godot.packed_vector3_array_destroy)
+	put_packed_fill(&out, godot.PackedColorArray, godot.Color, &as[8], &vs[8], godot.packed_color_array_new_from_packed_color_array, godot.packed_color_array_fill, godot.packed_color_array_reverse, godot.packed_color_array_destroy)
+	put_packed_fill(&out, godot.PackedVector4Array, godot.Vector4, &as[9], &vs[9], godot.packed_vector4_array_new_from_packed_vector4_array, godot.packed_vector4_array_fill, godot.packed_vector4_array_reverse, godot.packed_vector4_array_destroy)
+	return out
+}
+
+// Appends to `out` three copies of the array `a` holds: after `reverse` twice, after `reverse` and
+// `fill` of the value `v` holds, and after `fill` alone.
+put_packed_fill :: proc(out: ^godot.Array, $A, $V: typeid, a, v: ^godot.Variant, dup: proc "contextless" (A) -> A,
+	fill: proc "contextless" (^A, V), reverse: proc "contextless" (^A), free: proc "contextless" (^A)) {
+	y := godot.from_variant(V, v)
+	for round in 0 ..< 3 {
+		x := dup(godot.from_variant(A, a))
+		if round < 2 { reverse(&x) }
+		if round == 0 { reverse(&x) } else { fill(&x, y) }
+		held := godot.variant(x)
+		godot.array_push_back(out, held)
+		gde.variant_destroy(&held)
+		free(&x)
+	}
+}
+
+// array_reverse of `a` when `reverse`, else array_fill of it with `value`; test.gd then compares
+// `a` with an Array the engine's call wrote to.
+bag_replaced_array_fill :: proc(self: ^Bag, a: godot.Array, value: godot.Variant, reverse: bool) {
+	a := a
+	if reverse {
+		godot.array_reverse(&a)
+	} else {
+		godot.array_fill(&a, value)
+	}
 }
 
 // Appends to `out` a copy of the array `a` holds after `set` of the value `v` holds at `index` and

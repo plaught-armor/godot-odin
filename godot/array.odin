@@ -372,6 +372,70 @@ array_stored_set :: #force_inline proc "contextless" (a: ^Array, index: i64, v: 
 	return stored_put(&([^]Variant)(d)[index], &v, array_stored_type(a))
 }
 
+// The elements of `a` when it alone holds its storage and is not read-only, to write in place. False
+// when the engine must write: a read-only Array, where it prints its error; an Array with no
+// storage; and storage shared with a duplicate, which it copies first. Only when
+// `array_layout_known`.
+@(private)
+array_stored_own :: #force_inline proc "contextless" (a: ^Array) -> ([]Variant, bool) {
+	if array_stored_read_only(a) { return nil, false }
+	d := (^rawptr)(uintptr((^rawptr)(a)^) + ARRAY_DATA_OFFSET)^
+	if d == nil { return nil, false }
+	h := ([^]i64)(uintptr(d) - PACKED_DATA_OFFSET)
+	if intrinsics.atomic_load(&h[0]) != 1 { return nil, false }
+	return ([^]Variant)(d)[:h[2]], true
+}
+
+// Array.fill in place: every element of `a` becomes a copy of `v`, an element that holds something
+// counted or allocated released first through the engine's Variant destructor, as the engine's
+// assignment releases it. False with nothing written when the engine must do more: for an Array
+// `array_stored_own` leaves to it, for a typed Array given a value of another type, which it
+// converts or refuses, and for a value of a type it copies itself. The generated `fill` tries this
+// first (tools/odin_bindgen.py IN_PLACE).
+array_stored_fill :: #force_inline proc "contextless" (a: ^Array, v: Variant) -> bool {
+	if !array_layout_known { return false }
+	xs, ok := array_stored_own(a)
+	if !ok { return false }
+	v := v
+	tag := variant_tag(&v)
+	typed := array_stored_type(a)
+	if typed != .NIL && typed != tag { return false }
+	kind := array_elem(tag)
+	if kind == .ENGINE || (kind == .STRING && !string_layout_known) || (kind == .NAME && !name_layout_known) { return false }
+	at := rawptr(&v._opaque[VARIANT_DATA_OFFSET])
+	from := ([^]u64)(&v)
+	for &x in xs {
+		// The new reference is taken before the old value goes, which may be the same String.
+		if kind == .NAME {
+			name_ref((^StringName)(at))
+		} else if kind == .STRING {
+			string_ref((^String)(at))
+		}
+		switch array_elem(variant_tag(&x)) {
+		case .ENGINE, .STRING, .NAME: gde.variant_destroy(&x)
+		case .NIL, .BOOL, .WORD, .DOUBLE, .REAL_2, .REAL_3, .REAL_4, .INT_2, .INT_3, .INT_4:
+		}
+		(^u32)(&x)^ = u32(tag)
+		to := ([^]u64)(&x)
+		to[1], to[2] = from[1], from[2]
+	}
+	return true
+}
+
+// Array.reverse where it only swaps: the elements of `a` in the opposite order, each moved as its
+// 24 bytes, as the engine's swap moves a Variant. False with nothing written for an Array
+// `array_stored_own` leaves to the engine. The generated `reverse` tries this first
+// (tools/odin_bindgen.py IN_PLACE).
+array_stored_reverse :: #force_inline proc "contextless" (a: ^Array) -> bool {
+	if !array_layout_known { return false }
+	xs, ok := array_stored_own(a)
+	if !ok { return false }
+	#no_bounds_check for i in 0 ..< len(xs) / 2 {
+		xs[i], xs[len(xs) - 1 - i] = xs[len(xs) - 1 - i], xs[i]
+	}
+	return true
+}
+
 // Makes the Variant at `x`, inside an Array or a Dictionary typed `typed` (NIL when untyped), a
 // copy of `v`. True when stored. False with nothing written when the engine must do more than
 // store: `v` is of another type than `typed`, which the engine converts or refuses; `x` holds

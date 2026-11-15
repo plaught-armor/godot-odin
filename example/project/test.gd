@@ -2615,6 +2615,29 @@ func _check_packed_set_case(b2: Bag, arrays: Array, values: Array, index: int, o
 	return 0
 
 
+# Bag.replaced_packed_fill against the engine's reverse and fill on copies of each of `arrays`,
+# which must come back unchanged themselves: reversed twice, reversed and then filled with the
+# value at the same place in `values`, and filled. Compared as bytes, so a NaN matches.
+func _check_packed_fill_case(b2: Bag, arrays: Array, values: Array) -> int:
+	var before: PackedByteArray = var_to_bytes(arrays)
+	var want: Array = []
+	for k: int in arrays.size():
+		for round: int in 3:
+			var a: Variant = arrays[k].duplicate()
+			if round < 2:
+				a.reverse()
+			if round == 0:
+				a.reverse()
+			else:
+				a.fill(values[k])
+			want.append(a)
+	var got: Array = b2.replaced_packed_fill(arrays, values)
+	if var_to_bytes(got) != var_to_bytes(want) or var_to_bytes(arrays) != before:
+		print("FAIL: Bag.replaced_packed_fill(%s, %s) gave %s, not %s" % [arrays, values, got, want])
+		return 1
+	return 0
+
+
 # One packed array of each type, in the order of their Variant types, each of up to `most` elements
 # drawn from `pools`, sorted when `sorted`.
 func _random_packed_set(rng: RandomNumberGenerator, pools: Array, most: int, sorted: bool) -> Array:
@@ -2682,6 +2705,7 @@ func _check_replaced_packed(b2: Bag) -> int:
 			for t: int in 3:
 				var q: Array = places[(vi * 3 + t) % places.size()]
 				failures += _check_packed_set_case(b2, arrays, value_sets[vi], q[0], q[1])
+			failures += _check_packed_fill_case(b2, arrays, value_sets[vi])
 	for arrays: Array in [empty, sorted, odd]:
 		for vi: int in value_sets.size():
 			for fi: int in froms.size():
@@ -2702,6 +2726,7 @@ func _check_replaced_packed(b2: Bag) -> int:
 			var pool: Array = pools[k]
 			values.append(pool[rng.randi() % pool.size()])
 		failures += _check_packed_case(b2, arrays, values, rng.randi_range(-2, 10), rng.randi_range(-11, 11), rng.randi() % 2 == 0)
+		failures += _check_packed_fill_case(b2, arrays, values)
 	# Arrays of up to 40, so find and rfind scan whole blocks: a value outside the pools, absent or
 	# set at up to two random places, and starts anywhere.
 	var outside: Array = [9, 9, 9, 9.5, 9.5, "zz", Vector2(9, 9), Vector3(9, 9, 9), Color(9, 9, 9, 9), Vector4(9, 9, 9, 9)]
@@ -2948,6 +2973,63 @@ func _check_array_set_case(b2: Bag, arrays: Array, values: Array, index: int, ot
 	return 0
 
 
+# Array.fill of each of `values`, and Array.reverse, from Bag.replaced_array_fill against the
+# engine's on a copy of each of `arrays`: once on a copy that still shares its storage with the
+# original, which the engine copies first, and once on a copy made to own its storage by reversing
+# it twice. Returns the number of mismatches.
+func _check_array_fill_case(b2: Bag, arrays: Array, values: Array) -> int:
+	for a: Array in arrays:
+		for vi: int in values.size() + 1:
+			for own: bool in [false, true]:
+				var want: Array = a.duplicate()
+				var got: Array = a.duplicate()
+				if own:
+					want.reverse()
+					want.reverse()
+					got.reverse()
+					got.reverse()
+				var v: Variant = null if vi == values.size() else values[vi]
+				if vi == values.size():
+					want.reverse()
+				else:
+					want.fill(v)
+				b2.replaced_array_fill(got, v, vi == values.size())
+				if not _same_elements(got, want):
+					print("FAIL: Bag.replaced_array_fill(%s, %s, %s) gave %s, not %s" % [a, v, vi == values.size(), got, want])
+					return 1
+	return 0
+
+
+# The Array.fill and reverse that array_stored_fill and array_stored_reverse answer, on the Arrays
+# and values of _check_replaced_array: every type filled over every type, in untyped and typed
+# Arrays, a read-only Array, a duplicate, which must leave the original alone, and seeded random
+# Arrays.
+func _check_replaced_array_fill(b2: Bag, arrays: Array, pool: Array) -> int:
+	var failures: int = _check_array_fill_case(b2, arrays, pool)
+	var read_only: Array = [1, "a", 2.0]
+	read_only.make_read_only()
+	b2.replaced_array_fill(read_only, 5, false)
+	b2.replaced_array_fill(read_only, null, true)
+	if not _same_elements(read_only, [1, "a", 2.0]):
+		print("FAIL: Bag.replaced_array_fill wrote to a read-only Array: %s" % [read_only])
+		failures += 1
+	for reverse: bool in [false, true]:
+		var shared: Array = [1, "a", 3]
+		var copy: Array = shared.duplicate()
+		b2.replaced_array_fill(copy, 7, reverse)
+		if shared != [1, "a", 3] or copy != ([3, "a", 1] if reverse else [7, 7, 7]):
+			print("FAIL: Bag.replaced_array_fill on a duplicate gave %s and left %s" % [copy, shared])
+			failures += 1
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261118
+	for i: int in 300:
+		var some: Array = []
+		for k: int in 4:
+			some.append(_random_array(rng, pool, 12, k % 2 == 1))
+		failures += _check_array_fill_case(b2, some, [pool[rng.randi() % pool.size()], pool[rng.randi() % pool.size()]])
+	return failures
+
+
 # The Array.set that array_stored_set answers, on the Arrays and values of _check_replaced_array:
 # every type stored over every type, in untyped and typed Arrays, at indices either side of each
 # end, into a read-only Array, and on seeded random Arrays.
@@ -3016,6 +3098,7 @@ func _check_replaced_array(b2: Bag) -> int:
 	for fi: int in froms.size():
 		failures += _check_array_case(b2, arrays, pool, indices[fi % indices.size()], froms[fi])
 	failures += _check_replaced_array_set(b2, arrays, pool)
+	failures += _check_replaced_array_fill(b2, arrays, pool)
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = 20261113
 	for i: int in 300:

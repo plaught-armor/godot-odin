@@ -2793,6 +2793,7 @@ array_remove_at :: proc "contextless" (self: ^Array, position: i64) {
 	__fn(self, &__args[0], nil, 1)
 }
 array_fill :: proc "contextless" (self: ^Array, value: Variant) {
+	if array_stored_fill(self, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "fill", 3316032543) }
 	__a_value := transmute([3]uintptr)value
@@ -2953,6 +2954,7 @@ array_bsearch_custom :: proc "contextless" (self: ^Array, value: Variant, func: 
 	return __ret
 }
 array_reverse :: proc "contextless" (self: ^Array) {
+	if array_stored_reverse(self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -3195,6 +3197,7 @@ packed_byte_array_insert :: proc "contextless" (self: ^PackedByteArray, at_index
 	return __ret
 }
 packed_byte_array_fill :: proc "contextless" (self: ^PackedByteArray, value: i64) {
+	if packed_layout_known && packed_stored_fill(self, u8(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "fill", 2823966027) }
 	__a_value := value
@@ -3216,6 +3219,7 @@ packed_byte_array_clear :: proc "contextless" (self: ^PackedByteArray) {
 	__fn(self, nil, nil, 0)
 }
 packed_byte_array_reverse :: proc "contextless" (self: ^PackedByteArray) {
+	if packed_layout_known && packed_stored_reverse(u8, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -3759,6 +3763,7 @@ packed_int32_array_insert :: proc "contextless" (self: ^PackedInt32Array, at_ind
 	return __ret
 }
 packed_int32_array_fill :: proc "contextless" (self: ^PackedInt32Array, value: i64) {
+	if packed_layout_known && packed_stored_fill(self, i32(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "fill", 2823966027) }
 	__a_value := value
@@ -3780,6 +3785,7 @@ packed_int32_array_clear :: proc "contextless" (self: ^PackedInt32Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_int32_array_reverse :: proc "contextless" (self: ^PackedInt32Array) {
+	if packed_layout_known && packed_stored_reverse(i32, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -3917,6 +3923,7 @@ packed_int64_array_insert :: proc "contextless" (self: ^PackedInt64Array, at_ind
 	return __ret
 }
 packed_int64_array_fill :: proc "contextless" (self: ^PackedInt64Array, value: i64) {
+	if packed_layout_known && packed_stored_fill(self, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "fill", 2823966027) }
 	__a_value := value
@@ -3938,6 +3945,7 @@ packed_int64_array_clear :: proc "contextless" (self: ^PackedInt64Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_int64_array_reverse :: proc "contextless" (self: ^PackedInt64Array) {
+	if packed_layout_known && packed_stored_reverse(i64, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -4075,6 +4083,7 @@ packed_float32_array_insert :: proc "contextless" (self: ^PackedFloat32Array, at
 	return __ret
 }
 packed_float32_array_fill :: proc "contextless" (self: ^PackedFloat32Array, value: f64) {
+	if packed_layout_known && packed_stored_fill(self, f32(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "fill", 833936903) }
 	__a_value := value
@@ -4096,6 +4105,7 @@ packed_float32_array_clear :: proc "contextless" (self: ^PackedFloat32Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_float32_array_reverse :: proc "contextless" (self: ^PackedFloat32Array) {
+	if packed_layout_known && packed_stored_reverse(f32, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -4233,6 +4243,7 @@ packed_float64_array_insert :: proc "contextless" (self: ^PackedFloat64Array, at
 	return __ret
 }
 packed_float64_array_fill :: proc "contextless" (self: ^PackedFloat64Array, value: f64) {
+	if packed_layout_known && packed_stored_fill(self, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "fill", 833936903) }
 	__a_value := value
@@ -4254,6 +4265,7 @@ packed_float64_array_clear :: proc "contextless" (self: ^PackedFloat64Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_float64_array_reverse :: proc "contextless" (self: ^PackedFloat64Array) {
+	if packed_layout_known && packed_stored_reverse(f64, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -4411,6 +4423,7 @@ packed_string_array_clear :: proc "contextless" (self: ^PackedStringArray) {
 	__fn(self, nil, nil, 0)
 }
 packed_string_array_reverse :: proc "contextless" (self: ^PackedStringArray) {
+	if packed_layout_known && packed_stored_reverse(String, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -4548,6 +4561,7 @@ packed_vector2_array_insert :: proc "contextless" (self: ^PackedVector2Array, at
 	return __ret
 }
 packed_vector2_array_fill :: proc "contextless" (self: ^PackedVector2Array, value: Vector2) {
+	if packed_layout_known && packed_stored_fill(self, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "fill", 3790411178) }
 	__a_value := value
@@ -4569,6 +4583,7 @@ packed_vector2_array_clear :: proc "contextless" (self: ^PackedVector2Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_vector2_array_reverse :: proc "contextless" (self: ^PackedVector2Array) {
+	if packed_layout_known && packed_stored_reverse(Vector2, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -4706,6 +4721,7 @@ packed_vector3_array_insert :: proc "contextless" (self: ^PackedVector3Array, at
 	return __ret
 }
 packed_vector3_array_fill :: proc "contextless" (self: ^PackedVector3Array, value: Vector3) {
+	if packed_layout_known && packed_stored_fill(self, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "fill", 3726392409) }
 	__a_value := value
@@ -4727,6 +4743,7 @@ packed_vector3_array_clear :: proc "contextless" (self: ^PackedVector3Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_vector3_array_reverse :: proc "contextless" (self: ^PackedVector3Array) {
+	if packed_layout_known && packed_stored_reverse(Vector3, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -4864,6 +4881,7 @@ packed_color_array_insert :: proc "contextless" (self: ^PackedColorArray, at_ind
 	return __ret
 }
 packed_color_array_fill :: proc "contextless" (self: ^PackedColorArray, value: Color) {
+	if packed_layout_known && packed_stored_fill(self, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "fill", 3730314301) }
 	__a_value := value
@@ -4885,6 +4903,7 @@ packed_color_array_clear :: proc "contextless" (self: ^PackedColorArray) {
 	__fn(self, nil, nil, 0)
 }
 packed_color_array_reverse :: proc "contextless" (self: ^PackedColorArray) {
+	if packed_layout_known && packed_stored_reverse(Color, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)
@@ -5022,6 +5041,7 @@ packed_vector4_array_insert :: proc "contextless" (self: ^PackedVector4Array, at
 	return __ret
 }
 packed_vector4_array_fill :: proc "contextless" (self: ^PackedVector4Array, value: Vector4) {
+	if packed_layout_known && packed_stored_fill(self, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "fill", 3761353134) }
 	__a_value := value
@@ -5043,6 +5063,7 @@ packed_vector4_array_clear :: proc "contextless" (self: ^PackedVector4Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_vector4_array_reverse :: proc "contextless" (self: ^PackedVector4Array) {
+	if packed_layout_known && packed_stored_reverse(Vector4, self) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "reverse", 3218959716) }
 	__fn(self, nil, nil, 0)

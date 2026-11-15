@@ -267,6 +267,12 @@
 		<method name="replaced_packed_set">
 			<description>A copy of each of [code]arrays[/code], one array of each packed type in the order of their Variant types, after the generated [code]set[/code] of the value at the same place in [code]values[/code], at [code]index[/code] and then at [code]other[/code]. The first set finds the copy sharing its storage with the original, the second finds it alone when the first was in range.</description>
 		</method>
+		<method name="replaced_packed_fill">
+			<description>Three copies of each of [code]arrays[/code], one array of each packed type in the order of their Variant types, after the generated [code]reverse[/code] and [code]fill[/code] of the value at the same place in [code]values[/code]: reversed twice, reversed and then filled, and filled. The first call on a copy finds it sharing its storage with the original, the second finds it alone.</description>
+		</method>
+		<method name="replaced_array_fill">
+			<description>array_reverse of [code]a[/code] when [code]reverse[/code], else array_fill of it with [code]value[/code]; test.gd then compares [code]a[/code] with an Array the engine's call wrote to.</description>
+		</method>
 		<method name="replaced_paths">
 			<description></description>
 		</method>
