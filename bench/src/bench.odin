@@ -2109,6 +2109,12 @@ String_Op :: enum i64 {
 	BIGRAMS, // string_bigrams of the same
 	SIMILARITY_CALL, // the engine's String.similarity of the scene path to the file name
 	SIMILARITY, // string_similarity of the same
+	RSPLIT_CALL, // the engine's String.rsplit of the sentence on " ", the result destroyed
+	RSPLIT, // string_rsplit of the same
+	SPLIT_FLOATS_CALL, // the engine's String.split_floats of five numbers on ","
+	SPLIT_FLOATS, // string_split_floats of the same
+	JOIN_CALL, // the engine's String.join of the sentence's nine words with ", "
+	JOIN, // string_join of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2581,6 +2587,57 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .SIMILARITY:
 		text := sc
 		for _ in 0 ..< n { sum += i64(godot.string_similarity(intrinsics.volatile_load(&text), leaf) * 100) }
+	case .RSPLIT_CALL:
+		allow_empty, maxsplit := u8(1), i64(0)
+		fn := godot.builtin_method(.STRING, "rsplit", 1252735785)
+		for _ in 0 ..< n {
+			args := [3]gde.ConstTypePtr{&space, &allow_empty, &maxsplit}
+			r: godot.PackedStringArray
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 3)
+			sum += godot.packed_string_array_size(&r)
+			godot.destroy[.PACKED_STRING_ARRAY](&r)
+		}
+	case .RSPLIT:
+		for _ in 0 ..< n {
+			r := godot.string_rsplit(intrinsics.volatile_load(&h), space, true, 0)
+			sum += godot.packed_string_array_size(&r)
+			godot.destroy[.PACKED_STRING_ARRAY](&r)
+		}
+	case .SPLIT_FLOATS_CALL, .SPLIT_FLOATS:
+		numbers, comma := godot.string_of("1.5,2,3.25,-4e2,0.125"), godot.string_of(",")
+		defer godot.destroy[.STRING](&numbers)
+		defer godot.destroy[.STRING](&comma)
+		text := &numbers
+		allow_empty := u8(1)
+		fn := godot.builtin_method(.STRING, "split_floats", 2092079095)
+		for _ in 0 ..< n {
+			r: godot.PackedFloat64Array
+			if kind == .SPLIT_FLOATS_CALL {
+				args := [2]gde.ConstTypePtr{&comma, &allow_empty}
+				fn(intrinsics.volatile_load(&text), &args[0], &r, 2)
+			} else {
+				r = godot.string_split_floats(intrinsics.volatile_load(&text), comma, true)
+			}
+			sum += godot.packed_float64_array_size(&r)
+			godot.destroy[.PACKED_FLOAT64_ARRAY](&r)
+		}
+	case .JOIN_CALL, .JOIN:
+		words, between := godot.string_split(h, space, true, 0), godot.string_of(", ")
+		defer godot.destroy[.PACKED_STRING_ARRAY](&words)
+		defer godot.destroy[.STRING](&between)
+		text := &between
+		fn := godot.builtin_method(.STRING, "join", 3595973238)
+		for _ in 0 ..< n {
+			r: godot.String
+			if kind == .JOIN_CALL {
+				args := [1]gde.ConstTypePtr{&words}
+				fn(intrinsics.volatile_load(&text), &args[0], &r, 1)
+			} else {
+				r = godot.string_join(intrinsics.volatile_load(&text), words)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
 	case .LPAD_CALL, .RPAD_CALL, .PAD_ZEROS_CALL, .PAD_DECIMALS_CALL:
 		x: i64 = 10
 		args := [2]gde.ConstTypePtr{&x, &zero}

@@ -137,6 +137,8 @@ register_extras :: proc() {
 	godot.method(b, "replaced_path_join", bag_replaced_path_join, {"s", "n", "path"})
 	godot.method(b, "replaced_texts", bag_replaced_texts, {"s", "n", "prefix", "delimiter", "slice"})
 	godot.method(b, "replaced_similarity", bag_replaced_similarity, {"s", "n", "text"})
+	godot.method(b, "replaced_splits", bag_replaced_splits, {"s", "n", "delimiter", "allow_empty", "maxsplit", "parts"})
+	godot.method(b, "replaced_split_floats", bag_replaced_split_floats, {"s", "n", "delimiter", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_pads", bag_replaced_pads, {"s", "n", "min_length", "character", "digits"})
 	godot.method(b, "replaced_char_sets", bag_replaced_char_sets, {"s", "n", "keys", "with"})
 	godot.method(b, "replaced_edits", bag_replaced_edits, {"s", "n", "count", "position", "what", "chars", "key", "with"})
@@ -863,6 +865,40 @@ bag_replaced_similarity :: proc(self: ^Bag, s: godot.String, n: godot.StringName
 	out := godot.packed_float64_array_new()
 	godot.packed_float64_array_append(&out, godot.string_similarity(&s, text))
 	godot.packed_float64_array_append(&out, godot.string_name_similarity(&n, text))
+	return out
+}
+
+// The rsplit of `s`, `parts` joined with `s`, then the same through the StringName methods on `n`.
+// test.gd builds the same array from the engine's.
+bag_replaced_splits :: proc(self: ^Bag, s: godot.String, n: godot.StringName, delimiter: godot.String, allow_empty: bool, maxsplit: i64, parts: godot.PackedStringArray) -> godot.PackedStringArray {
+	s, n := s, n
+	splits := [2]godot.PackedStringArray{godot.string_rsplit(&s, delimiter, allow_empty, maxsplit), godot.string_name_rsplit(&n, delimiter, allow_empty, maxsplit)}
+	joins := [2]godot.String{godot.string_join(&s, parts), godot.string_name_join(&n, parts)}
+	out := godot.packed_string_array_new()
+	for i in 0 ..< 2 {
+		godot.packed_string_array_append_array(&out, splits[i])
+		godot.packed_string_array_append(&out, joins[i])
+		godot.destroy[.PACKED_STRING_ARRAY](&splits[i])
+		godot.destroy[.STRING](&joins[i])
+	}
+	return out
+}
+
+// The split_floats of `s` and of `n`, then how many parts the rsplit of each has, which tells
+// test.gd where each array in Bag.replaced_splits ends.
+bag_replaced_split_floats :: proc(self: ^Bag, s: godot.String, n: godot.StringName, delimiter: godot.String, allow_empty: bool, maxsplit: i64) -> godot.PackedFloat64Array {
+	s, n := s, n
+	floats := [2]godot.PackedFloat64Array{godot.string_split_floats(&s, delimiter, allow_empty), godot.string_name_split_floats(&n, delimiter, allow_empty)}
+	splits := [2]godot.PackedStringArray{godot.string_rsplit(&s, delimiter, allow_empty, maxsplit), godot.string_name_rsplit(&n, delimiter, allow_empty, maxsplit)}
+	out := godot.packed_float64_array_new()
+	for i in 0 ..< 2 {
+		godot.packed_float64_array_append_array(&out, floats[i])
+		godot.destroy[.PACKED_FLOAT64_ARRAY](&floats[i])
+	}
+	for i in 0 ..< 2 {
+		godot.packed_float64_array_append(&out, f64(godot.packed_string_array_size(&splits[i])))
+		godot.destroy[.PACKED_STRING_ARRAY](&splits[i])
+	}
 	return out
 }
 

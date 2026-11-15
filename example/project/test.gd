@@ -1014,6 +1014,66 @@ func _check_replaced_texts(b2: Bag) -> int:
 	return failures
 
 
+# Compares Bag.replaced_splits and Bag.replaced_split_floats with the engine's rsplit, join and
+# split_floats of `s`, as String and as StringName. The numbers are compared as bytes, so 0 and
+# -0 differ.
+func _check_replaced_split(b2: Bag, s: String, delimiter: String, allow_empty: bool, maxsplit: int,
+		parts: PackedStringArray) -> int:
+	var n := StringName(s)
+	var want := s.rsplit(delimiter, allow_empty, maxsplit)
+	want.append(s.join(parts))
+	want.append_array(n.rsplit(delimiter, allow_empty, maxsplit))
+	want.append(n.join(parts))
+	var got: PackedStringArray = b2.replaced_splits(s, n, delimiter, allow_empty, maxsplit, parts)
+	var want_floats := s.split_floats(delimiter, allow_empty)
+	want_floats.append_array(n.split_floats(delimiter, allow_empty))
+	want_floats.append(s.rsplit(delimiter, allow_empty, maxsplit).size())
+	want_floats.append(n.rsplit(delimiter, allow_empty, maxsplit).size())
+	var got_floats: PackedFloat64Array = b2.replaced_split_floats(s, n, delimiter, allow_empty, maxsplit)
+	if got == want and var_to_bytes(got_floats) == var_to_bytes(want_floats):
+		return 0
+	print("FAIL: Bag.replaced_splits(%s, %s, %s, %d, %s) gave %s, not %s; floats gave %s, not %s" % [s.c_escape(),
+			delimiter.c_escape(), allow_empty, maxsplit, parts, got, want, got_floats, want_floats])
+	return 1
+
+
+# _check_replaced_split on fixed Strings with every fixed delimiter, both settings and each limit,
+# on a limit past 32 bits, on more parts than the bounds kept while counting, on an exponent past
+# the engine's limit (which prints its warning), then on 20000 seeded random rounds over digits,
+# number signs and two delimiters. The seed is fixed so a failure repeats.
+func _check_replaced_splits(b2: Bag) -> int:
+	var failures := 0
+	var fixed: Array[String] = ["", "a", ",", ",,", "a,b", "a,b,c", ",a,,b,", "1,2.5,-3e2", " 1.5 ,x, +.5e-1,", "1, 2, 3",
+			"a, b,, c", "héllo, wörld", "-,-0,+", "1e,1.5e,e5", "aaa", "aaaa", "1,2;3,4"]
+	for s: String in fixed:
+		for delimiter: String in ["", ",", ", ", "a", "aa", ",,", "é"]:
+			for allow_empty: bool in [true, false]:
+				for maxsplit: int in [-1, 0, 1, 2, 5]:
+					failures += _check_replaced_split(b2, s, delimiter, allow_empty, maxsplit, s.split(delimiter))
+		for other: String in fixed:
+			failures += _check_replaced_split(b2, s, ",", true, 0, other.split(","))
+		# The engine takes the low 32 bits of the limit.
+		failures += _check_replaced_split(b2, s, ",", true, (1 << 32) + 1, PackedStringArray([s]))
+		failures += _check_replaced_split(b2, s, ",", false, 1 << 32, PackedStringArray())
+	var many := "1.5,,x,-2e3,".repeat(40)
+	for allow_empty: bool in [true, false]:
+		for maxsplit: int in [0, 3, 70, 500]:
+			failures += _check_replaced_split(b2, many, ",", allow_empty, maxsplit, many.split(","))
+	failures += _check_replaced_split(b2, "1e999,2,-3e-999", ",", true, 0, PackedStringArray(["1e999", "2"]))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261127
+	var alphabet: Array[String] = ["1", "2", ".", "e", "-", ",", " ", "a"]
+	for round: int in 20000:
+		var texts: Array[String] = ["", ""]
+		var most: Array[int] = [14, 2]
+		for p: int in 2:
+			for i: int in rng.randi_range(0, most[p]):
+				texts[p] += alphabet[rng.randi_range(0, 7)]
+		var parts := texts[0].split(alphabet[rng.randi_range(0, 7)], rng.randi_range(0, 1) == 1)
+		failures += _check_replaced_split(b2, texts[0], texts[1], rng.randi_range(0, 1) == 1, rng.randi_range(-1, 4), parts)
+	return failures
+
+
 # Compares Bag.replaced_char_sets with the engine's replace_chars and remove_chars of `s`, as
 # String and as StringName.
 func _check_replaced_char_set(b2: Bag, s: String, keys: String, with: int) -> int:
@@ -1204,6 +1264,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 	failures += _check_replaced_char_sets(b2)
 	failures += _check_replaced_pads(b2)
 	failures += _check_replaced_texts(b2)
+	failures += _check_replaced_splits(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

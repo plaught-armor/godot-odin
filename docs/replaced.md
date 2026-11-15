@@ -79,6 +79,9 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.get_slicec` | `string_get_slicec` | Godot 4.7-stable | 28 ns | 19 ns |
 | `String.bigrams` | `string_bigrams` | Godot 4.7-stable | 287 ns | 197 ns |
 | `String.similarity` | `string_similarity` | Godot 4.7-stable | 82 ns | 79 ns |
+| `String.rsplit` | `string_rsplit` | Godot 4.7-stable | 247 ns | 150 ns |
+| `String.split_floats` | `string_split_floats` | Godot 4.7-stable | 117 ns | 67 ns |
+| `String.join` | `string_join` | Godot 4.7-stable | 60 ns | 44 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -185,6 +188,19 @@ both walk the same pairs, so that one is a tie.
 `_check_replaced_texts` checks all six, as String and as StringName, on 18 fixed Strings with 4
 prefixes, 4 delimiters and 5 parts, on each pair of them for similarity, on numbers past 32 bits
 and on 20000 seeded random rounds.
+
+`string_rsplit` walks the parts from the right as the engine does, counts them first and writes
+each into its final place, where the engine appends them in reverse and then reverses the array.
+`string_split_floats` counts the parts, sizes the array once and reads each part in place with
+`runes_to_float`; the engine copies the whole String and writes a terminator after each part. It
+prints the engine's "Exponent too high" warning for a part whose exponent passes 511.
+`string_join` sums the lengths and fills one allocation, as the engine does, without the engine's
+call overhead. They are timed on a 43-character sentence split on spaces, on five numbers
+between commas and on the sentence's nine words joined with `, `.
+`_check_replaced_splits` checks all three, as String and as StringName, on 17 fixed Strings with
+7 delimiters, both settings of `allow_empty` and 5 limits, on limits past 32 bits, on 200 parts
+(more than the bounds kept while counting), on exponents past the limit and on 20000 seeded
+random rounds, with the numbers compared as bytes.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

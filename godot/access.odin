@@ -1410,6 +1410,127 @@ string_similarity :: proc "contextless" (self: ^String, text: String) -> f64 {
 	return f64(2 * f32(inter) / f32(len(a) + len(b) - 2))
 }
 
+// The parts of `self` between each `delimiter`, found from the right: the engine's `rsplit`. Past
+// `maxsplit` splits, when it is above 0, the rest of `self` on the left is one part. An empty
+// `delimiter` gives each character as a part. The caller destroys the result.
+string_rsplit :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> (out: PackedStringArray) {
+	chars := string_read(self)
+	n := rune_needle_of(string_chars(delimiter), false)
+	out = packed_string_array_new()
+	bounds: [SPLIT_BOUNDS][2]int = ---
+	k := rsplit_in(chars, n, allow_empty, maxsplit, bounds[:], nil)
+	if k == 0 { return }
+	packed_string_array_resize(&out, i64(k))
+	slots := packed_write_string(&out)
+	if k > SPLIT_BOUNDS {
+		rsplit_in(chars, n, allow_empty, maxsplit, nil, slots)
+		return
+	}
+	for b, i in bounds[:k] { part_put(slots, k - 1 - i, chars[b[0]:b[1]]) }
+	return
+}
+
+// Walks the parts of `chars` from the right as the engine's `rsplit` does and returns how many
+// there are. The bounds of the first `len(bounds)` parts found go in `bounds`. With `out`, which
+// must be the array's slots after a resize to that count, it also makes each part in its place
+// from the end, so the parts come out in the order they have in `chars`. Every round but the last
+// moves `rest` down, so `len(chars) + 1` rounds cover it.
+@(private)
+rsplit_in :: proc "contextless" (chars: []rune, n: Rune_Needle, allow_empty: bool, maxsplit: i64, bounds: [][2]int, out: []String) -> (k: int) {
+	// The engine's `maxsplit` is a 32-bit int: keep the low 32 bits, sign-extended.
+	maxsplit := i64(i32(maxsplit))
+	// The characters left of the last part found.
+	rest := len(chars)
+	for _ in 0 ..= len(chars) {
+		from, keep, done := 0, true, true
+		if rest < n.count || (maxsplit > 0 && i64(k) == maxsplit) {
+			keep = allow_empty || rest > 0
+		} else {
+			// Where the delimiter before this part starts. An empty one sits before each character
+			// but the first.
+			edge := rest - 1 if rest > 1 else -1
+			if n.count > 0 { edge = int(find_backward(chars, rest - n.count, n, false)) }
+			if edge >= 0 {
+				from = edge + n.count
+				keep = allow_empty || from < rest
+				done = false
+			}
+		}
+		if keep {
+			if k < len(bounds) { bounds[k] = {from, rest} }
+			part_put(out, len(out) - 1 - k, chars[from:rest])
+			k += 1
+		}
+		if done { break }
+		rest = from - n.count
+	}
+	return
+}
+
+// The number each part of `self` between `delimiter`s spells, read as `runes_to_float` reads it:
+// the engine's `split_floats`. Without `allow_empty`, empty parts are left out; with it, each
+// gives 0. An empty `delimiter` gives one part, as in the engine. The caller destroys the result.
+string_split_floats :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool) -> (out: PackedFloat64Array) {
+	out = packed_float64_array_new()
+	chars := string_read(self)
+	if len(chars) == 0 { return }
+	n := rune_needle_of(string_chars(delimiter), false)
+	// The parts are counted first so the array is sized once.
+	k := split_floats_in(chars, n, allow_empty, nil)
+	if k == 0 { return }
+	packed_float64_array_resize(&out, i64(k))
+	split_floats_in(chars, n, allow_empty, packed_write_float64(&out))
+	return
+}
+
+// Walks the parts of `chars` as the engine's `split_floats` does and returns how many there are.
+// With `out`, it also reads part `k` into `out[k]`, and prints the engine's warning for an
+// exponent past its limit. Every round but the last moves `from` on, so `len(chars) + 1` rounds
+// cover it.
+@(private)
+split_floats_in :: proc "contextless" (chars: []rune, n: Rune_Needle, allow_empty: bool, out: []f64) -> (k: int) {
+	from := 0
+	for _ in 0 ..= len(chars) {
+		end := len(chars)
+		if n.count > 0 {
+			found := int(find_forward(chars, from, len(chars) - n.count, n, false))
+			if found >= 0 { end = found }
+		}
+		if allow_empty || end > from {
+			if out != nil {
+				clipped: bool
+				out[k], clipped = runes_parse_float(chars[from:end])
+				if clipped { gde.print_warning("Exponent too high", "", #file, #line, 1) }
+			}
+			k += 1
+		}
+		if end == len(chars) { break }
+		from = end + n.count
+	}
+	return
+}
+
+// `parts` in one String with `self` between each two: the engine's `join`. No parts give the
+// empty String and one part gives that part. The caller destroys the result.
+string_join :: proc "contextless" (self: ^String, parts: PackedStringArray) -> (out: String) {
+	parts := parts
+	list := packed_read_string(&parts)
+	if len(list) == 0 { return }
+	if len(list) == 1 { return string_copy(&list[0]) }
+	between := string_read(self)
+	size := (len(list) - 1) * len(between)
+	for &part in list { size += len(string_read(&part)) }
+	w := string_storage(&out, size + 1)
+	at := 0
+	for &part, i in list {
+		if i > 0 { at += copy(w[at:at + len(between)], between) }
+		chars := string_read(&part)
+		at += copy(w[at:at + len(chars)], chars)
+	}
+	w[at] = 0
+	return
+}
+
 // Whether `c` is one of `set`.
 runes_has :: proc "contextless" (set: []rune, c: rune) -> bool {
 	for s in set {

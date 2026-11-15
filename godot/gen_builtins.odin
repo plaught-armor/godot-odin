@@ -57,36 +57,6 @@ string_format :: proc "contextless" (self: ^String, values: Variant, placeholder
 	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
-string_rsplit :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "rsplit", 1252735785) }
-	__a_delimiter := transmute([1]uintptr)delimiter
-	__a_allow_empty := u8(allow_empty)
-	__a_maxsplit := maxsplit
-	__args := [3]gde.ConstTypePtr{&__a_delimiter, &__a_allow_empty, &__a_maxsplit}
-	__ret: PackedStringArray
-	__fn(self, &__args[0], &__ret, 3)
-	return __ret
-}
-string_split_floats :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool) -> PackedFloat64Array {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "split_floats", 2092079095) }
-	__a_delimiter := transmute([1]uintptr)delimiter
-	__a_allow_empty := u8(allow_empty)
-	__args := [2]gde.ConstTypePtr{&__a_delimiter, &__a_allow_empty}
-	__ret: PackedFloat64Array
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_join :: proc "contextless" (self: ^String, parts: PackedStringArray) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "join", 3595973238) }
-	__a_parts := transmute([2]uintptr)parts
-	__args := [1]gde.ConstTypePtr{&__a_parts}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_unicode_at :: proc "contextless" (self: ^String, at: i64) -> i64 {
 	if string_layout_known { if c := string_read(self); at >= 0 && at < i64(len(c)) { return i64(u32(c[at])) } }
 	@(static) __fn: gde.PtrBuiltInMethod
@@ -909,6 +879,7 @@ string_name_split :: proc "contextless" (self: ^StringName, delimiter: String, a
 	return __ret
 }
 string_name_rsplit :: proc "contextless" (self: ^StringName, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
+	if dict_layout_known { return string_rsplit(name_text(self), delimiter, allow_empty, maxsplit) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rsplit", 1252735785) }
 	__a_delimiter := transmute([1]uintptr)delimiter
@@ -920,6 +891,7 @@ string_name_rsplit :: proc "contextless" (self: ^StringName, delimiter: String, 
 	return __ret
 }
 string_name_split_floats :: proc "contextless" (self: ^StringName, delimiter: String, allow_empty: bool) -> PackedFloat64Array {
+	if dict_layout_known { return string_split_floats(name_text(self), delimiter, allow_empty) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "split_floats", 2092079095) }
 	__a_delimiter := transmute([1]uintptr)delimiter
@@ -930,6 +902,7 @@ string_name_split_floats :: proc "contextless" (self: ^StringName, delimiter: St
 	return __ret
 }
 string_name_join :: proc "contextless" (self: ^StringName, parts: PackedStringArray) -> String {
+	if dict_layout_known { return string_join(name_text(self), parts) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "join", 3595973238) }
 	__a_parts := transmute([2]uintptr)parts

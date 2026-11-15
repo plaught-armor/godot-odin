@@ -264,6 +264,12 @@
 		<method name="replaced_similarity">
 			<description>similarity of [code]s[/code] to [code]text[/code], then the same through the StringName method on [code]n[/code].</description>
 		</method>
+		<method name="replaced_splits">
+			<description>The rsplit of [code]s[/code], [code]parts[/code] joined with [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
+		</method>
+		<method name="replaced_split_floats">
+			<description>The split_floats of [code]s[/code] and of [code]n[/code], then how many parts the rsplit of each has, which tells test.gd where each array in Bag.replaced_splits ends.</description>
+		</method>
 		<method name="replaced_pads">
 			<description>lpad, rpad, pad_zeros and pad_decimals of [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
