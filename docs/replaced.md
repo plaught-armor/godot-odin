@@ -60,6 +60,7 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.filecasecmp_to` | `string_filecasecmp_to` | Godot 4.7-stable | 17 ns | 14 ns |
 | `String.filenocasecmp_to` | `string_filenocasecmp_to` | Godot 4.7-stable | 666 ns | 14 ns |
 | `String.path_join` | `string_path_join` | Godot 4.7-stable | 49 ns | 12 ns |
+| `String.simplify_path` | `string_simplify_path` | Godot 4.7-stable | 477 ns | 58 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -110,11 +111,19 @@ String up to three times. `string_get_base_dir` finds the start the engine keeps
 a URL scheme, a drive, a network share or the root, by the engine's own order of searches, and
 returns one slice up to the last separator after it. The timings are of
 `res://scenes/level_01.tscn`. `_check_replaced_file_paths` checks all four, as String and as
-StringName, on fixed paths of each kind of start and on 6000 seeded random Strings over
+StringName, on fixed paths of each kind of start and on 30000 seeded random Strings over
 `.`, `/`, `\`, `:` and two letters. `string_path_join` writes both paths and the `/` between them
 into storage of the right size at once, where the engine makes a String per `+`; it is timed
 joining `res://scenes` and `level_01.tscn`, and the same check compares every pair of 15 fixed
 parts with the engine's.
+
+`string_simplify_path` copies the start the engine keeps as it is and then writes each name once,
+taking the last one back for a `..`, where the engine replaces, splits into a String per name and
+joins. A path of up to 256 characters is worked out on the stack, and one that is simple already
+comes back as a copy that shares the storage, which takes 39 ns against 295 ns for
+`res://scenes/level_01.tscn`. The timing in the table is of
+`res://scenes/../levels/./level_01.tscn`. `_check_replaced_file_paths` checks it with the four
+above, with fixed paths of `.` and `..` in each place and paths either side of 256 characters.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

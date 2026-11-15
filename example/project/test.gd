@@ -861,12 +861,13 @@ func _check_replaced_naturals(b2: Bag) -> int:
 	return failures
 
 
-# get_extension, get_basename, get_file and get_base_dir of `s`, as String and as StringName, from
-# Bag.replaced_file_paths against the engine's. Returns the number of mismatches.
+# get_extension, get_basename, get_file, get_base_dir and simplify_path of `s`, as String and as
+# StringName, from Bag.replaced_file_paths against the engine's. Returns the number of mismatches.
 func _check_replaced_file_path(b2: Bag, s: String) -> int:
 	var n := StringName(s)
 	var want := PackedStringArray([s.get_extension(), s.get_basename(), s.get_file(), s.get_base_dir(),
-			n.get_extension(), n.get_basename(), n.get_file(), n.get_base_dir()])
+			s.simplify_path(), n.get_extension(), n.get_basename(), n.get_file(), n.get_base_dir(),
+			n.simplify_path()])
 	var got: PackedStringArray = b2.replaced_file_paths(s, n)
 	if got != want:
 		print("FAIL: Bag.replaced_file_paths(%s) gave %s, not %s" % [s.c_escape(), got, want])
@@ -875,7 +876,7 @@ func _check_replaced_file_path(b2: Bag, s: String) -> int:
 
 
 # _check_replaced_file_path on fixed paths of each kind of start the engine keeps whole, path_join
-# of every pair of fixed parts against the engine's, then _check_replaced_file_path on 6000
+# of every pair of fixed parts against the engine's, then _check_replaced_file_path on 30000
 # seeded random Strings over the characters the methods look for and two letters. The seed is
 # fixed so a failure repeats.
 func _check_replaced_file_paths(b2: Bag) -> int:
@@ -884,8 +885,15 @@ func _check_replaced_file_paths(b2: Bag) -> int:
 			"a/", "a/b/", "res://", "res://a", "res://a/b.c", "res://scenes/level_01.tscn", "user://save.dat",
 			"a://b://c/d", "C:/", "C:/a", "C:/a/b.txt", "C:\\", "C:\\a\\b.txt", "a:\\b:/c/d", "//", "//server",
 			"//server/", "//server/share", "//server/share/", "//server/share/a/b.c", "\\\\server\\share\\a",
-			"\\\\server/share", "//a\\b/c", "\\\\", "\\\\a", "/a.b/c.d.e", "héllo/wörld.é"]:
+			"\\\\server/share", "//a\\b/c", "\\\\", "\\\\a", "/a.b/c.d.e", "héllo/wörld.é", "..", "../..", "../a", "a/..",
+			"a/../..", "a/b/../c", "a/./b", "./a", "a/.", "/..", "/../a", "/a/../..", "res://..", "res://../a",
+			"res://a/../../b", "user://../a", "C:/..", "C:/a/../..", "C:\\a\\..\\b", "C:\\a/b", "a b://c/../d", "1a://b/./c",
+			"://a", "a//b///c", "a\\\\b", "//server/share/../x", "...", "a/.../b", "..a/..", "a../..", ".a/.."]:
 		failures += _check_replaced_file_path(b2, s)
+	# Paths either side of the 256 characters that are worked out on the stack.
+	for count: int in [84, 85, 86, 200]:
+		failures += _check_replaced_file_path(b2, "ab/".repeat(count))
+		failures += _check_replaced_file_path(b2, "res://" + "ab/".repeat(count) + "../x.y")
 	# path_join of every pair of these, as String and as StringName.
 	var parts: Array[String] = ["", "a", "/", "a/", "/a", "//", "a//", "\\", "a\\", "res://", "res://scenes", "level_01.tscn",
 			"/level_01.tscn", "é", "a\u0000b"]
@@ -900,9 +908,9 @@ func _check_replaced_file_paths(b2: Bag) -> int:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261121
 	var alphabet: Array[String] = [".", "/", "\\", ":", "a", "b"]
-	for round: int in 6000:
+	for round: int in 30000:
 		var s := ""
-		for i: int in rng.randi_range(0, 10):
+		for i: int in rng.randi_range(0, 12):
 			s += alphabet[rng.randi_range(0, alphabet.size() - 1)]
 		failures += _check_replaced_file_path(b2, s)
 	return failures

@@ -294,13 +294,6 @@ string_is_relative_path :: proc "contextless" (self: ^String) -> bool {
 	__fn(self, nil, &__ret, 0)
 	return __ret != 0
 }
-string_simplify_path :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "simplify_path", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
 string_xml_escape :: proc "contextless" (self: ^String, escape_quotes: bool) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "xml_escape", 3429816538) }
@@ -1308,6 +1301,7 @@ string_name_is_relative_path :: proc "contextless" (self: ^StringName) -> bool {
 	return __ret != 0
 }
 string_name_simplify_path :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_simplify_path(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "simplify_path", 3942272618) }
 	__ret: String

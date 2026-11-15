@@ -208,7 +208,7 @@ IN_PLACE = {
     ("StringName", "to_lower"): "\tif dict_layout_known { return string_to_lower(name_text(self)) }\n",
     **{("StringName", m): f"\tif dict_layout_known {{ return string_{m}(name_text(self)) }}\n"
        for m in ("capitalize", "to_camel_case", "to_pascal_case", "to_snake_case", "to_kebab_case",
-                 "get_extension", "get_basename", "get_file", "get_base_dir")},
+                 "get_extension", "get_basename", "get_file", "get_base_dir", "simplify_path")},
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
@@ -255,6 +255,7 @@ REPLACED = {
     ("String", "to_snake_case"),
     ("String", "to_kebab_case"),
     ("String", "path_join"),
+    ("String", "simplify_path"),
     ("String", "get_extension"),
     ("String", "get_basename"),
     ("String", "get_file"),

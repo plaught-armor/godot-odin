@@ -877,8 +877,8 @@ string_get_base_dir :: proc "contextless" (self: ^String) -> String {
 	if colon == -1 { colon = string_find_text(self, ":\\") }
 	if colon != -1 {
 		base = int(colon) + width
-	} else if len(chars) >= 2 && chars[0] == chars[1] && (chars[0] == '/' || chars[0] == '\\') {
-		// A network share. The engine looks for the separator after the server's name from
+	} else if runes_is_share(chars) {
+		// The engine looks for the separator after the server's name from
 		// character 2, and for the one after the share's name from the character after that
 		// separator, which is character 0 when there is none.
 		server := runes_index(chars, '/', 2)
@@ -889,6 +889,108 @@ string_get_base_dir :: proc "contextless" (self: ^String) -> String {
 	}
 	if base == 0 && len(chars) > 0 && chars[0] == '/' { base = 1 }
 	return head_of(self, chars, base + max(runes_last_separator(chars[base:]), 0))
+}
+
+// Whether path `chars` starts with `//` or `\\\\`, as a network share does: the engine's
+// `is_network_share_path`.
+@(private)
+runes_is_share :: #force_inline proc "contextless" (chars: []rune) -> bool {
+	return len(chars) >= 2 && chars[0] == chars[1] && (chars[0] == '/' || chars[0] == '\\')
+}
+
+@(private)
+rune_is_separator :: #force_inline proc "contextless" (c: rune) -> bool {
+	return c == '/' || c == '\\'
+}
+
+// How many characters at the start of path `self` the engine's `simplify_path` keeps as they are,
+// by its order of tests: a scheme of ASCII letters and digits with its `://`; the two separators
+// of a network share; one leading separator; a drive, which is everything up to a `:/` or, when
+// there is no `:/`, a `:\`, and counts only when that is before the first `/`.
+@(private)
+runes_path_drive :: proc "contextless" (self: ^String, chars: []rune) -> int {
+	if scheme := int(string_find_text(self, "://")); scheme > 0 {
+		plain := true
+		for c in chars[:scheme] {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || rune_is_digit(c)) { plain = false }
+		}
+		if plain { return scheme + 3 }
+	}
+	if runes_is_share(chars) { return 2 }
+	if len(chars) > 0 && rune_is_separator(chars[0]) { return 1 }
+	colon := string_find_text(self, ":/")
+	if colon == -1 { colon = string_find_text(self, ":\\") }
+	if colon != -1 && int(colon) < runes_index(chars, '/', 0) { return int(colon) + 2 }
+	return 0
+}
+
+// Writes path `self`, whose characters are `chars`, to `out` as the engine's `simplify_path`
+// leaves it and returns how many characters that is, never more than `chars` has. The start
+// `runes_path_drive` counts is copied. The names after it, which are the runs between
+// separators, are written with one `/` between them, but:
+// - `.` is left out;
+// - `..` takes back the name written before it, unless that is `..` too;
+// - `..` with no name before it is left out of an absolute path that is not under `res://`.
+@(private)
+runes_simplify_path :: proc "contextless" (self: ^String, chars: []rune, out: []rune) -> int {
+	drive := runes_path_drive(self, chars)
+	copy(out[:drive], chars[:drive])
+	absolute := runes_is_absolute_path(chars) && !string_begins_with_text(self, "res://")
+	n := drive
+	for i := drive; i < len(chars); {
+		if rune_is_separator(chars[i]) {
+			i += 1
+			continue
+		}
+		start := i
+		for i < len(chars) && !rune_is_separator(chars[i]) { i += 1 }
+		name := chars[start:i]
+		if len(name) == 1 && name[0] == '.' { continue }
+		if len(name) == 2 && name[0] == '.' && name[1] == '.' {
+			if n == drive {
+				if absolute { continue }
+			} else {
+				// The name written last starts after the last `/` written, or at `drive`.
+				last := n
+				for last > drive && out[last - 1] != '/' { last -= 1 }
+				if !(n - last == 2 && out[last] == '.' && out[last + 1] == '.') {
+					n = max(last - 1, drive)
+					continue
+				}
+			}
+		}
+		if n > drive {
+			out[n] = '/'
+			n += 1
+		}
+		copy(out[n:], name)
+		n += len(name)
+	}
+	return n
+}
+
+// The longest path `string_simplify_path` works out on the stack.
+@(private)
+PATH_SHORT :: 256
+
+// Path `self` without `.` names, doubled separators and the `..` names that a name before them
+// cancels, its separators after the start as `/`: the engine's `simplify_path`. A path that is
+// simple already comes back as a copy that shares the storage. The caller destroys the result.
+string_simplify_path :: proc "contextless" (self: ^String) -> String {
+	chars := string_read(self)
+	if len(chars) <= PATH_SHORT {
+		buf: [PATH_SHORT]rune = ---
+		n := runes_simplify_path(self, chars, buf[:])
+		if n == len(chars) && runes_equal(raw_data(chars), raw_data(buf[:]), n) { return string_copy(self) }
+		return string_of_runes(buf[:n])
+	}
+	// A longer path is worked out in a String of its length, which is then copied to size.
+	whole: String
+	defer destroy[.STRING](&whole)
+	w := string_storage(&whole, len(chars) + 1)[:len(chars) + 1]
+	n := runes_simplify_path(self, chars, w[:len(chars)])
+	w[n] = 0
+	return string_of_runes(w[:n])
 }
 
 // Path `self` with `path` after it and one `/` between them, unless `self` ends with one or `path`

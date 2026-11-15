@@ -825,19 +825,21 @@ bag_replaced_path_join :: proc(self: ^Bag, s: godot.String, n: godot.StringName,
 	return out
 }
 
-// get_extension, get_basename, get_file and get_base_dir of `s`, then the same through the
-// StringName methods on `n`. test.gd builds the same array from the engine's.
+// get_extension, get_basename, get_file, get_base_dir and simplify_path of `s`, then the same
+// through the StringName methods on `n`. test.gd builds the same array from the engine's.
 bag_replaced_file_paths :: proc(self: ^Bag, s: godot.String, n: godot.StringName) -> godot.PackedStringArray {
 	s, n := s, n
-	r := [8]godot.String{
+	r := [10]godot.String{
 		godot.string_get_extension(&s),
 		godot.string_get_basename(&s),
 		godot.string_get_file(&s),
 		godot.string_get_base_dir(&s),
+		godot.string_simplify_path(&s),
 		godot.string_name_get_extension(&n),
 		godot.string_name_get_basename(&n),
 		godot.string_name_get_file(&n),
 		godot.string_name_get_base_dir(&n),
+		godot.string_name_simplify_path(&n),
 	}
 	out := godot.packed_string_array_new()
 	for &v in r {

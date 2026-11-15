@@ -2059,6 +2059,10 @@ String_Op :: enum i64 {
 	FILECMPN, // string_filenocasecmp_to of the same
 	PATH_JOIN_CALL, // the engine's String.path_join of "res://scenes" and "level_01.tscn", the result destroyed
 	PATH_JOIN, // string_path_join of the same
+	SIMPLIFY_CALL, // the engine's String.simplify_path of "res://scenes/../levels/./level_01.tscn", the result destroyed
+	SIMPLIFY, // string_simplify_path of the same
+	SIMPLIFY_SAME_CALL, // the engine's String.simplify_path of "res://scenes/level_01.tscn", which is simple already
+	SIMPLIFY_SAME, // string_simplify_path of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2092,6 +2096,9 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	defer godot.destroy[.STRING](&dir)
 	defer godot.destroy[.STRING](&leaf)
 	d := &dir
+	dotted := godot.string_of("res://scenes/../levels/./level_01.tscn")
+	defer godot.destroy[.STRING](&dotted)
+	dt := &dotted
 	sum: i64
 	start := time.tick_now()
 	switch kind {
@@ -2367,6 +2374,22 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 		for _ in 0 ..< n { sum += godot.string_filecasecmp_to(intrinsics.volatile_load(&nu), numbered_to) }
 	case .FILECMPN:
 		for _ in 0 ..< n { sum += godot.string_filenocasecmp_to(intrinsics.volatile_load(&nu), numbered_to) }
+	case .SIMPLIFY_CALL, .SIMPLIFY_SAME_CALL:
+		fn := godot.builtin_method(.STRING, "simplify_path", 3942272618)
+		p := dt if kind == .SIMPLIFY_CALL else sc
+		for _ in 0 ..< n {
+			r: godot.String
+			fn(intrinsics.volatile_load(&p), nil, &r, 0)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .SIMPLIFY, .SIMPLIFY_SAME:
+		p := dt if kind == .SIMPLIFY else sc
+		for _ in 0 ..< n {
+			r := godot.string_simplify_path(intrinsics.volatile_load(&p))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
 	case .PATH_JOIN_CALL:
 		fn := godot.builtin_method(.STRING, "path_join", 3134094431)
 		for _ in 0 ..< n {
