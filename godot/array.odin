@@ -1,5 +1,6 @@
 package godot
 
+import "base:intrinsics"
 import gde "../gdextension"
 
 // Array reads answered from the engine's storage, with no call, once `check_array_layout` proved it
@@ -353,6 +354,43 @@ array_stored_get :: #force_inline proc "contextless" (a: ^Array, index: i64) -> 
 	xs := array_stored(a)
 	if index < 0 || index >= i64(len(xs)) { return }
 	return stored_copy(&xs[index]), true
+}
+
+// Array.set where it only stores: element `index` of `a` becomes a copy of `v`. True when stored.
+// False with nothing written when the engine must do more than store: a read-only Array or an
+// index out of range, where it prints its error; a typed Array given a value of another type,
+// which it converts or refuses; storage shared with a duplicate, which it copies first; an element
+// that holds something counted or allocated, which it releases; and a value of a type it copies
+// itself. The generated `set` tries this first (tools/odin_bindgen.py IN_PLACE).
+array_stored_set :: #force_inline proc "contextless" (a: ^Array, index: i64, v: Variant) -> bool {
+	if !array_layout_known || array_stored_read_only(a) { return false }
+	v := v
+	tag := variant_tag(&v)
+	typed := array_stored_type(a)
+	if typed != .NIL && typed != tag { return false }
+	kind := array_elem(tag)
+	if kind == .ENGINE || (kind == .STRING && !string_layout_known) || (kind == .NAME && !name_layout_known) { return false }
+	d := (^rawptr)(uintptr((^rawptr)(a)^) + ARRAY_DATA_OFFSET)^
+	if d == nil { return false }
+	h := ([^]i64)(uintptr(d) - PACKED_DATA_OFFSET)
+	if u64(index) >= u64(h[2]) || intrinsics.atomic_load(&h[0]) != 1 { return false }
+	x := &([^]Variant)(d)[index]
+	switch array_elem(variant_tag(x)) {
+	case .ENGINE, .STRING, .NAME: return false
+	case .NIL, .BOOL, .WORD, .DOUBLE, .REAL_2, .REAL_3, .REAL_4, .INT_2, .INT_3, .INT_4:
+	}
+	at := rawptr(&v._opaque[VARIANT_DATA_OFFSET])
+	if kind == .NAME {
+		name_ref((^StringName)(at))
+	} else if kind == .STRING {
+		string_ref((^String)(at))
+	}
+	// The type and the two words of the value go over one at a time. The caller has often just
+	// written `v` in those same pieces, and one 24-byte copy would wait for them to reach memory.
+	(^u32)(x)^ = (^u32)(&v)^
+	from, to := ([^]u64)(&v), ([^]u64)(x)
+	to[1], to[2] = from[1], from[2]
+	return true
 }
 
 // A copy of `x`, its value copied as is when it holds nothing counted or allocated, a StringName by

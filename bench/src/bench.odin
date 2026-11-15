@@ -2470,6 +2470,12 @@ Array_Op :: enum i64 {
 	FIND,             // array_find, on ints
 	STRING_FIND_CALL, // the engine's Array.find, on Strings
 	STRING_FIND,      // array_find, on Strings
+	SET_CALL,         // the engine's Array.set, an int over an int
+	SET,              // array_set of the same
+	SET_STRING_CALL,  // the engine's Array.set, a String over an int and then the int back
+	SET_STRING,       // array_set of the same; the int back releases the String, so the engine stores it
+	SET_NAME_CALL,    // the engine's Array.set, a StringName over an int and then the int back
+	SET_NAME,         // array_set of the same
 }
 
 // Nanoseconds per `kind` round on the ints 0 to 63 in one Array and the Strings "0" to "15" in
@@ -2538,6 +2544,45 @@ array_ns :: proc(self: ^Bench, kind: Array_Op, n: i64) -> f64 {
 		}
 	case .STRING_FIND:
 		for _ in 0 ..< n { sum += godot.array_find(&sa, kv, intrinsics.volatile_load(&from)) }
+	case .SET_CALL:
+		set_fn := godot.builtin_method(.ARRAY, "set", 3798478031)
+		for _ in 0 ..< n {
+			i := intrinsics.volatile_load(&at)
+			v := godot.variant(i)
+			args := [2]gde.ConstTypePtr{&i, &v}
+			set_fn(intrinsics.volatile_load(&ref), &args[0], nil, 2)
+		}
+		sum += godot.array_size(&a)
+	case .SET:
+		for _ in 0 ..< n {
+			i := intrinsics.volatile_load(&at)
+			godot.array_set(intrinsics.volatile_load(&ref), i, godot.variant(i))
+		}
+		sum += godot.array_size(&a)
+	case .SET_STRING_CALL, .SET_STRING, .SET_NAME_CALL, .SET_NAME:
+		name := godot.name_of("12")
+		defer godot.destroy[.STRING_NAME](&name)
+		nv := godot.variant(name)
+		defer gde.variant_destroy(&nv)
+		held := nv if kind == .SET_NAME_CALL || kind == .SET_NAME else kv
+		if kind == .SET_STRING_CALL || kind == .SET_NAME_CALL {
+			set_fn := godot.builtin_method(.ARRAY, "set", 3798478031)
+			for _ in 0 ..< n {
+				i := intrinsics.volatile_load(&at)
+				v := godot.variant(i)
+				args := [2]gde.ConstTypePtr{&i, &held}
+				set_fn(intrinsics.volatile_load(&ref), &args[0], nil, 2)
+				args[1] = &v
+				set_fn(intrinsics.volatile_load(&ref), &args[0], nil, 2)
+			}
+		} else {
+			for _ in 0 ..< n {
+				i := intrinsics.volatile_load(&at)
+				godot.array_set(intrinsics.volatile_load(&ref), i, held)
+				godot.array_set(intrinsics.volatile_load(&ref), i, godot.variant(i))
+			}
+		}
+		sum += godot.array_size(&a)
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += sum

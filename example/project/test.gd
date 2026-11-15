@@ -2862,6 +2862,75 @@ func _random_array(rng: RandomNumberGenerator, pool: Array, most: int, typed: bo
 	return Array(same, t, &"", null)
 
 
+# Whether `a` and `b` hold elements of the same types that print the same, which tells NaN from a
+# number and -0 from 0 where `==` does not.
+func _same_elements(a: Array, b: Array) -> bool:
+	if a.size() != b.size() or a.get_typed_builtin() != b.get_typed_builtin():
+		return false
+	for i: int in a.size():
+		if typeof(a[i]) != typeof(b[i]) or str(a[i]) != str(b[i]):
+			return false
+	return true
+
+
+# Array.set from Bag.replaced_array_set against the engine's, each value of `values` stored at
+# `index` and then at `other` of a copy of each of `arrays`: once on a copy that still shares its
+# storage with the original, which the engine copies first, and once on a copy made to own its
+# storage by reversing it twice. Returns the number of mismatches.
+func _check_array_set_case(b2: Bag, arrays: Array, values: Array, index: int, other: int) -> int:
+	for a: Array in arrays:
+		for v: Variant in values:
+			for own: bool in [false, true]:
+				var want: Array = a.duplicate()
+				var got: Array = a.duplicate()
+				if own:
+					want.reverse()
+					want.reverse()
+					got.reverse()
+					got.reverse()
+				want.set(index, v)
+				want.set(other, v)
+				b2.replaced_array_set(got, index, v)
+				b2.replaced_array_set(got, other, v)
+				if not _same_elements(got, want):
+					print("FAIL: Bag.replaced_array_set(%s, %d and %d, %s) gave %s, not %s" % [a, index, other, v, got, want])
+					return 1
+	return 0
+
+
+# The Array.set that array_stored_set answers, on the Arrays and values of _check_replaced_array:
+# every type stored over every type, in untyped and typed Arrays, at indices either side of each
+# end, into a read-only Array, and on seeded random Arrays.
+func _check_replaced_array_set(b2: Bag, arrays: Array, pool: Array) -> int:
+	var failures: int = 0
+	for pair: Array in [[0, 1], [1, 1], [-1, 4], [2, 100], [9223372036854775807, 0], [-9223372036854775807 - 1, 3]]:
+		failures += _check_array_set_case(b2, arrays, pool, pair[0], pair[1])
+	var read_only: Array = [1, "a", 2.0]
+	read_only.make_read_only()
+	b2.replaced_array_set(read_only, 0, 5)
+	b2.replaced_array_set(read_only, 1, 5)
+	if not _same_elements(read_only, [1, "a", 2.0]):
+		print("FAIL: Bag.replaced_array_set wrote to a read-only Array: %s" % [read_only])
+		failures += 1
+	var shared: Array = [1, 2, 3]
+	var copy: Array = shared.duplicate()
+	b2.replaced_array_set(copy, 1, 7)
+	if shared != [1, 2, 3] or copy != [1, 7, 3]:
+		print("FAIL: Bag.replaced_array_set on a duplicate gave %s and left %s" % [copy, shared])
+		failures += 1
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261116
+	for i: int in 300:
+		var some: Array = []
+		for k: int in 4:
+			some.append(_random_array(rng, pool, 12, k % 2 == 1))
+		var values: Array = []
+		for k: int in 4:
+			values.append(pool[rng.randi() % pool.size()])
+		failures += _check_array_set_case(b2, some, values, rng.randi_range(-1, 12), rng.randi_range(0, 11))
+	return failures
+
+
 # The Array reads of godot/array.odin (get, front, back, find, rfind, count, has, and the generated
 # size and is_empty reading the stored size) against the engine's. Elements and values of every type
 # the in-place search compares (nil, bools, ints, floats with NaN and -0, Strings and StringNames of
@@ -2896,6 +2965,7 @@ func _check_replaced_array(b2: Bag) -> int:
 		4294967298, -4294967295]
 	for fi: int in froms.size():
 		failures += _check_array_case(b2, arrays, pool, indices[fi % indices.size()], froms[fi])
+	failures += _check_replaced_array_set(b2, arrays, pool)
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = 20261113
 	for i: int in 300:

@@ -620,11 +620,23 @@ or any type the engine owns, and out of range return nil after the engine prints
 StringName or String element is copied in place by one more reference on its data (see "StringName
 copies" and "String copies" below); the others through the engine's Variant copy.
 
+`set` stores in place (`array_stored_set`) when the engine would only store: the Array is not read-
+only, the index is in range, the Array is untyped or typed as the value's type, its storage is not
+shared with a duplicate, the element it replaces holds nothing counted or allocated, and the value
+is of a type the reads copy in place, a String or StringName taking one more reference. Every other
+case goes to the engine call, which prints its error, converts the value, copies shared storage or
+releases the old element. The value is copied as its type and two words, not as one 24-byte block,
+which would wait on a value the caller has just written.
+
 Checked against Godot 4.7-stable by `_check_replaced_array`, which compares every read from
 GDScript and from `Bag.replaced_array`, the errors included, on empty, mixed and typed Arrays of
 every type, with NaN, -0, Strings and StringNames of the same texts, values that differ only in
 their last component, and two RIDs; on indices and starts either side of 0, of each end, beyond 32
 bits and the `int64` extremes; and on 300 seeded random sets of four Arrays, half of them typed.
+`_check_replaced_array_set` stores every value of those types over every element of the same
+Arrays through `Bag.replaced_array_set` and through the engine's `set`, in storage shared with a
+duplicate and not, at indices either side of each end and the `int64` extremes, into a read-only
+Array, and on 300 more seeded random sets.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -632,9 +644,13 @@ bits and the `int64` extremes; and on 300 seeded random sets of four Arrays, hal
 | `Array.get` | 7.1 ns | 2.6 ns |
 | `Array.find` on ints | 109 ns | 24 ns |
 | `Array.find` on Strings | 66 ns | 17 ns |
+| `Array.set` | 9.5 ns | 2.6 ns |
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an Array of the ints 0
-to 63, and `find` of "12" in an Array of the Strings "0" to "15".
+to 63, `find` of "12" in an Array of the Strings "0" to "15", and `set` of element 40 of the ints
+to 40. On a 4.8 source build the `set` call takes 5.9 ns. Storing a String or StringName over that
+int and then the int back takes 13.8 ns against 14.1 ns for the two engine calls: only the first
+store is in place, and the engine releases the String for the second.
 
 ## Dictionary
 

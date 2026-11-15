@@ -114,6 +114,7 @@ IN_PLACE = {
     # godot/array.odin: each returns false when the engine answers.
     ("Array", "size"): "\tif array_layout_known { return array_stored_size(self) }\n",
     ("Array", "is_empty"): "\tif array_layout_known { return array_stored_size(self) == 0 }\n",
+    ("Array", "set"): "\tif array_stored_set(self, index, value) { return }\n",
     ("Array", "get"): "\tif v, ok := array_stored_get(self, index); ok { return v }\n",
     ("Array", "front"): "\tif v, ok := array_stored_front(self); ok { return v }\n",
     ("Array", "back"): "\tif v, ok := array_stored_back(self); ok { return v }\n",

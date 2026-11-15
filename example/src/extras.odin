@@ -158,6 +158,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_projections", bag_replaced_projections, {"a", "t", "r", "box", "w", "q", "x", "y", "z", "u", "n", "m", "flip"})
 	godot.method(b, "replaced_packed", bag_replaced_packed, {"arrays", "values", "index", "from", "before"})
 	godot.method(b, "replaced_array", bag_replaced_array, {"arrays", "values", "index", "from"})
+	godot.method(b, "replaced_array_set", bag_replaced_array_set, {"a", "index", "value"})
 	godot.method(b, "replaced_dict", bag_replaced_dict, {"dicts", "keys", "key_sets", "default"})
 	godot.method(b, "layouts_proven", bag_layouts_proven)
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
@@ -2019,6 +2020,13 @@ bag_replaced_dict :: proc(self: ^Bag, dicts: godot.Array, keys: godot.Array, key
 		}
 	}
 	return out
+}
+
+// array_set of `value` at `index` of `a`, which test.gd then compares with an Array the engine's
+// set wrote to.
+bag_replaced_array_set :: proc(self: ^Bag, a: godot.Array, index: i64, value: godot.Variant) {
+	a := a
+	godot.array_set(&a, index, value)
 }
 
 // A copy of each of `arrays`, one array of each packed type in the order of their Variant types,

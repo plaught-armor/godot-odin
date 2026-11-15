@@ -2728,6 +2728,7 @@ array_get :: proc "contextless" (self: ^Array, index: i64) -> Variant {
 	return __ret
 }
 array_set :: proc "contextless" (self: ^Array, index: i64, value: Variant) {
+	if array_stored_set(self, index, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "set", 3798478031) }
 	__a_index := index
