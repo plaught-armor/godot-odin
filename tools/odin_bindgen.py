@@ -72,7 +72,7 @@ IN_PLACE = {
        for t, gate, chars in (("String", "string_layout_known", "string_read(self)"),
                               ("StringName", "dict_layout_known", "string_read(name_text(self))"))
        for m, body in (
-           ("unicode_at", "if c := {c}; at >= 0 && at < i64(len(c)) {{ return i64(c[at]) }}"),
+           ("unicode_at", "if c := {c}; at >= 0 && at < i64(len(c)) {{ return i64(u32(c[at])) }}"),
            ("is_absolute_path", "return runes_is_absolute_path({c})"),
            ("is_relative_path", "return !runes_is_absolute_path({c})"),
            ("is_valid_ascii_identifier", "return runes_is_valid_ascii_identifier({c})"),

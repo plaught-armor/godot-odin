@@ -414,7 +414,7 @@ string_path_join :: proc "contextless" (self: ^String, path: String) -> String {
 	return __ret
 }
 string_unicode_at :: proc "contextless" (self: ^String, at: i64) -> i64 {
-	if string_layout_known { if c := string_read(self); at >= 0 && at < i64(len(c)) { return i64(c[at]) } }
+	if string_layout_known { if c := string_read(self); at >= 0 && at < i64(len(c)) { return i64(u32(c[at])) } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "unicode_at", 4103005248) }
 	__a_at := at
@@ -1419,7 +1419,7 @@ string_name_path_join :: proc "contextless" (self: ^StringName, path: String) ->
 	return __ret
 }
 string_name_unicode_at :: proc "contextless" (self: ^StringName, at: i64) -> i64 {
-	if dict_layout_known { if c := string_read(name_text(self)); at >= 0 && at < i64(len(c)) { return i64(c[at]) } }
+	if dict_layout_known { if c := string_read(name_text(self)); at >= 0 && at < i64(len(c)) { return i64(u32(c[at])) } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "unicode_at", 4103005248) }
 	__a_at := at
