@@ -77,6 +77,7 @@ IN_PLACE = {
            ("is_relative_path", "return !runes_is_absolute_path({c})"),
            ("is_valid_ascii_identifier", "return runes_is_valid_ascii_identifier({c})"),
            ("is_valid_identifier", "return runes_is_valid_ascii_identifier({c})"),
+           ("is_valid_unicode_identifier", "return runes_is_valid_unicode_identifier({c})"),
            ("is_valid_hex_number", "return runes_is_valid_hex_number({c}, with_prefix)"),
            ("is_valid_filename", "return runes_is_valid_filename({c})"),
            ("is_valid_html_color", "return runes_is_valid_html_color({c})"),
@@ -217,7 +218,8 @@ IN_PLACE = {
     **{("StringName", m): f"\tif dict_layout_known {{ return string_{m}(name_text(self)) }}\n"
        for m in ("capitalize", "to_camel_case", "to_pascal_case", "to_snake_case", "to_kebab_case",
                  "get_extension", "get_basename", "get_file", "get_base_dir", "simplify_path",
-                 "reverse", "dedent", "strip_escapes", "bigrams")},
+                 "reverse", "dedent", "strip_escapes", "bigrams",
+                 "validate_node_name", "validate_filename")},
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
@@ -284,6 +286,7 @@ REPLACED = {
     ("String", "bigrams"),
     ("String", "similarity"),
     ("String", "rsplit"), ("String", "split_floats"), ("String", "join"),
+    ("String", "validate_node_name"), ("String", "validate_filename"),
     ("String", "get_extension"),
     ("String", "get_basename"),
     ("String", "get_file"),

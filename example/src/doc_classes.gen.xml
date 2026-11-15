@@ -303,6 +303,9 @@
 		<method name="replaced_validity">
 			<description>is_valid_html_color and is_valid_ip_address of each text, then of its StringName, four per text. test.gd builds the same array from the engine's methods.</description>
 		</method>
+		<method name="replaced_validates">
+			<description>validate_node_name and validate_filename of each text, "1" or "0" for its is_valid_unicode_identifier, then the same of its StringName, six per text. test.gd builds the same array from the engine's methods.</description>
+		</method>
 		<method name="replaced_same_typed">
 			<description>Whether [code]a[/code] and [code]b[/code], then [code]d[/code] and [code]e[/code], are typed alike: Array is_same_typed, then Dictionary is_same_typed, is_same_typed_key and is_same_typed_value. test.gd builds the same array from the engine's methods.</description>
 		</method>

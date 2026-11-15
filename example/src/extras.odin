@@ -150,6 +150,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_bswaps", bag_replaced_bswaps, {"bytes", "offset", "count", "other", "other_count"})
 	godot.method(b, "replaced_container_flags", bag_replaced_container_flags, {"a", "d"})
 	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
+	godot.method(b, "replaced_validates", bag_replaced_validates, {"texts"})
 	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
 	godot.method(b, "replaced_callables", bag_replaced_callables, {"c", "s"})
 	godot.method(b, "replaced_packed_set", bag_replaced_packed_set, {"arrays", "values", "index", "other"})
@@ -1359,6 +1360,31 @@ bag_replaced_scalars :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godo
 			godot.string_name_bin_to_int(&n),
 		}
 		for v in r { godot.packed_int64_array_append(&out, v) }
+	}
+	return out
+}
+
+// validate_node_name and validate_filename of each text, "1" or "0" for its
+// is_valid_unicode_identifier, then the same of its StringName, six per text. test.gd builds the
+// same array from the engine's methods.
+bag_replaced_validates :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godot.PackedStringArray {
+	texts := texts
+	out := godot.packed_string_array_new()
+	for &t in godot.packed_read_string(&texts) {
+		n := godot.string_name_new_from_string(t)
+		defer godot.destroy[.STRING_NAME](&n)
+		r := [6]godot.String {
+			godot.string_validate_node_name(&t),
+			godot.string_validate_filename(&t),
+			godot.string_of("1" if godot.string_is_valid_unicode_identifier(&t) else "0"),
+			godot.string_name_validate_node_name(&n),
+			godot.string_name_validate_filename(&n),
+			godot.string_of("1" if godot.string_name_is_valid_unicode_identifier(&n) else "0"),
+		}
+		for &v in r {
+			godot.packed_string_array_append(&out, v)
+			godot.destroy[.STRING](&v)
+		}
 	}
 	return out
 }

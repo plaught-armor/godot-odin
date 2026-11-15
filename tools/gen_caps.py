@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Writes godot/gen_caps.odin: the engine's case tables, for the case-insensitive String compares,
-and its upper and lower case letter ranges, for the methods that split words on a change of case.
+its upper and lower case letter ranges, for the methods that split words on a change of case, and
+its identifier character ranges, for `is_valid_unicode_identifier`.
 
 Usage: gen_caps.py <ucaps.h> <char_range.cpp> <out.odin> [<table name suffix>]
 with both sources from core/string of the engine source at one release.
@@ -18,6 +19,10 @@ The engine asks whether a character is an upper or a lower case letter of `upper
 The tables here are those ranges from 0x80 up as one sorted list of bounds, each range's first
 character and then the one after its last, so a character is in a range when an odd number of
 bounds are at or below it.
+
+The engine asks whether a character may start or continue an identifier of `xid_start` and
+`xid_continue` in the same file. The tables here are those ranges from 0x80 up as bounds in the
+same way, with ranges that meet joined into one.
 """
 import re
 import sys
@@ -60,6 +65,30 @@ def bounds(source: str, name: str, first: str) -> list[int]:
     return flat
 
 
+def id_bounds(source: str, name: str, digits: bool) -> list[int]:
+    match = re.search(name + r"\[\w+\]\s*=\s*\{(.*?)\n\};", source, re.S)
+    if match is None:
+        sys.exit(f"gen_caps: no {name} in the source")
+    ranges = [(int(a, 16), int(b, 16)) for a, b in re.findall(r"\{\s*(0x[0-9A-Fa-f]+)\s*,\s*(0x[0-9A-Fa-f]+)\s*\}", match.group(1))]
+    # The Odin side tests ASCII by comparison and searches only from 0x80, so the ASCII rows must be
+    # exactly the letters and `_`, with the digits for the characters after the first.
+    want = [(0x30, 0x39)] * digits + [(0x41, 0x5A), (0x5F, 0x5F), (0x61, 0x7A)]
+    if [r for r in ranges if r[0] < 0x80] != want:
+        sys.exit(f"gen_caps: {name} ASCII rows are not the letters and `_`")
+    flat: list[int] = []
+    for a, b in ranges:
+        if a < 0x80:
+            continue
+        if flat and flat[-1] == a:
+            flat[-1] = b + 1
+        else:
+            flat += [a, b + 1]
+    # Strictly rising bounds mean the ranges are sorted, not empty, and do not overlap.
+    if any(flat[i] >= flat[i + 1] for i in range(len(flat) - 1)):
+        sys.exit(f"gen_caps: {name} ranges are not sorted and apart")
+    return flat
+
+
 def members(flat: list[int]) -> set[int]:
     return {c for i in range(0, len(flat), 2) for c in range(flat[i], flat[i + 1])}
 
@@ -97,6 +126,8 @@ def main() -> None:
         emit(out, name + "_TO" + suffix, [b for _, b in rows])
     emit(out, "LETTER_UPPER" + suffix, letters_upper)
     emit(out, "LETTER_LOWER" + suffix, letters_lower)
+    emit(out, "XID_START" + suffix, id_bounds(ranges, "xid_start", False))
+    emit(out, "XID_CONTINUE" + suffix, id_bounds(ranges, "xid_continue", True))
     open(sys.argv[3], "w", encoding="utf-8").write("\n".join(out))
 
 

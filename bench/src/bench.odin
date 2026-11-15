@@ -2115,6 +2115,14 @@ String_Op :: enum i64 {
 	SPLIT_FLOATS, // string_split_floats of the same
 	JOIN_CALL, // the engine's String.join of the sentence's nine words with ", "
 	JOIN, // string_join of the same
+	VALIDATE_NODE_CALL, // the engine's String.validate_node_name of a name it keeps
+	VALIDATE_NODE, // string_validate_node_name of the same
+	VALIDATE_NODE_BAD_CALL, // the engine's String.validate_node_name of a name with 2 characters to replace
+	VALIDATE_NODE_BAD, // string_validate_node_name of the same
+	VALIDATE_FILE_CALL, // the engine's String.validate_filename of a padded name with 2 characters to replace
+	VALIDATE_FILE, // string_validate_filename of the same
+	UNICODE_ID_CALL, // the engine's String.is_valid_unicode_identifier of a name with 2 accented letters
+	UNICODE_ID, // string_is_valid_unicode_identifier of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2587,6 +2595,42 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .SIMILARITY:
 		text := sc
 		for _ in 0 ..< n { sum += i64(godot.string_similarity(intrinsics.volatile_load(&text), leaf) * 100) }
+	case .VALIDATE_NODE_CALL, .VALIDATE_NODE, .VALIDATE_NODE_BAD_CALL, .VALIDATE_NODE_BAD, .VALIDATE_FILE_CALL, .VALIDATE_FILE:
+		source := "PlayerCharacter2D"
+		name: cstring = "validate_node_name"
+		#partial switch kind {
+		case .VALIDATE_NODE_BAD_CALL, .VALIDATE_NODE_BAD: source = "Player.Body:1"
+		case .VALIDATE_FILE_CALL, .VALIDATE_FILE: source, name = " my file: draft?.txt ", "validate_filename"
+		}
+		subject := godot.string_of(source)
+		defer godot.destroy[.STRING](&subject)
+		text := &subject
+		fn := godot.builtin_method(.STRING, name, 3942272618)
+		for _ in 0 ..< n {
+			s := intrinsics.volatile_load(&text)
+			r: godot.String
+			#partial switch kind {
+			case .VALIDATE_NODE, .VALIDATE_NODE_BAD: r = godot.string_validate_node_name(s)
+			case .VALIDATE_FILE: r = godot.string_validate_filename(s)
+			case: fn(s, nil, &r, 0)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .UNICODE_ID_CALL, .UNICODE_ID:
+		subject := godot.string_of("héllo_wörld2")
+		defer godot.destroy[.STRING](&subject)
+		text := &subject
+		fn := godot.builtin_method(.STRING, "is_valid_unicode_identifier", 3918633141)
+		for _ in 0 ..< n {
+			if kind == .UNICODE_ID_CALL {
+				r: u8
+				fn(intrinsics.volatile_load(&text), nil, &r, 0)
+				sum += i64(r)
+			} else {
+				sum += i64(godot.string_is_valid_unicode_identifier(intrinsics.volatile_load(&text)))
+			}
+		}
 	case .RSPLIT_CALL:
 		allow_empty, maxsplit := u8(1), i64(0)
 		fn := godot.builtin_method(.STRING, "rsplit", 1252735785)

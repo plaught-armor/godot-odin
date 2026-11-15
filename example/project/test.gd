@@ -478,6 +478,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_bswaps(b2)
 	failures += _check_replaced_container_flags(b2)
 	failures += _check_replaced_validity(b2)
+	failures += _check_replaced_validates(b2)
 	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
@@ -1481,6 +1482,53 @@ func _check_bswaps_case(b2: Bag, bytes: PackedByteArray, offset: int, count: int
 		return 0
 	print("FAIL: Bag.replaced_bswaps(%s, %d, %d, %d, %d) gave %s, not %s" % [before, offset, count, other, other_count, got, want])
 	return 1
+
+
+# validate_node_name, validate_filename and is_valid_unicode_identifier of String and StringName,
+# from Bag.replaced_validates, against the engine's methods called from GDScript: fixed cases,
+# every character up to 0x3000 alone and after a letter, a sample of the higher ones, then 20000
+# seeded random texts. The seed is fixed so a failure repeats. Returns 1 on a mismatch.
+func _check_replaced_validates(b2: Bag) -> int:
+	var texts: PackedStringArray = ["", "a", "_", "1", "a1", "1a", "Player", "Player.Body:1", "@Node@2", "%Unique", "a/b\\c",
+		"  name  ", "\tmy file: draft?.txt\n", " ", "   ", "a b", "<a>|\"b\"*", "100%", "héllo_wörld2", "日本語", "приве́т", "a·b",
+		"x́", "́x", "𝒜𝒷", "a-b", "..", ":", " : ", "ａｂ１", "ⅷ", "a‍", "℘", "℮", "゛"]
+	for code: int in range(1, 0x3000):
+		texts.append(String.chr(code))
+		texts.append("a" + String.chr(code))
+	for code: int in range(0x3000, 0x110000, 97):
+		# No String holds half of a surrogate pair.
+		if code < 0xd800 or code > 0xdfff:
+			texts.append(String.chr(code))
+			texts.append("a" + String.chr(code))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261128
+	var alphabet: Array[String] = ["a", "B", "_", "1", " ", ".", ":", "/", "%", "é", "́", "\t", "?", "@"]
+	for round: int in 20000:
+		var s := ""
+		for i: int in rng.randi_range(0, 8):
+			s += alphabet[rng.randi_range(0, 13)]
+		texts.append(s)
+	var want := PackedStringArray()
+	var valid := 0
+	for s: String in texts:
+		for v: Variant in [s, StringName(s)]:
+			want.append(v.validate_node_name())
+			want.append(v.validate_filename())
+			want.append("1" if v.is_valid_unicode_identifier() else "0")
+			valid += int(v.is_valid_unicode_identifier())
+	var got: PackedStringArray = b2.replaced_validates(texts)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_validates gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	for i: int in want.size():
+		if got[i] != want[i]:
+			print("FAIL: Bag.replaced_validates on %s, read %d, gave %s, not %s" % [texts[i / 6].c_escape(), i % 6,
+					got[i].c_escape(), want[i].c_escape()])
+			return 1
+	if valid < 2000:
+		print("FAIL: Bag.replaced_validates saw only %d valid identifiers, too few to prove anything" % valid)
+		return 1
+	return 0
 
 
 # is_valid_html_color and is_valid_ip_address of String and StringName, from Bag.replaced_validity,

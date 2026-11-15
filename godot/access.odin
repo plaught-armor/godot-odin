@@ -1531,6 +1531,51 @@ string_join :: proc "contextless" (self: ^String, parts: PackedStringArray) -> (
 	return
 }
 
+// `self` with '_' in place of each character a node name may not hold, which are . : @ / " and
+// %: the engine's `validate_node_name`. The caller destroys the result.
+string_validate_node_name :: proc "contextless" (self: ^String) -> String {
+	return string_underscored(self, string_read(self), false)
+}
+
+// `self` without the whitespace at its ends and with '_' in place of each character a file name
+// may not hold, which are : / \ ? * " | % < and >: the engine's `validate_filename`. The caller
+// destroys the result.
+string_validate_filename :: proc "contextless" (self: ^String) -> String {
+	return string_underscored(self, runes_strip_edges(string_read(self)), true)
+}
+
+// `kept`, a part of `self`, with '_' in place of each character a file name (`FILENAME`) or a
+// node name may not hold. `self` itself, sharing its storage, when it is whole and holds none.
+@(private)
+string_underscored :: #force_inline proc "contextless" (self: ^String, kept: []rune, $FILENAME: bool) -> (out: String) {
+	first := 0
+	for first < len(kept) && !name_refuses(kept[first], FILENAME) { first += 1 }
+	if first == len(kept) {
+		if len(kept) == len(string_read(self)) { return string_copy(self) }
+		return string_of_runes(kept)
+	}
+	w := string_storage(&out, len(kept) + 1)
+	copy(w[:first], kept[:first])
+	for i in first ..< len(kept) { w[i] = '_' if name_refuses(kept[i], FILENAME) else kept[i] }
+	w[len(kept)] = 0
+	return
+}
+
+// Whether a file name (`FILENAME`) or a node name may not hold `c`.
+@(private)
+name_refuses :: #force_inline proc "contextless" (c: rune, $FILENAME: bool) -> bool {
+	when FILENAME {
+		switch c {
+		case ':', '/', '\\', '?', '*', '"', '|', '%', '<', '>': return true
+		}
+	} else {
+		switch c {
+		case '.', ':', '@', '/', '"', '%': return true
+		}
+	}
+	return false
+}
+
 // Whether `c` is one of `set`.
 runes_has :: proc "contextless" (set: []rune, c: rune) -> bool {
 	for s in set {
@@ -1918,6 +1963,28 @@ runes_is_valid_ascii_identifier :: proc "contextless" (chars: []rune) -> bool {
 		if !letter && (c < '0' || c > '9') && c != '_' { return false }
 	}
 	return true
+}
+
+// Whether `chars` spell an identifier as the engine's `is_valid_unicode_identifier` reads a
+// String: a character that may start an identifier in Unicode, or '_', then characters that may
+// follow in one, and not empty. The ranges are those of the running engine's Unicode version.
+runes_is_valid_unicode_identifier :: proc "contextless" (chars: []rune) -> bool {
+	if len(chars) == 0 || !rune_in_identifier(chars[0], xid_start, false) { return false }
+	for c in chars[1:] {
+		if !rune_in_identifier(c, xid_continue, true) { return false }
+	}
+	return true
+}
+
+// Whether `c` is an ASCII letter, '_', an ASCII digit when `digits`, or from 0x80 up in one of the
+// ranges of `bounds`.
+@(private)
+rune_in_identifier :: #force_inline proc "contextless" (c: rune, bounds: []u32, digits: bool) -> bool {
+	if u32(c) < 0x80 {
+		letter := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+		return letter || (digits && c >= '0' && c <= '9')
+	}
+	return ranges_has(bounds, c)
 }
 
 // The value of hexadecimal digit `c` in either case, or -1.
@@ -2813,6 +2880,10 @@ rune_lower :: #force_inline proc "contextless" (c: rune) -> rune {
 // engine as the case tables are: each range's first character, then the one after its last.
 @(private) letter_upper, letter_lower: []u32
 
+// The bounds of the engine's ranges of characters from 0x80 up that may start an identifier and
+// that may follow in one, of the running engine and laid out as the letter ranges are.
+@(private) xid_start, xid_continue: []u32
+
 // Whether `c` is in one of the ranges of `bounds`: whether an odd number of bounds are at or
 // below it. Halving 1400 bounds takes 11 steps; 16 bounds the loop.
 @(private)
@@ -2835,10 +2906,12 @@ check_caps_version :: proc "contextless" () {
 		caps_upper_from, caps_upper_to = CAPS_UPPER_FROM_48[:], CAPS_UPPER_TO_48[:]
 		caps_lower_from, caps_lower_to = CAPS_LOWER_FROM_48[:], CAPS_LOWER_TO_48[:]
 		letter_upper, letter_lower = LETTER_UPPER_48[:], LETTER_LOWER_48[:]
+		xid_start, xid_continue = XID_START_48[:], XID_CONTINUE_48[:]
 	} else {
 		caps_upper_from, caps_upper_to = CAPS_UPPER_FROM[:], CAPS_UPPER_TO[:]
 		caps_lower_from, caps_lower_to = CAPS_LOWER_FROM[:], CAPS_LOWER_TO[:]
 		letter_upper, letter_lower = LETTER_UPPER[:], LETTER_LOWER[:]
+		xid_start, xid_continue = XID_START[:], XID_CONTINUE[:]
 	}
 }
 

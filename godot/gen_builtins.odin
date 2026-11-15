@@ -199,20 +199,6 @@ string_json_escape :: proc "contextless" (self: ^String) -> String {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_validate_node_name :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "validate_node_name", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_validate_filename :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "validate_filename", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
 string_is_valid_ascii_identifier :: proc "contextless" (self: ^String) -> bool {
 	if string_layout_known { return runes_is_valid_ascii_identifier(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
@@ -222,6 +208,7 @@ string_is_valid_ascii_identifier :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_is_valid_unicode_identifier :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_valid_unicode_identifier(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_unicode_identifier", 3918633141) }
 	__ret: u8
@@ -1209,6 +1196,7 @@ string_name_json_escape :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_validate_node_name :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_validate_node_name(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "validate_node_name", 3942272618) }
 	__ret: String
@@ -1216,6 +1204,7 @@ string_name_validate_node_name :: proc "contextless" (self: ^StringName) -> Stri
 	return __ret
 }
 string_name_validate_filename :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_validate_filename(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "validate_filename", 3942272618) }
 	__ret: String
@@ -1231,6 +1220,7 @@ string_name_is_valid_ascii_identifier :: proc "contextless" (self: ^StringName) 
 	return __ret != 0
 }
 string_name_is_valid_unicode_identifier :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_valid_unicode_identifier(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_unicode_identifier", 3918633141) }
 	__ret: u8

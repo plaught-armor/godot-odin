@@ -82,6 +82,9 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.rsplit` | `string_rsplit` | Godot 4.7-stable | 247 ns | 150 ns |
 | `String.split_floats` | `string_split_floats` | Godot 4.7-stable | 117 ns | 67 ns |
 | `String.join` | `string_join` | Godot 4.7-stable | 60 ns | 44 ns |
+| `String.validate_node_name` | `string_validate_node_name` | Godot 4.7-stable | 50 ns | 15 ns |
+| `String.validate_filename` | `string_validate_filename` | Godot 4.7-stable | 293 ns | 26 ns |
+| `String.is_valid_unicode_identifier` | `runes_is_valid_unicode_identifier` | Godot 4.7-stable | 63 ns | 34 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -201,6 +204,17 @@ between commas and on the sentence's nine words joined with `, `.
 7 delimiters, both settings of `allow_empty` and 5 limits, on limits past 32 bits, on 200 parts
 (more than the bounds kept while counting), on exponents past the limit and on 20000 seeded
 random rounds, with the numbers compared as bytes.
+
+`string_validate_node_name` and `string_validate_filename` share `string_underscored`: a String
+with nothing to replace shares its storage (43 ns to 10 ns for a valid node name), and otherwise
+one allocation is written in one pass, where the engine's `validate_filename` trims and then
+makes a new String for each of its ten characters. `runes_is_valid_unicode_identifier` tests
+ASCII by comparison and other characters against the identifier ranges of the running engine's
+Unicode version, which `tools/gen_caps.py` writes beside the case tables for 4.7 and 4.8.
+The three are timed on `Player.Body:1`, on ` my file: draft?.txt ` and on `héllo_wörld2`.
+`_check_replaced_validates` checks them, as String and as StringName, on fixed Strings, on every
+character up to 0x3000 alone and after a letter, on every 97th character above, and on 20000
+seeded random texts.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step
