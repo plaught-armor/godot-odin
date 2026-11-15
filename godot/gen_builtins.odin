@@ -268,20 +268,6 @@ string_join :: proc "contextless" (self: ^String, parts: PackedStringArray) -> S
 	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
-string_to_upper :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "to_upper", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_to_lower :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "to_lower", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
 string_strip_edges :: proc "contextless" (self: ^String, left: bool, right: bool) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "strip_edges", 907855311) }
@@ -1264,6 +1250,7 @@ string_name_join :: proc "contextless" (self: ^StringName, parts: PackedStringAr
 	return __ret
 }
 string_name_to_upper :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_to_upper(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_upper", 3942272618) }
 	__ret: String
@@ -1271,6 +1258,7 @@ string_name_to_upper :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_to_lower :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_to_lower(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_lower", 3942272618) }
 	__ret: String

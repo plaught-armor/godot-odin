@@ -2015,6 +2015,10 @@ String_Op :: enum i64 {
 	LEFT,           // string_left of the same
 	RIGHT_CALL,     // the engine's String.right of 8 characters of the sentence, the result destroyed
 	RIGHT,          // string_right of the same
+	TO_UPPER_CALL,  // the engine's String.to_upper of the sentence, the result destroyed
+	TO_UPPER,       // string_to_upper of the same
+	TO_LOWER_CALL,  // the engine's String.to_lower of the sentence, the result destroyed
+	TO_LOWER,       // string_to_lower of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2139,6 +2143,26 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .RIGHT:
 		for _ in 0 ..< n {
 			r := godot.string_right(intrinsics.volatile_load(&h), right_len)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .TO_UPPER_CALL, .TO_LOWER_CALL:
+		fn := godot.builtin_method(.STRING, "to_upper" if kind == .TO_UPPER_CALL else "to_lower", 3942272618)
+		for _ in 0 ..< n {
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), nil, &r, 0)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .TO_UPPER:
+		for _ in 0 ..< n {
+			r := godot.string_to_upper(intrinsics.volatile_load(&h))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .TO_LOWER:
+		for _ in 0 ..< n {
+			r := godot.string_to_lower(intrinsics.volatile_load(&h))
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}

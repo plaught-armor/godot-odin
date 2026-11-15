@@ -760,6 +760,35 @@ func _check_replaced_slices(b2: Bag, s: String) -> int:
 	return failures
 
 
+# to_upper and to_lower of `s`, as String and as StringName, from Bag.replaced_case against the
+# engine's. Returns 1 on a mismatch.
+func _check_replaced_case(b2: Bag, s: String) -> int:
+	var n := StringName(s)
+	var want := PackedStringArray([s.to_upper(), s.to_lower(), n.to_upper(), n.to_lower()])
+	var got: PackedStringArray = b2.replaced_case(s, n)
+	if got != want:
+		print("FAIL: Bag.replaced_case(%s) gave %s, not %s" % [s, got, want])
+		return 1
+	return 0
+
+
+# _check_replaced_case on fixed Strings, then on every character from 1 to 0x1FFFF but the
+# surrogates, 512 to a String, which covers both of the engine's case tables.
+func _check_replaced_cases(b2: Bag) -> int:
+	var failures := 0
+	for s: String in ["", "a", "Z", "Hello, World 123", "héllo WÖRLD", "ǅ ǆ Ǆ ß ẞ ı İ", "res://Scenes/Level_01.tscn"]:
+		failures += _check_replaced_case(b2, s)
+	for block: int in 0x20000 / 512:
+		var first := block * 512
+		if first >= 0xD800 and first < 0xE000:
+			continue
+		var s := ""
+		for c: int in range(maxi(first, 1), first + 512):
+			s += String.chr(c)
+		failures += _check_replaced_case(b2, s)
+	return failures
+
+
 # _check_replaced_matches on fixed patterns and then on seeded random Strings over a small alphabet
 # with both cases, the two wildcards and the full stop that `?` does not stand for, so patterns
 # with several `*` meet texts they fit and texts they nearly fit. The seed is fixed so a failure
@@ -773,6 +802,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 		failures += _check_replaced_matches(b2, c[0], c[1])
 	for s: String in ["", "a", "ab", "héllo wörld", "res://scenes/level_01.tscn", "a".repeat(70)]:
 		failures += _check_replaced_slices(b2, s)
+	failures += _check_replaced_cases(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

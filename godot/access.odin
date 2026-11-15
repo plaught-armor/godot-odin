@@ -336,7 +336,9 @@ runes_subsequence :: #force_inline proc "contextless" (part, whole: []rune, $NOC
 // engine tries every length for each `*` by calling itself. This remembers only the last `*` and
 // how much of `text` it has taken, and on a mismatch gives it one character more: an earlier `*`
 // never needs to take more, since the last one can take any characters at all. A zero character
-// ends `pattern` or `text`, as the engine's terminator does.
+// ends `pattern` or `text`, as the engine's terminator does. Both must be the characters of a
+// String, which that terminator follows: it is read as the character one past the end, and
+// neither index moves past it.
 @(private)
 runes_wildcard :: proc "contextless" (pattern, text: []rune, $NOCASE: bool) -> bool {
 	if len(pattern) == 0 || len(text) == 0 { return false }
@@ -345,8 +347,7 @@ runes_wildcard :: proc "contextless" (pattern, text: []rune, $NOCASE: bool) -> b
 	// `taken` only grows and stays within `text`, and between two growths `p` only grows and stays
 	// within `pattern`, so the rounds below cover every step.
 	#no_bounds_check for _ in 0 ..< (len(pattern) + 2) * (len(text) + 2) {
-		pc := pattern[p] if p < len(pattern) else 0
-		tc := text[t] if t < len(text) else 0
+		pc, tc := pattern[p], text[t]
 		if pc == '*' {
 			star, taken = p, t
 			p += 1
@@ -365,7 +366,7 @@ runes_wildcard :: proc "contextless" (pattern, text: []rune, $NOCASE: bool) -> b
 			t += 1
 			continue
 		}
-		if star < 0 || taken >= len(text) || text[taken] == 0 { return false }
+		if star < 0 || text[taken] == 0 { return false }
 		taken += 1
 		p, t = star + 1, taken
 	}
@@ -450,6 +451,29 @@ string_right :: proc "contextless" (self: ^String, length: i64) -> String {
 	if n <= 0 { return {} }
 	n = min(n, i64(len(chars)))
 	return slice_of(self, chars, i64(len(chars)) - n, n)
+}
+
+// `self` with every character raised as the engine's case table raises it: the engine's
+// `to_upper`. The result has its own storage unless `self` is empty. The engine stops at a zero
+// character inside the String and leaves what follows unset; here the rest is raised too. The
+// caller destroys the result.
+string_to_upper :: proc "contextless" (self: ^String) -> (out: String) {
+	chars := string_read(self)
+	if len(chars) == 0 { return }
+	w := string_storage(&out, len(chars) + 1)
+	#no_bounds_check for c, i in chars { w[i] = rune_upper(c) }
+	w[len(chars)] = 0
+	return
+}
+
+// `string_to_upper` lowering: the engine's `to_lower`.
+string_to_lower :: proc "contextless" (self: ^String) -> (out: String) {
+	chars := string_read(self)
+	if len(chars) == 0 { return }
+	w := string_storage(&out, len(chars) + 1)
+	#no_bounds_check for c, i in chars { w[i] = rune_lower(c) }
+	w[len(chars)] = 0
+	return
 }
 
 // A String of the `n` characters of `chars` from `from`, which lie inside it, `n` at least 1.
@@ -1671,14 +1695,33 @@ fold_prefix_of :: proc "contextless" (chars: []rune, text: string, $UPPER: bool)
 @(private)
 rune_upper :: #force_inline proc "contextless" (c: rune) -> rune {
 	if u32(c) < 0x80 { return c - 0x20 if c >= 'a' && c <= 'z' else c }
-	return caps_find(CAPS_UPPER_FROM[:], CAPS_UPPER_TO[:], c)
+	return caps_find(caps_upper_from, caps_upper_to, c)
 }
 
 // `c` lowered as the engine's `_find_lower` does.
 @(private)
 rune_lower :: #force_inline proc "contextless" (c: rune) -> rune {
 	if u32(c) < 0x80 { return c + 0x20 if c >= 'A' && c <= 'Z' else c }
-	return caps_find(CAPS_LOWER_FROM[:], CAPS_LOWER_TO[:], c)
+	return caps_find(caps_lower_from, caps_lower_to, c)
+}
+
+// The engine's case tables from 0x80 up, keys and values apart: the ones of the running engine,
+// since Godot 4.8 added the pairs of Unicode 18 to those of 4.7. Empty until `check_caps_version`
+// sets them at load.
+@(private) caps_upper_from, caps_upper_to, caps_lower_from, caps_lower_to: []u32
+
+// Points the case tables at those of the engine's version. Called once at load.
+@(private)
+check_caps_version :: proc "contextless" () {
+	v: gde.GodotVersion2
+	gde.get_godot_version2(&v)
+	if v.major > 4 || (v.major == 4 && v.minor >= 8) {
+		caps_upper_from, caps_upper_to = CAPS_UPPER_FROM_48[:], CAPS_UPPER_TO_48[:]
+		caps_lower_from, caps_lower_to = CAPS_LOWER_FROM_48[:], CAPS_LOWER_TO_48[:]
+	} else {
+		caps_upper_from, caps_upper_to = CAPS_UPPER_FROM[:], CAPS_UPPER_TO[:]
+		caps_lower_from, caps_lower_to = CAPS_LOWER_FROM[:], CAPS_LOWER_TO[:]
+	}
 }
 
 // The value paired with `c` in a sorted case table, or `c` when it has none. Halving 1500 keys

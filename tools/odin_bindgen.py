@@ -199,6 +199,8 @@ IN_PLACE = {
            ("get_slice_count", "delimiter"), ("match", "expr"), ("matchn", "expr"),
            ("is_subsequence_of", "text"), ("is_subsequence_ofn", "text"),
            ("substr", "from, len"), ("left", "length"), ("right", "length"))},
+    ("StringName", "to_upper"): "\tif dict_layout_known { return string_to_upper(name_text(self)) }\n",
+    ("StringName", "to_lower"): "\tif dict_layout_known { return string_to_lower(name_text(self)) }\n",
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
@@ -229,6 +231,8 @@ REPLACED = {
     ("String", "substr"),
     ("String", "left"),
     ("String", "right"),
+    ("String", "to_upper"),
+    ("String", "to_lower"),
     ("Basis", "inverse"),
     ("Basis", "transposed"),
     ("Basis", "orthonormalized"),

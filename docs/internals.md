@@ -21,9 +21,11 @@ the engine dumps, and writes:
 
 `tools/gen_caps.py` writes `godot/gen_caps.odin` from the engine source's
 `core/string/ucaps.h`, which the API dumps do not carry: the engine's case tables, for the
-case-insensitive String compares to fold characters as the engine does. Regenerate it from the
-release the bindings target when that release changes the tables:
-`tools/gen_caps.py ucaps.h godot/gen_caps.odin`.
+case-insensitive String compares and `to_upper` and `to_lower` to fold characters as the engine
+does. Each release whose tables differ has its own file, picked at load by `check_caps_version`
+in `godot/access.odin`: `godot/gen_caps.odin` from 4.7-stable, and `godot/gen_caps_48.odin` from
+4.8, written by `tools/gen_caps.py ucaps.h godot/gen_caps_48.odin _48`. When a later release
+changes the tables, add a file with its own suffix and a case to `check_caps_version`.
 
 The hand-written core (`core.odin`, `class.odin`, `fields.odin`, `variant.odin`, `callable.odin`,
 `access.odin`, `tasks.odin`) turns Odin structs and procs into engine classes. It uses the

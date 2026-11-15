@@ -31,13 +31,15 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.replacen` | `string_replacen` | Godot 4.7-stable | 679 ns | 43 ns |
 | `String.split` | `string_split` | Godot 4.7-stable | 235 ns | 144 ns |
 | `String.get_slice_count` | `string_get_slice_count` | Godot 4.7-stable | 14 ns | 9.9 ns |
-| `String.match` | `string_match` | Godot 4.7-stable | 34 ns | 33 ns |
-| `String.matchn` | `string_matchn` | Godot 4.7-stable | 379 ns | 42 ns |
+| `String.match` | `string_match` | Godot 4.7-stable | 34 ns | 26 ns |
+| `String.matchn` | `string_matchn` | Godot 4.7-stable | 378 ns | 32 ns |
 | `String.is_subsequence_of` | `string_is_subsequence_of` | Godot 4.7-stable | 12 ns | 11 ns |
 | `String.is_subsequence_ofn` | `string_is_subsequence_ofn` | Godot 4.7-stable | 346 ns | 20 ns |
 | `String.substr` | `string_substr` | Godot 4.7-stable | 18.5 ns | 10.5 ns |
 | `String.left` | `string_left` | Godot 4.7-stable | 18.3 ns | 10.1 ns |
 | `String.right` | `string_right` | Godot 4.7-stable | 18.3 ns | 10.5 ns |
+| `String.to_upper` | `string_to_upper` | Godot 4.7-stable | 341 ns | 29 ns |
+| `String.to_lower` | `string_to_lower` | Godot 4.7-stable | 392 ns | 31 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -58,8 +60,17 @@ stops at the end. `_check_replaced_slices` checks them on every start and count 
 `string_match` and `string_matchn` do not call themselves as the engine's matcher does. They
 remember the last `*` and how many characters it has taken, and give it one more on a mismatch,
 within a fixed number of rounds. The result is the same for every pattern, including a `?` that
-does not stand for a full stop and a zero character ending either String. `match` alone times
-level with the engine call; it is replaced so that `matchn` and the StringName methods share it.
+does not stand for a full stop and a zero character ending either String. They read the
+terminator that follows a String's characters as the end, with no length check each round.
+
+`string_to_upper` and `string_to_lower` change each character as the engine's case tables do,
+ASCII by arithmetic, and time the sentence. The tables are those of the running engine: Godot 4.8
+added the 20 pairs of Unicode 18 to each table of 4.7, so `godot/gen_caps.odin` holds the 4.7
+tables, `godot/gen_caps_48.odin` the 4.8 ones, and `check_caps_version` picks at load. Every
+replacement that ignores case folds through the same tables. `_check_replaced_cases` checks both
+methods on every character from 1 to 0x1FFFF but the surrogates, on 4.7 and on 4.8. The engine
+stops at a zero character inside a String and leaves the rest of the result unset; the
+replacements change the rest too.
 
 ## Vector2, Vector3 and Vector4
 

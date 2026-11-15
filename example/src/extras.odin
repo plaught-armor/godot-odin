@@ -128,6 +128,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_matches", bag_replaced_matches, {"s", "n", "other"})
 	godot.method(b, "replaced_slices", bag_replaced_slices, {"s", "n", "from", "len"})
+	godot.method(b, "replaced_case", bag_replaced_case, {"s", "n"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -712,6 +713,24 @@ bag_replaced_slices :: proc(self: ^Bag, s: godot.String, n: godot.StringName, fr
 		godot.string_name_substr(&n, from, len),
 		godot.string_name_left(&n, len),
 		godot.string_name_right(&n, len),
+	}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
+	return out
+}
+
+// to_upper and to_lower of `s`, then the same through the StringName methods on `n`. test.gd
+// builds the same array from the engine's.
+bag_replaced_case :: proc(self: ^Bag, s: godot.String, n: godot.StringName) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [4]godot.String{
+		godot.string_to_upper(&s),
+		godot.string_to_lower(&s),
+		godot.string_name_to_upper(&n),
+		godot.string_name_to_lower(&n),
 	}
 	out := godot.packed_string_array_new()
 	for &v in r {
