@@ -415,6 +415,11 @@ class Api:
                 locals_.append(f"\t__a_{n} := u8({n})\n")
             elif t in self.classes:
                 locals_.append(f"\t__a_{n} := rawptr({n})\n")
+            elif t == "Variant" or (t in self.builtins and not self.members.get(t) and self.sizes[t] % 8 == 0):
+                # An opaque value is an array of bytes, and once the wrapper is inlined its copy is
+                # stored a byte at a time; the engine's word-sized read of it then waits on those
+                # stores, about 1 ns. Copied as words it is stored whole.
+                locals_.append(f"\t__a_{n} := transmute([{self.sizes[t] // 8}]uintptr){n}\n")
             else:
                 locals_.append(f"\t__a_{n} := {n}\n")
             ptrs.append(f"&__a_{n}")

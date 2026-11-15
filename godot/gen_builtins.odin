@@ -13,7 +13,7 @@ string_new :: proc "contextless" () -> (__r: String) {
 string_new_from_string :: proc "contextless" (from: String) -> (__r: String) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.STRING, 1) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -21,7 +21,7 @@ string_new_from_string :: proc "contextless" (from: String) -> (__r: String) {
 string_new_from_string_name :: proc "contextless" (from: StringName) -> (__r: String) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.STRING, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -29,7 +29,7 @@ string_new_from_string_name :: proc "contextless" (from: StringName) -> (__r: St
 string_new_from_node_path :: proc "contextless" (from: NodePath) -> (__r: String) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.STRING, 3) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -42,7 +42,7 @@ string_destroy :: proc "contextless" (self: ^String) {
 string_naturalcasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "naturalcasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -51,7 +51,7 @@ string_naturalcasecmp_to :: proc "contextless" (self: ^String, to: String) -> i6
 string_naturalnocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "naturalnocasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -60,7 +60,7 @@ string_naturalnocasecmp_to :: proc "contextless" (self: ^String, to: String) -> 
 string_filecasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "filecasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -69,7 +69,7 @@ string_filecasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
 string_filenocasecmp_to :: proc "contextless" (self: ^String, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "filenocasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -96,7 +96,7 @@ string_substr :: proc "contextless" (self: ^String, from: i64, len: i64) -> Stri
 string_get_slice :: proc "contextless" (self: ^String, delimiter: String, slice: i64) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "get_slice", 3535100402) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__a_slice := slice
 	__args := [2]gde.ConstTypePtr{&__a_delimiter, &__a_slice}
 	__ret: String
@@ -116,7 +116,7 @@ string_get_slicec :: proc "contextless" (self: ^String, delimiter: i64, slice: i
 string_get_slice_count :: proc "contextless" (self: ^String, delimiter: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "get_slice_count", 2920860731) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__args := [1]gde.ConstTypePtr{&__a_delimiter}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -125,7 +125,7 @@ string_get_slice_count :: proc "contextless" (self: ^String, delimiter: String) 
 string_match :: proc "contextless" (self: ^String, expr: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "match", 2566493496) }
-	__a_expr := expr
+	__a_expr := transmute([1]uintptr)expr
 	__args := [1]gde.ConstTypePtr{&__a_expr}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -134,7 +134,7 @@ string_match :: proc "contextless" (self: ^String, expr: String) -> bool {
 string_matchn :: proc "contextless" (self: ^String, expr: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "matchn", 2566493496) }
-	__a_expr := expr
+	__a_expr := transmute([1]uintptr)expr
 	__args := [1]gde.ConstTypePtr{&__a_expr}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -143,7 +143,7 @@ string_matchn :: proc "contextless" (self: ^String, expr: String) -> bool {
 string_is_subsequence_of :: proc "contextless" (self: ^String, text: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_subsequence_of", 2566493496) }
-	__a_text := text
+	__a_text := transmute([1]uintptr)text
 	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -152,7 +152,7 @@ string_is_subsequence_of :: proc "contextless" (self: ^String, text: String) -> 
 string_is_subsequence_ofn :: proc "contextless" (self: ^String, text: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_subsequence_ofn", 2566493496) }
-	__a_text := text
+	__a_text := transmute([1]uintptr)text
 	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -168,7 +168,7 @@ string_bigrams :: proc "contextless" (self: ^String) -> PackedStringArray {
 string_similarity :: proc "contextless" (self: ^String, text: String) -> f64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "similarity", 2697460964) }
-	__a_text := text
+	__a_text := transmute([1]uintptr)text
 	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: f64
 	__fn(self, &__args[0], &__ret, 1)
@@ -177,8 +177,8 @@ string_similarity :: proc "contextless" (self: ^String, text: String) -> f64 {
 string_format :: proc "contextless" (self: ^String, values: Variant, placeholder: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "format", 3212199029) }
-	__a_values := values
-	__a_placeholder := placeholder
+	__a_values := transmute([3]uintptr)values
+	__a_placeholder := transmute([1]uintptr)placeholder
 	__args := [2]gde.ConstTypePtr{&__a_values, &__a_placeholder}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -197,7 +197,7 @@ string_replace_char :: proc "contextless" (self: ^String, key: i64, with: i64) -
 string_replace_chars :: proc "contextless" (self: ^String, keys: String, with: i64) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "replace_chars", 3535100402) }
-	__a_keys := keys
+	__a_keys := transmute([1]uintptr)keys
 	__a_with := with
 	__args := [2]gde.ConstTypePtr{&__a_keys, &__a_with}
 	__ret: String
@@ -216,7 +216,7 @@ string_remove_char :: proc "contextless" (self: ^String, what: i64) -> String {
 string_remove_chars :: proc "contextless" (self: ^String, chars: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "remove_chars", 3134094431) }
-	__a_chars := chars
+	__a_chars := transmute([1]uintptr)chars
 	__args := [1]gde.ConstTypePtr{&__a_chars}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -242,7 +242,7 @@ string_insert :: proc "contextless" (self: ^String, position: i64, what: String)
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "insert", 248737229) }
 	__a_position := position
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__args := [2]gde.ConstTypePtr{&__a_position, &__a_what}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -296,7 +296,7 @@ string_to_kebab_case :: proc "contextless" (self: ^String) -> String {
 string_rsplit :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "rsplit", 1252735785) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__a_allow_empty := u8(allow_empty)
 	__a_maxsplit := maxsplit
 	__args := [3]gde.ConstTypePtr{&__a_delimiter, &__a_allow_empty, &__a_maxsplit}
@@ -307,7 +307,7 @@ string_rsplit :: proc "contextless" (self: ^String, delimiter: String, allow_emp
 string_split_floats :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool) -> PackedFloat64Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "split_floats", 2092079095) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__a_allow_empty := u8(allow_empty)
 	__args := [2]gde.ConstTypePtr{&__a_delimiter, &__a_allow_empty}
 	__ret: PackedFloat64Array
@@ -317,7 +317,7 @@ string_split_floats :: proc "contextless" (self: ^String, delimiter: String, all
 string_join :: proc "contextless" (self: ^String, parts: PackedStringArray) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "join", 3595973238) }
-	__a_parts := parts
+	__a_parts := transmute([2]uintptr)parts
 	__args := [1]gde.ConstTypePtr{&__a_parts}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -375,7 +375,7 @@ string_strip_escapes :: proc "contextless" (self: ^String) -> String {
 string_lstrip :: proc "contextless" (self: ^String, chars: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "lstrip", 3134094431) }
-	__a_chars := chars
+	__a_chars := transmute([1]uintptr)chars
 	__args := [1]gde.ConstTypePtr{&__a_chars}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -384,7 +384,7 @@ string_lstrip :: proc "contextless" (self: ^String, chars: String) -> String {
 string_rstrip :: proc "contextless" (self: ^String, chars: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "rstrip", 3134094431) }
-	__a_chars := chars
+	__a_chars := transmute([1]uintptr)chars
 	__args := [1]gde.ConstTypePtr{&__a_chars}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -407,7 +407,7 @@ string_get_basename :: proc "contextless" (self: ^String) -> String {
 string_path_join :: proc "contextless" (self: ^String, path: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "path_join", 3134094431) }
-	__a_path := path
+	__a_path := transmute([1]uintptr)path
 	__args := [1]gde.ConstTypePtr{&__a_path}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -426,7 +426,7 @@ string_unicode_at :: proc "contextless" (self: ^String, at: i64) -> i64 {
 string_indent :: proc "contextless" (self: ^String, prefix: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "indent", 3134094431) }
-	__a_prefix := prefix
+	__a_prefix := transmute([1]uintptr)prefix
 	__args := [1]gde.ConstTypePtr{&__a_prefix}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -715,7 +715,7 @@ string_lpad :: proc "contextless" (self: ^String, min_length: i64, character: St
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "lpad", 248737229) }
 	__a_min_length := min_length
-	__a_character := character
+	__a_character := transmute([1]uintptr)character
 	__args := [2]gde.ConstTypePtr{&__a_min_length, &__a_character}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -725,7 +725,7 @@ string_rpad :: proc "contextless" (self: ^String, min_length: i64, character: St
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "rpad", 248737229) }
 	__a_min_length := min_length
-	__a_character := character
+	__a_character := transmute([1]uintptr)character
 	__args := [2]gde.ConstTypePtr{&__a_min_length, &__a_character}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -752,7 +752,7 @@ string_pad_zeros :: proc "contextless" (self: ^String, digits: i64) -> String {
 string_trim_prefix :: proc "contextless" (self: ^String, prefix: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "trim_prefix", 3134094431) }
-	__a_prefix := prefix
+	__a_prefix := transmute([1]uintptr)prefix
 	__args := [1]gde.ConstTypePtr{&__a_prefix}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -761,7 +761,7 @@ string_trim_prefix :: proc "contextless" (self: ^String, prefix: String) -> Stri
 string_trim_suffix :: proc "contextless" (self: ^String, suffix: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "trim_suffix", 3134094431) }
-	__a_suffix := suffix
+	__a_suffix := transmute([1]uintptr)suffix
 	__args := [1]gde.ConstTypePtr{&__a_suffix}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -805,7 +805,7 @@ string_to_wchar_buffer :: proc "contextless" (self: ^String) -> PackedByteArray 
 string_to_multibyte_char_buffer :: proc "contextless" (self: ^String, encoding: String) -> PackedByteArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_multibyte_char_buffer", 3055765187) }
-	__a_encoding := encoding
+	__a_encoding := transmute([1]uintptr)encoding
 	__args := [1]gde.ConstTypePtr{&__a_encoding}
 	__ret: PackedByteArray
 	__fn(self, &__args[0], &__ret, 1)
@@ -886,7 +886,7 @@ string_name_new :: proc "contextless" () -> (__r: StringName) {
 string_name_new_from_string_name :: proc "contextless" (from: StringName) -> (__r: StringName) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.STRING_NAME, 1) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -894,7 +894,7 @@ string_name_new_from_string_name :: proc "contextless" (from: StringName) -> (__
 string_name_new_from_string :: proc "contextless" (from: String) -> (__r: StringName) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.STRING_NAME, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -908,7 +908,7 @@ string_name_casecmp_to :: proc "contextless" (self: ^StringName, to: String) -> 
 	if dict_layout_known { return string_casecmp_to(name_text(self), to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "casecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -918,7 +918,7 @@ string_name_nocasecmp_to :: proc "contextless" (self: ^StringName, to: String) -
 	if dict_layout_known { return string_nocasecmp_to(name_text(self), to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "nocasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -927,7 +927,7 @@ string_name_nocasecmp_to :: proc "contextless" (self: ^StringName, to: String) -
 string_name_naturalcasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "naturalcasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -936,7 +936,7 @@ string_name_naturalcasecmp_to :: proc "contextless" (self: ^StringName, to: Stri
 string_name_naturalnocasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "naturalnocasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -945,7 +945,7 @@ string_name_naturalnocasecmp_to :: proc "contextless" (self: ^StringName, to: St
 string_name_filecasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "filecasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -954,7 +954,7 @@ string_name_filecasecmp_to :: proc "contextless" (self: ^StringName, to: String)
 string_name_filenocasecmp_to :: proc "contextless" (self: ^StringName, to: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "filenocasecmp_to", 2920860731) }
-	__a_to := to
+	__a_to := transmute([1]uintptr)to
 	__args := [1]gde.ConstTypePtr{&__a_to}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -981,7 +981,7 @@ string_name_substr :: proc "contextless" (self: ^StringName, from: i64, len: i64
 string_name_get_slice :: proc "contextless" (self: ^StringName, delimiter: String, slice: i64) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_slice", 3535100402) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__a_slice := slice
 	__args := [2]gde.ConstTypePtr{&__a_delimiter, &__a_slice}
 	__ret: String
@@ -1001,7 +1001,7 @@ string_name_get_slicec :: proc "contextless" (self: ^StringName, delimiter: i64,
 string_name_get_slice_count :: proc "contextless" (self: ^StringName, delimiter: String) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_slice_count", 2920860731) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__args := [1]gde.ConstTypePtr{&__a_delimiter}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -1011,7 +1011,7 @@ string_name_find :: proc "contextless" (self: ^StringName, what: String, from: i
 	if dict_layout_known { return string_find(name_text(self), what, from) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "find", 1760645412) }
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__a_from := from
 	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
 	__ret: i64
@@ -1022,7 +1022,7 @@ string_name_findn :: proc "contextless" (self: ^StringName, what: String, from: 
 	if dict_layout_known { return string_findn(name_text(self), what, from) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "findn", 1760645412) }
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__a_from := from
 	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
 	__ret: i64
@@ -1033,7 +1033,7 @@ string_name_count :: proc "contextless" (self: ^StringName, what: String, from: 
 	if dict_layout_known { return string_count(name_text(self), what, from, to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "count", 2343087891) }
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__a_from := from
 	__a_to := to
 	__args := [3]gde.ConstTypePtr{&__a_what, &__a_from, &__a_to}
@@ -1045,7 +1045,7 @@ string_name_countn :: proc "contextless" (self: ^StringName, what: String, from:
 	if dict_layout_known { return string_countn(name_text(self), what, from, to) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "countn", 2343087891) }
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__a_from := from
 	__a_to := to
 	__args := [3]gde.ConstTypePtr{&__a_what, &__a_from, &__a_to}
@@ -1057,7 +1057,7 @@ string_name_rfind :: proc "contextless" (self: ^StringName, what: String, from: 
 	if dict_layout_known { return string_rfind(name_text(self), what, from) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rfind", 1760645412) }
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__a_from := from
 	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
 	__ret: i64
@@ -1068,7 +1068,7 @@ string_name_rfindn :: proc "contextless" (self: ^StringName, what: String, from:
 	if dict_layout_known { return string_rfindn(name_text(self), what, from) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rfindn", 1760645412) }
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__a_from := from
 	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
 	__ret: i64
@@ -1078,7 +1078,7 @@ string_name_rfindn :: proc "contextless" (self: ^StringName, what: String, from:
 string_name_match :: proc "contextless" (self: ^StringName, expr: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "match", 2566493496) }
-	__a_expr := expr
+	__a_expr := transmute([1]uintptr)expr
 	__args := [1]gde.ConstTypePtr{&__a_expr}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -1087,7 +1087,7 @@ string_name_match :: proc "contextless" (self: ^StringName, expr: String) -> boo
 string_name_matchn :: proc "contextless" (self: ^StringName, expr: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "matchn", 2566493496) }
-	__a_expr := expr
+	__a_expr := transmute([1]uintptr)expr
 	__args := [1]gde.ConstTypePtr{&__a_expr}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -1097,7 +1097,7 @@ string_name_begins_with :: proc "contextless" (self: ^StringName, text: String) 
 	if dict_layout_known { return string_begins_with(name_text(self), text) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "begins_with", 2566493496) }
-	__a_text := text
+	__a_text := transmute([1]uintptr)text
 	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -1107,7 +1107,7 @@ string_name_ends_with :: proc "contextless" (self: ^StringName, text: String) ->
 	if dict_layout_known { return string_ends_with(name_text(self), text) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "ends_with", 2566493496) }
-	__a_text := text
+	__a_text := transmute([1]uintptr)text
 	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -1116,7 +1116,7 @@ string_name_ends_with :: proc "contextless" (self: ^StringName, text: String) ->
 string_name_is_subsequence_of :: proc "contextless" (self: ^StringName, text: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_subsequence_of", 2566493496) }
-	__a_text := text
+	__a_text := transmute([1]uintptr)text
 	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -1125,7 +1125,7 @@ string_name_is_subsequence_of :: proc "contextless" (self: ^StringName, text: St
 string_name_is_subsequence_ofn :: proc "contextless" (self: ^StringName, text: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_subsequence_ofn", 2566493496) }
-	__a_text := text
+	__a_text := transmute([1]uintptr)text
 	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -1141,7 +1141,7 @@ string_name_bigrams :: proc "contextless" (self: ^StringName) -> PackedStringArr
 string_name_similarity :: proc "contextless" (self: ^StringName, text: String) -> f64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "similarity", 2697460964) }
-	__a_text := text
+	__a_text := transmute([1]uintptr)text
 	__args := [1]gde.ConstTypePtr{&__a_text}
 	__ret: f64
 	__fn(self, &__args[0], &__ret, 1)
@@ -1150,8 +1150,8 @@ string_name_similarity :: proc "contextless" (self: ^StringName, text: String) -
 string_name_format :: proc "contextless" (self: ^StringName, values: Variant, placeholder: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "format", 3212199029) }
-	__a_values := values
-	__a_placeholder := placeholder
+	__a_values := transmute([3]uintptr)values
+	__a_placeholder := transmute([1]uintptr)placeholder
 	__args := [2]gde.ConstTypePtr{&__a_values, &__a_placeholder}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -1161,8 +1161,8 @@ string_name_replace :: proc "contextless" (self: ^StringName, what: String, forw
 	if dict_layout_known { return string_replace(name_text(self), what, forwhat) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "replace", 1340436205) }
-	__a_what := what
-	__a_forwhat := forwhat
+	__a_what := transmute([1]uintptr)what
+	__a_forwhat := transmute([1]uintptr)forwhat
 	__args := [2]gde.ConstTypePtr{&__a_what, &__a_forwhat}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -1172,8 +1172,8 @@ string_name_replacen :: proc "contextless" (self: ^StringName, what: String, for
 	if dict_layout_known { return string_replacen(name_text(self), what, forwhat) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "replacen", 1340436205) }
-	__a_what := what
-	__a_forwhat := forwhat
+	__a_what := transmute([1]uintptr)what
+	__a_forwhat := transmute([1]uintptr)forwhat
 	__args := [2]gde.ConstTypePtr{&__a_what, &__a_forwhat}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -1192,7 +1192,7 @@ string_name_replace_char :: proc "contextless" (self: ^StringName, key: i64, wit
 string_name_replace_chars :: proc "contextless" (self: ^StringName, keys: String, with: i64) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "replace_chars", 3535100402) }
-	__a_keys := keys
+	__a_keys := transmute([1]uintptr)keys
 	__a_with := with
 	__args := [2]gde.ConstTypePtr{&__a_keys, &__a_with}
 	__ret: String
@@ -1211,7 +1211,7 @@ string_name_remove_char :: proc "contextless" (self: ^StringName, what: i64) -> 
 string_name_remove_chars :: proc "contextless" (self: ^StringName, chars: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "remove_chars", 3134094431) }
-	__a_chars := chars
+	__a_chars := transmute([1]uintptr)chars
 	__args := [1]gde.ConstTypePtr{&__a_chars}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -1237,7 +1237,7 @@ string_name_insert :: proc "contextless" (self: ^StringName, position: i64, what
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "insert", 248737229) }
 	__a_position := position
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__args := [2]gde.ConstTypePtr{&__a_position, &__a_what}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -1292,7 +1292,7 @@ string_name_split :: proc "contextless" (self: ^StringName, delimiter: String, a
 	if dict_layout_known { return string_split(name_text(self), delimiter, allow_empty, maxsplit) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "split", 1252735785) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__a_allow_empty := u8(allow_empty)
 	__a_maxsplit := maxsplit
 	__args := [3]gde.ConstTypePtr{&__a_delimiter, &__a_allow_empty, &__a_maxsplit}
@@ -1303,7 +1303,7 @@ string_name_split :: proc "contextless" (self: ^StringName, delimiter: String, a
 string_name_rsplit :: proc "contextless" (self: ^StringName, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rsplit", 1252735785) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__a_allow_empty := u8(allow_empty)
 	__a_maxsplit := maxsplit
 	__args := [3]gde.ConstTypePtr{&__a_delimiter, &__a_allow_empty, &__a_maxsplit}
@@ -1314,7 +1314,7 @@ string_name_rsplit :: proc "contextless" (self: ^StringName, delimiter: String, 
 string_name_split_floats :: proc "contextless" (self: ^StringName, delimiter: String, allow_empty: bool) -> PackedFloat64Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "split_floats", 2092079095) }
-	__a_delimiter := delimiter
+	__a_delimiter := transmute([1]uintptr)delimiter
 	__a_allow_empty := u8(allow_empty)
 	__args := [2]gde.ConstTypePtr{&__a_delimiter, &__a_allow_empty}
 	__ret: PackedFloat64Array
@@ -1324,7 +1324,7 @@ string_name_split_floats :: proc "contextless" (self: ^StringName, delimiter: St
 string_name_join :: proc "contextless" (self: ^StringName, parts: PackedStringArray) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "join", 3595973238) }
-	__a_parts := parts
+	__a_parts := transmute([2]uintptr)parts
 	__args := [1]gde.ConstTypePtr{&__a_parts}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -1382,7 +1382,7 @@ string_name_strip_escapes :: proc "contextless" (self: ^StringName) -> String {
 string_name_lstrip :: proc "contextless" (self: ^StringName, chars: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "lstrip", 3134094431) }
-	__a_chars := chars
+	__a_chars := transmute([1]uintptr)chars
 	__args := [1]gde.ConstTypePtr{&__a_chars}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -1391,7 +1391,7 @@ string_name_lstrip :: proc "contextless" (self: ^StringName, chars: String) -> S
 string_name_rstrip :: proc "contextless" (self: ^StringName, chars: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rstrip", 3134094431) }
-	__a_chars := chars
+	__a_chars := transmute([1]uintptr)chars
 	__args := [1]gde.ConstTypePtr{&__a_chars}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -1414,7 +1414,7 @@ string_name_get_basename :: proc "contextless" (self: ^StringName) -> String {
 string_name_path_join :: proc "contextless" (self: ^StringName, path: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "path_join", 3134094431) }
-	__a_path := path
+	__a_path := transmute([1]uintptr)path
 	__args := [1]gde.ConstTypePtr{&__a_path}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -1433,7 +1433,7 @@ string_name_unicode_at :: proc "contextless" (self: ^StringName, at: i64) -> i64
 string_name_indent :: proc "contextless" (self: ^StringName, prefix: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "indent", 3134094431) }
-	__a_prefix := prefix
+	__a_prefix := transmute([1]uintptr)prefix
 	__args := [1]gde.ConstTypePtr{&__a_prefix}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -1500,7 +1500,7 @@ string_name_contains :: proc "contextless" (self: ^StringName, what: String) -> 
 	if dict_layout_known { return string_contains(name_text(self), what) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "contains", 2566493496) }
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__args := [1]gde.ConstTypePtr{&__a_what}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -1510,7 +1510,7 @@ string_name_containsn :: proc "contextless" (self: ^StringName, what: String) ->
 	if dict_layout_known { return string_containsn(name_text(self), what) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "containsn", 2566493496) }
-	__a_what := what
+	__a_what := transmute([1]uintptr)what
 	__args := [1]gde.ConstTypePtr{&__a_what}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -1734,7 +1734,7 @@ string_name_lpad :: proc "contextless" (self: ^StringName, min_length: i64, char
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "lpad", 248737229) }
 	__a_min_length := min_length
-	__a_character := character
+	__a_character := transmute([1]uintptr)character
 	__args := [2]gde.ConstTypePtr{&__a_min_length, &__a_character}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -1744,7 +1744,7 @@ string_name_rpad :: proc "contextless" (self: ^StringName, min_length: i64, char
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rpad", 248737229) }
 	__a_min_length := min_length
-	__a_character := character
+	__a_character := transmute([1]uintptr)character
 	__args := [2]gde.ConstTypePtr{&__a_min_length, &__a_character}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 2)
@@ -1771,7 +1771,7 @@ string_name_pad_zeros :: proc "contextless" (self: ^StringName, digits: i64) -> 
 string_name_trim_prefix :: proc "contextless" (self: ^StringName, prefix: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "trim_prefix", 3134094431) }
-	__a_prefix := prefix
+	__a_prefix := transmute([1]uintptr)prefix
 	__args := [1]gde.ConstTypePtr{&__a_prefix}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -1780,7 +1780,7 @@ string_name_trim_prefix :: proc "contextless" (self: ^StringName, prefix: String
 string_name_trim_suffix :: proc "contextless" (self: ^StringName, suffix: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "trim_suffix", 3134094431) }
-	__a_suffix := suffix
+	__a_suffix := transmute([1]uintptr)suffix
 	__args := [1]gde.ConstTypePtr{&__a_suffix}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -1824,7 +1824,7 @@ string_name_to_wchar_buffer :: proc "contextless" (self: ^StringName) -> PackedB
 string_name_to_multibyte_char_buffer :: proc "contextless" (self: ^StringName, encoding: String) -> PackedByteArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_multibyte_char_buffer", 3055765187) }
-	__a_encoding := encoding
+	__a_encoding := transmute([1]uintptr)encoding
 	__args := [1]gde.ConstTypePtr{&__a_encoding}
 	__ret: PackedByteArray
 	__fn(self, &__args[0], &__ret, 1)
@@ -1854,7 +1854,7 @@ node_path_new :: proc "contextless" () -> (__r: NodePath) {
 node_path_new_from_node_path :: proc "contextless" (from: NodePath) -> (__r: NodePath) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.NODE_PATH, 1) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -1862,7 +1862,7 @@ node_path_new_from_node_path :: proc "contextless" (from: NodePath) -> (__r: Nod
 node_path_new_from_string :: proc "contextless" (from: String) -> (__r: NodePath) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.NODE_PATH, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -1974,7 +1974,7 @@ callable_new :: proc "contextless" () -> (__r: Callable) {
 callable_new_from_callable :: proc "contextless" (from: Callable) -> (__r: Callable) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.CALLABLE, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -1983,7 +1983,7 @@ callable_new_from_object_string_name :: proc "contextless" (object: Object, meth
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.CALLABLE, 2) }
 	__a_object := rawptr(object)
-	__a_method := method
+	__a_method := transmute([1]uintptr)method
 	__args := [2]gde.ConstTypePtr{&__a_object, &__a_method}
 	__fn(&__r, &__args[0])
 	return
@@ -1996,8 +1996,8 @@ callable_destroy :: proc "contextless" (self: ^Callable) {
 callable_create :: proc "contextless" (variant: Variant, method: StringName) -> Callable {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.CALLABLE, "create", 1709381114) }
-	__a_variant := variant
-	__a_method := method
+	__a_variant := transmute([3]uintptr)variant
+	__a_method := transmute([1]uintptr)method
 	__args := [2]gde.ConstTypePtr{&__a_variant, &__a_method}
 	__ret: Callable
 	__fn(nil, &__args[0], &__ret, 2)
@@ -2006,7 +2006,7 @@ callable_create :: proc "contextless" (variant: Variant, method: StringName) -> 
 callable_callv :: proc "contextless" (self: ^Callable, arguments: Array) -> Variant {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.CALLABLE, "callv", 413578926) }
-	__a_arguments := arguments
+	__a_arguments := transmute([1]uintptr)arguments
 	__args := [1]gde.ConstTypePtr{&__a_arguments}
 	__ret: Variant
 	__fn(self, &__args[0], &__ret, 1)
@@ -2099,7 +2099,7 @@ callable_hash :: proc "contextless" (self: ^Callable) -> i64 {
 callable_bindv :: proc "contextless" (self: ^Callable, arguments: Array) -> Callable {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.CALLABLE, "bindv", 3564560322) }
-	__a_arguments := arguments
+	__a_arguments := transmute([1]uintptr)arguments
 	__args := [1]gde.ConstTypePtr{&__a_arguments}
 	__ret: Callable
 	__fn(self, &__args[0], &__ret, 1)
@@ -2191,7 +2191,7 @@ signal_new :: proc "contextless" () -> (__r: Signal) {
 signal_new_from_signal :: proc "contextless" (from: Signal) -> (__r: Signal) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.SIGNAL, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2200,7 +2200,7 @@ signal_new_from_object_string_name :: proc "contextless" (object: Object, signal
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.SIGNAL, 2) }
 	__a_object := rawptr(object)
-	__a_signal := signal
+	__a_signal := transmute([1]uintptr)signal
 	__args := [2]gde.ConstTypePtr{&__a_object, &__a_signal}
 	__fn(&__r, &__args[0])
 	return
@@ -2241,7 +2241,7 @@ signal_get_name :: proc "contextless" (self: ^Signal) -> StringName {
 signal_connect :: proc "contextless" (self: ^Signal, callable: Callable, flags: i64) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.SIGNAL, "connect", 979702392) }
-	__a_callable := callable
+	__a_callable := transmute([2]uintptr)callable
 	__a_flags := flags
 	__args := [2]gde.ConstTypePtr{&__a_callable, &__a_flags}
 	__ret: i64
@@ -2251,14 +2251,14 @@ signal_connect :: proc "contextless" (self: ^Signal, callable: Callable, flags: 
 signal_disconnect :: proc "contextless" (self: ^Signal, callable: Callable) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.SIGNAL, "disconnect", 3470848906) }
-	__a_callable := callable
+	__a_callable := transmute([2]uintptr)callable
 	__args := [1]gde.ConstTypePtr{&__a_callable}
 	__fn(self, &__args[0], nil, 1)
 }
 signal_is_connected :: proc "contextless" (self: ^Signal, callable: Callable) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.SIGNAL, "is_connected", 4129521963) }
-	__a_callable := callable
+	__a_callable := transmute([2]uintptr)callable
 	__args := [1]gde.ConstTypePtr{&__a_callable}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -2299,7 +2299,7 @@ dictionary_new :: proc "contextless" () -> (__r: Dictionary) {
 dictionary_new_from_dictionary :: proc "contextless" (from: Dictionary) -> (__r: Dictionary) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.DICTIONARY, 1) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2307,13 +2307,13 @@ dictionary_new_from_dictionary :: proc "contextless" (from: Dictionary) -> (__r:
 dictionary_new_from_dictionary_int_string_name_variant_int_string_name_variant :: proc "contextless" (base: Dictionary, key_type: i64, key_class_name: StringName, key_script: Variant, value_type: i64, value_class_name: StringName, value_script: Variant) -> (__r: Dictionary) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.DICTIONARY, 2) }
-	__a_base := base
+	__a_base := transmute([1]uintptr)base
 	__a_key_type := key_type
-	__a_key_class_name := key_class_name
-	__a_key_script := key_script
+	__a_key_class_name := transmute([1]uintptr)key_class_name
+	__a_key_script := transmute([3]uintptr)key_script
 	__a_value_type := value_type
-	__a_value_class_name := value_class_name
-	__a_value_script := value_script
+	__a_value_class_name := transmute([1]uintptr)value_class_name
+	__a_value_script := transmute([3]uintptr)value_script
 	__args := [7]gde.ConstTypePtr{&__a_base, &__a_key_type, &__a_key_class_name, &__a_key_script, &__a_value_type, &__a_value_class_name, &__a_value_script}
 	__fn(&__r, &__args[0])
 	return
@@ -2347,7 +2347,7 @@ dictionary_clear :: proc "contextless" (self: ^Dictionary) {
 dictionary_assign :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "assign", 3642266950) }
-	__a_dictionary := dictionary
+	__a_dictionary := transmute([1]uintptr)dictionary
 	__args := [1]gde.ConstTypePtr{&__a_dictionary}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -2359,7 +2359,7 @@ dictionary_sort :: proc "contextless" (self: ^Dictionary) {
 dictionary_merge :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary, overwrite: bool) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "merge", 2079548978) }
-	__a_dictionary := dictionary
+	__a_dictionary := transmute([1]uintptr)dictionary
 	__a_overwrite := u8(overwrite)
 	__args := [2]gde.ConstTypePtr{&__a_dictionary, &__a_overwrite}
 	__fn(self, &__args[0], nil, 2)
@@ -2367,7 +2367,7 @@ dictionary_merge :: proc "contextless" (self: ^Dictionary, dictionary: Dictionar
 dictionary_merged :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary, overwrite: bool) -> Dictionary {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "merged", 2271165639) }
-	__a_dictionary := dictionary
+	__a_dictionary := transmute([1]uintptr)dictionary
 	__a_overwrite := u8(overwrite)
 	__args := [2]gde.ConstTypePtr{&__a_dictionary, &__a_overwrite}
 	__ret: Dictionary
@@ -2378,7 +2378,7 @@ dictionary_has :: proc "contextless" (self: ^Dictionary, key: Variant) -> bool {
 	if r, ok := dict_stored_has(self, key); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "has", 3680194679) }
-	__a_key := key
+	__a_key := transmute([3]uintptr)key
 	__args := [1]gde.ConstTypePtr{&__a_key}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -2388,7 +2388,7 @@ dictionary_has_all :: proc "contextless" (self: ^Dictionary, keys: Array) -> boo
 	if r, ok := dict_stored_has_all(self, keys); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "has_all", 2988181878) }
-	__a_keys := keys
+	__a_keys := transmute([1]uintptr)keys
 	__args := [1]gde.ConstTypePtr{&__a_keys}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -2398,7 +2398,7 @@ dictionary_find_key :: proc "contextless" (self: ^Dictionary, value: Variant) ->
 	if k, ok := dict_stored_find_key(self, value); ok { return k }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "find_key", 1988825835) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__ret: Variant
 	__fn(self, &__args[0], &__ret, 1)
@@ -2407,7 +2407,7 @@ dictionary_find_key :: proc "contextless" (self: ^Dictionary, value: Variant) ->
 dictionary_erase :: proc "contextless" (self: ^Dictionary, key: Variant) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "erase", 1776646889) }
-	__a_key := key
+	__a_key := transmute([3]uintptr)key
 	__args := [1]gde.ConstTypePtr{&__a_key}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -2458,8 +2458,8 @@ dictionary_get :: proc "contextless" (self: ^Dictionary, key: Variant, default: 
 	if v, ok := dict_stored_get(self, key, default); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "get", 2205440559) }
-	__a_key := key
-	__a_default := default
+	__a_key := transmute([3]uintptr)key
+	__a_default := transmute([3]uintptr)default
 	__args := [2]gde.ConstTypePtr{&__a_key, &__a_default}
 	__ret: Variant
 	__fn(self, &__args[0], &__ret, 2)
@@ -2468,8 +2468,8 @@ dictionary_get :: proc "contextless" (self: ^Dictionary, key: Variant, default: 
 dictionary_get_or_add :: proc "contextless" (self: ^Dictionary, key: Variant, default: Variant) -> Variant {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "get_or_add", 1052551076) }
-	__a_key := key
-	__a_default := default
+	__a_key := transmute([3]uintptr)key
+	__a_default := transmute([3]uintptr)default
 	__args := [2]gde.ConstTypePtr{&__a_key, &__a_default}
 	__ret: Variant
 	__fn(self, &__args[0], &__ret, 2)
@@ -2478,8 +2478,8 @@ dictionary_get_or_add :: proc "contextless" (self: ^Dictionary, key: Variant, de
 dictionary_set :: proc "contextless" (self: ^Dictionary, key: Variant, value: Variant) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "set", 2175348267) }
-	__a_key := key
-	__a_value := value
+	__a_key := transmute([3]uintptr)key
+	__a_value := transmute([3]uintptr)value
 	__args := [2]gde.ConstTypePtr{&__a_key, &__a_value}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 2)
@@ -2512,7 +2512,7 @@ dictionary_is_typed_value :: proc "contextless" (self: ^Dictionary) -> bool {
 dictionary_is_same_typed :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_same_typed", 3471775634) }
-	__a_dictionary := dictionary
+	__a_dictionary := transmute([1]uintptr)dictionary
 	__args := [1]gde.ConstTypePtr{&__a_dictionary}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -2521,7 +2521,7 @@ dictionary_is_same_typed :: proc "contextless" (self: ^Dictionary, dictionary: D
 dictionary_is_same_typed_key :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_same_typed_key", 3471775634) }
-	__a_dictionary := dictionary
+	__a_dictionary := transmute([1]uintptr)dictionary
 	__args := [1]gde.ConstTypePtr{&__a_dictionary}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -2530,7 +2530,7 @@ dictionary_is_same_typed_key :: proc "contextless" (self: ^Dictionary, dictionar
 dictionary_is_same_typed_value :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_same_typed_value", 3471775634) }
-	__a_dictionary := dictionary
+	__a_dictionary := transmute([1]uintptr)dictionary
 	__args := [1]gde.ConstTypePtr{&__a_dictionary}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -2596,7 +2596,7 @@ dictionary_is_read_only :: proc "contextless" (self: ^Dictionary) -> bool {
 dictionary_recursive_equal :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary, recursion_count: i64) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "recursive_equal", 1404404751) }
-	__a_dictionary := dictionary
+	__a_dictionary := transmute([1]uintptr)dictionary
 	__a_recursion_count := recursion_count
 	__args := [2]gde.ConstTypePtr{&__a_dictionary, &__a_recursion_count}
 	__ret: u8
@@ -2612,7 +2612,7 @@ array_new :: proc "contextless" () -> (__r: Array) {
 array_new_from_array :: proc "contextless" (from: Array) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2620,10 +2620,10 @@ array_new_from_array :: proc "contextless" (from: Array) -> (__r: Array) {
 array_new_from_array_int_string_name_variant :: proc "contextless" (base: Array, type_: i64, class_name: StringName, script: Variant) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 2) }
-	__a_base := base
+	__a_base := transmute([1]uintptr)base
 	__a_type_ := type_
-	__a_class_name := class_name
-	__a_script := script
+	__a_class_name := transmute([1]uintptr)class_name
+	__a_script := transmute([3]uintptr)script
 	__args := [4]gde.ConstTypePtr{&__a_base, &__a_type_, &__a_class_name, &__a_script}
 	__fn(&__r, &__args[0])
 	return
@@ -2631,7 +2631,7 @@ array_new_from_array_int_string_name_variant :: proc "contextless" (base: Array,
 array_new_from_packed_byte_array :: proc "contextless" (from: PackedByteArray) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 3) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2639,7 +2639,7 @@ array_new_from_packed_byte_array :: proc "contextless" (from: PackedByteArray) -
 array_new_from_packed_int32_array :: proc "contextless" (from: PackedInt32Array) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 4) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2647,7 +2647,7 @@ array_new_from_packed_int32_array :: proc "contextless" (from: PackedInt32Array)
 array_new_from_packed_int64_array :: proc "contextless" (from: PackedInt64Array) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 5) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2655,7 +2655,7 @@ array_new_from_packed_int64_array :: proc "contextless" (from: PackedInt64Array)
 array_new_from_packed_float32_array :: proc "contextless" (from: PackedFloat32Array) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 6) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2663,7 +2663,7 @@ array_new_from_packed_float32_array :: proc "contextless" (from: PackedFloat32Ar
 array_new_from_packed_float64_array :: proc "contextless" (from: PackedFloat64Array) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 7) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2671,7 +2671,7 @@ array_new_from_packed_float64_array :: proc "contextless" (from: PackedFloat64Ar
 array_new_from_packed_string_array :: proc "contextless" (from: PackedStringArray) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 8) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2679,7 +2679,7 @@ array_new_from_packed_string_array :: proc "contextless" (from: PackedStringArra
 array_new_from_packed_vector2_array :: proc "contextless" (from: PackedVector2Array) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 9) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2687,7 +2687,7 @@ array_new_from_packed_vector2_array :: proc "contextless" (from: PackedVector2Ar
 array_new_from_packed_vector3_array :: proc "contextless" (from: PackedVector3Array) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 10) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2695,7 +2695,7 @@ array_new_from_packed_vector3_array :: proc "contextless" (from: PackedVector3Ar
 array_new_from_packed_color_array :: proc "contextless" (from: PackedColorArray) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 11) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2703,7 +2703,7 @@ array_new_from_packed_color_array :: proc "contextless" (from: PackedColorArray)
 array_new_from_packed_vector4_array :: proc "contextless" (from: PackedVector4Array) -> (__r: Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.ARRAY, 12) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -2744,7 +2744,7 @@ array_hash :: proc "contextless" (self: ^Array) -> i64 {
 array_assign :: proc "contextless" (self: ^Array, array: Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "assign", 2307260970) }
-	__a_array := array
+	__a_array := transmute([1]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -2762,35 +2762,35 @@ array_set :: proc "contextless" (self: ^Array, index: i64, value: Variant) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "set", 3798478031) }
 	__a_index := index
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [2]gde.ConstTypePtr{&__a_index, &__a_value}
 	__fn(self, &__args[0], nil, 2)
 }
 array_push_back :: proc "contextless" (self: ^Array, value: Variant) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "push_back", 3316032543) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__fn(self, &__args[0], nil, 1)
 }
 array_push_front :: proc "contextless" (self: ^Array, value: Variant) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "push_front", 3316032543) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__fn(self, &__args[0], nil, 1)
 }
 array_append :: proc "contextless" (self: ^Array, value: Variant) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "append", 3316032543) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__fn(self, &__args[0], nil, 1)
 }
 array_append_array :: proc "contextless" (self: ^Array, array: Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "append_array", 2307260970) }
-	__a_array := array
+	__a_array := transmute([1]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -2807,7 +2807,7 @@ array_insert :: proc "contextless" (self: ^Array, position: i64, value: Variant)
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "insert", 3176316662) }
 	__a_position := position
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [2]gde.ConstTypePtr{&__a_position, &__a_value}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 2)
@@ -2823,14 +2823,14 @@ array_remove_at :: proc "contextless" (self: ^Array, position: i64) {
 array_fill :: proc "contextless" (self: ^Array, value: Variant) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "fill", 3316032543) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__fn(self, &__args[0], nil, 1)
 }
 array_erase :: proc "contextless" (self: ^Array, value: Variant) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "erase", 3316032543) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -2861,7 +2861,7 @@ array_find :: proc "contextless" (self: ^Array, what: Variant, from: i64) -> i64
 	if r, ok := array_stored_find(self, what, from); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "find", 2336346817) }
-	__a_what := what
+	__a_what := transmute([3]uintptr)what
 	__a_from := from
 	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
 	__ret: i64
@@ -2871,7 +2871,7 @@ array_find :: proc "contextless" (self: ^Array, what: Variant, from: i64) -> i64
 array_find_custom :: proc "contextless" (self: ^Array, method: Callable, from: i64) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "find_custom", 2145562546) }
-	__a_method := method
+	__a_method := transmute([2]uintptr)method
 	__a_from := from
 	__args := [2]gde.ConstTypePtr{&__a_method, &__a_from}
 	__ret: i64
@@ -2882,7 +2882,7 @@ array_rfind :: proc "contextless" (self: ^Array, what: Variant, from: i64) -> i6
 	if r, ok := array_stored_rfind(self, what, from); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "rfind", 2336346817) }
-	__a_what := what
+	__a_what := transmute([3]uintptr)what
 	__a_from := from
 	__args := [2]gde.ConstTypePtr{&__a_what, &__a_from}
 	__ret: i64
@@ -2892,7 +2892,7 @@ array_rfind :: proc "contextless" (self: ^Array, what: Variant, from: i64) -> i6
 array_rfind_custom :: proc "contextless" (self: ^Array, method: Callable, from: i64) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "rfind_custom", 2145562546) }
-	__a_method := method
+	__a_method := transmute([2]uintptr)method
 	__a_from := from
 	__args := [2]gde.ConstTypePtr{&__a_method, &__a_from}
 	__ret: i64
@@ -2903,7 +2903,7 @@ array_count :: proc "contextless" (self: ^Array, value: Variant) -> i64 {
 	if r, ok := array_stored_count(self, value); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "count", 1481661226) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
@@ -2913,7 +2913,7 @@ array_has :: proc "contextless" (self: ^Array, value: Variant) -> bool {
 	if r, ok := array_stored_has(self, value); ok { return r }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "has", 3680194679) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -2950,7 +2950,7 @@ array_sort :: proc "contextless" (self: ^Array) {
 array_sort_custom :: proc "contextless" (self: ^Array, func: Callable) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "sort_custom", 3470848906) }
-	__a_func := func
+	__a_func := transmute([2]uintptr)func
 	__args := [1]gde.ConstTypePtr{&__a_func}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -2962,7 +2962,7 @@ array_shuffle :: proc "contextless" (self: ^Array) {
 array_bsearch :: proc "contextless" (self: ^Array, value: Variant, before: bool) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "bsearch", 3372222236) }
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__a_before := u8(before)
 	__args := [2]gde.ConstTypePtr{&__a_value, &__a_before}
 	__ret: i64
@@ -2972,8 +2972,8 @@ array_bsearch :: proc "contextless" (self: ^Array, value: Variant, before: bool)
 array_bsearch_custom :: proc "contextless" (self: ^Array, value: Variant, func: Callable, before: bool) -> i64 {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "bsearch_custom", 161317131) }
-	__a_value := value
-	__a_func := func
+	__a_value := transmute([3]uintptr)value
+	__a_func := transmute([2]uintptr)func
 	__a_before := u8(before)
 	__args := [3]gde.ConstTypePtr{&__a_value, &__a_func, &__a_before}
 	__ret: i64
@@ -3018,7 +3018,7 @@ array_slice :: proc "contextless" (self: ^Array, begin: i64, end: i64, step: i64
 array_filter :: proc "contextless" (self: ^Array, method: Callable) -> Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "filter", 4075186556) }
-	__a_method := method
+	__a_method := transmute([2]uintptr)method
 	__args := [1]gde.ConstTypePtr{&__a_method}
 	__ret: Array
 	__fn(self, &__args[0], &__ret, 1)
@@ -3027,7 +3027,7 @@ array_filter :: proc "contextless" (self: ^Array, method: Callable) -> Array {
 array_map :: proc "contextless" (self: ^Array, method: Callable) -> Array {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "map", 4075186556) }
-	__a_method := method
+	__a_method := transmute([2]uintptr)method
 	__args := [1]gde.ConstTypePtr{&__a_method}
 	__ret: Array
 	__fn(self, &__args[0], &__ret, 1)
@@ -3036,8 +3036,8 @@ array_map :: proc "contextless" (self: ^Array, method: Callable) -> Array {
 array_reduce :: proc "contextless" (self: ^Array, method: Callable, accum: Variant) -> Variant {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "reduce", 4272450342) }
-	__a_method := method
-	__a_accum := accum
+	__a_method := transmute([2]uintptr)method
+	__a_accum := transmute([3]uintptr)accum
 	__args := [2]gde.ConstTypePtr{&__a_method, &__a_accum}
 	__ret: Variant
 	__fn(self, &__args[0], &__ret, 2)
@@ -3046,7 +3046,7 @@ array_reduce :: proc "contextless" (self: ^Array, method: Callable, accum: Varia
 array_any :: proc "contextless" (self: ^Array, method: Callable) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "any", 4129521963) }
-	__a_method := method
+	__a_method := transmute([2]uintptr)method
 	__args := [1]gde.ConstTypePtr{&__a_method}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -3055,7 +3055,7 @@ array_any :: proc "contextless" (self: ^Array, method: Callable) -> bool {
 array_all :: proc "contextless" (self: ^Array, method: Callable) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "all", 4129521963) }
-	__a_method := method
+	__a_method := transmute([2]uintptr)method
 	__args := [1]gde.ConstTypePtr{&__a_method}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -3086,7 +3086,7 @@ array_is_typed :: proc "contextless" (self: ^Array) -> bool {
 array_is_same_typed :: proc "contextless" (self: ^Array, array: Array) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "is_same_typed", 2988181878) }
-	__a_array := array
+	__a_array := transmute([1]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -3136,7 +3136,7 @@ packed_byte_array_new :: proc "contextless" () -> (__r: PackedByteArray) {
 packed_byte_array_new_from_packed_byte_array :: proc "contextless" (from: PackedByteArray) -> (__r: PackedByteArray) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_BYTE_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -3144,7 +3144,7 @@ packed_byte_array_new_from_packed_byte_array :: proc "contextless" (from: Packed
 packed_byte_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedByteArray) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_BYTE_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -3199,7 +3199,7 @@ packed_byte_array_append :: proc "contextless" (self: ^PackedByteArray, value: i
 packed_byte_array_append_array :: proc "contextless" (self: ^PackedByteArray, array: PackedByteArray) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "append_array", 791097111) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -3315,7 +3315,7 @@ packed_byte_array_get_string_from_wchar :: proc "contextless" (self: ^PackedByte
 packed_byte_array_get_string_from_multibyte_char :: proc "contextless" (self: ^PackedByteArray, encoding: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "get_string_from_multibyte_char", 3134094431) }
-	__a_encoding := encoding
+	__a_encoding := transmute([1]uintptr)encoding
 	__args := [1]gde.ConstTypePtr{&__a_encoding}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
@@ -3669,7 +3669,7 @@ packed_byte_array_encode_var :: proc "contextless" (self: ^PackedByteArray, byte
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_var", 2604460497) }
 	__a_byte_offset := byte_offset
-	__a_value := value
+	__a_value := transmute([3]uintptr)value
 	__a_allow_objects := u8(allow_objects)
 	__args := [3]gde.ConstTypePtr{&__a_byte_offset, &__a_value, &__a_allow_objects}
 	__ret: i64
@@ -3685,7 +3685,7 @@ packed_int32_array_new :: proc "contextless" () -> (__r: PackedInt32Array) {
 packed_int32_array_new_from_packed_int32_array :: proc "contextless" (from: PackedInt32Array) -> (__r: PackedInt32Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_INT32_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -3693,7 +3693,7 @@ packed_int32_array_new_from_packed_int32_array :: proc "contextless" (from: Pack
 packed_int32_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedInt32Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_INT32_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -3748,7 +3748,7 @@ packed_int32_array_append :: proc "contextless" (self: ^PackedInt32Array, value:
 packed_int32_array_append_array :: proc "contextless" (self: ^PackedInt32Array, array: PackedInt32Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "append_array", 1087733270) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -3842,7 +3842,7 @@ packed_int64_array_new :: proc "contextless" () -> (__r: PackedInt64Array) {
 packed_int64_array_new_from_packed_int64_array :: proc "contextless" (from: PackedInt64Array) -> (__r: PackedInt64Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_INT64_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -3850,7 +3850,7 @@ packed_int64_array_new_from_packed_int64_array :: proc "contextless" (from: Pack
 packed_int64_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedInt64Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_INT64_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -3905,7 +3905,7 @@ packed_int64_array_append :: proc "contextless" (self: ^PackedInt64Array, value:
 packed_int64_array_append_array :: proc "contextless" (self: ^PackedInt64Array, array: PackedInt64Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "append_array", 2090311302) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -3999,7 +3999,7 @@ packed_float32_array_new :: proc "contextless" () -> (__r: PackedFloat32Array) {
 packed_float32_array_new_from_packed_float32_array :: proc "contextless" (from: PackedFloat32Array) -> (__r: PackedFloat32Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_FLOAT32_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4007,7 +4007,7 @@ packed_float32_array_new_from_packed_float32_array :: proc "contextless" (from: 
 packed_float32_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedFloat32Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_FLOAT32_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4062,7 +4062,7 @@ packed_float32_array_append :: proc "contextless" (self: ^PackedFloat32Array, va
 packed_float32_array_append_array :: proc "contextless" (self: ^PackedFloat32Array, array: PackedFloat32Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "append_array", 2981316639) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -4156,7 +4156,7 @@ packed_float64_array_new :: proc "contextless" () -> (__r: PackedFloat64Array) {
 packed_float64_array_new_from_packed_float64_array :: proc "contextless" (from: PackedFloat64Array) -> (__r: PackedFloat64Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_FLOAT64_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4164,7 +4164,7 @@ packed_float64_array_new_from_packed_float64_array :: proc "contextless" (from: 
 packed_float64_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedFloat64Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_FLOAT64_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4219,7 +4219,7 @@ packed_float64_array_append :: proc "contextless" (self: ^PackedFloat64Array, va
 packed_float64_array_append_array :: proc "contextless" (self: ^PackedFloat64Array, array: PackedFloat64Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "append_array", 792078629) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -4313,7 +4313,7 @@ packed_string_array_new :: proc "contextless" () -> (__r: PackedStringArray) {
 packed_string_array_new_from_packed_string_array :: proc "contextless" (from: PackedStringArray) -> (__r: PackedStringArray) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_STRING_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4321,7 +4321,7 @@ packed_string_array_new_from_packed_string_array :: proc "contextless" (from: Pa
 packed_string_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedStringArray) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_STRING_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4335,7 +4335,7 @@ packed_string_array_set :: proc "contextless" (self: ^PackedStringArray, index: 
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "set", 725585539) }
 	__a_index := index
-	__a_value := value
+	__a_value := transmute([1]uintptr)value
 	__args := [2]gde.ConstTypePtr{&__a_index, &__a_value}
 	__fn(self, &__args[0], nil, 2)
 }
@@ -4358,7 +4358,7 @@ packed_string_array_is_empty :: proc "contextless" (self: ^PackedStringArray) ->
 packed_string_array_push_back :: proc "contextless" (self: ^PackedStringArray, value: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "push_back", 816187996) }
-	__a_value := value
+	__a_value := transmute([1]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -4367,7 +4367,7 @@ packed_string_array_push_back :: proc "contextless" (self: ^PackedStringArray, v
 packed_string_array_append :: proc "contextless" (self: ^PackedStringArray, value: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "append", 816187996) }
-	__a_value := value
+	__a_value := transmute([1]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -4376,7 +4376,7 @@ packed_string_array_append :: proc "contextless" (self: ^PackedStringArray, valu
 packed_string_array_append_array :: proc "contextless" (self: ^PackedStringArray, array: PackedStringArray) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "append_array", 1120103966) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -4391,7 +4391,7 @@ packed_string_array_insert :: proc "contextless" (self: ^PackedStringArray, at_i
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "insert", 2432393153) }
 	__a_at_index := at_index
-	__a_value := value
+	__a_value := transmute([1]uintptr)value
 	__args := [2]gde.ConstTypePtr{&__a_at_index, &__a_value}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 2)
@@ -4400,7 +4400,7 @@ packed_string_array_insert :: proc "contextless" (self: ^PackedStringArray, at_i
 packed_string_array_fill :: proc "contextless" (self: ^PackedStringArray, value: String) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "fill", 3174917410) }
-	__a_value := value
+	__a_value := transmute([1]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -4455,7 +4455,7 @@ packed_string_array_duplicate :: proc "contextless" (self: ^PackedStringArray) -
 packed_string_array_erase :: proc "contextless" (self: ^PackedStringArray, value: String) -> bool {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_STRING_ARRAY, "erase", 816187996) }
-	__a_value := value
+	__a_value := transmute([1]uintptr)value
 	__args := [1]gde.ConstTypePtr{&__a_value}
 	__ret: u8
 	__fn(self, &__args[0], &__ret, 1)
@@ -4470,7 +4470,7 @@ packed_vector2_array_new :: proc "contextless" () -> (__r: PackedVector2Array) {
 packed_vector2_array_new_from_packed_vector2_array :: proc "contextless" (from: PackedVector2Array) -> (__r: PackedVector2Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_VECTOR2_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4478,7 +4478,7 @@ packed_vector2_array_new_from_packed_vector2_array :: proc "contextless" (from: 
 packed_vector2_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedVector2Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_VECTOR2_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4533,7 +4533,7 @@ packed_vector2_array_append :: proc "contextless" (self: ^PackedVector2Array, va
 packed_vector2_array_append_array :: proc "contextless" (self: ^PackedVector2Array, array: PackedVector2Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "append_array", 3887534835) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -4627,7 +4627,7 @@ packed_vector3_array_new :: proc "contextless" () -> (__r: PackedVector3Array) {
 packed_vector3_array_new_from_packed_vector3_array :: proc "contextless" (from: PackedVector3Array) -> (__r: PackedVector3Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_VECTOR3_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4635,7 +4635,7 @@ packed_vector3_array_new_from_packed_vector3_array :: proc "contextless" (from: 
 packed_vector3_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedVector3Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_VECTOR3_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4690,7 +4690,7 @@ packed_vector3_array_append :: proc "contextless" (self: ^PackedVector3Array, va
 packed_vector3_array_append_array :: proc "contextless" (self: ^PackedVector3Array, array: PackedVector3Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "append_array", 203538016) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -4784,7 +4784,7 @@ packed_color_array_new :: proc "contextless" () -> (__r: PackedColorArray) {
 packed_color_array_new_from_packed_color_array :: proc "contextless" (from: PackedColorArray) -> (__r: PackedColorArray) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_COLOR_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4792,7 +4792,7 @@ packed_color_array_new_from_packed_color_array :: proc "contextless" (from: Pack
 packed_color_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedColorArray) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_COLOR_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4847,7 +4847,7 @@ packed_color_array_append :: proc "contextless" (self: ^PackedColorArray, value:
 packed_color_array_append_array :: proc "contextless" (self: ^PackedColorArray, array: PackedColorArray) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "append_array", 798822497) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }
@@ -4941,7 +4941,7 @@ packed_vector4_array_new :: proc "contextless" () -> (__r: PackedVector4Array) {
 packed_vector4_array_new_from_packed_vector4_array :: proc "contextless" (from: PackedVector4Array) -> (__r: PackedVector4Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_VECTOR4_ARRAY, 1) }
-	__a_from := from
+	__a_from := transmute([2]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -4949,7 +4949,7 @@ packed_vector4_array_new_from_packed_vector4_array :: proc "contextless" (from: 
 packed_vector4_array_new_from_array :: proc "contextless" (from: Array) -> (__r: PackedVector4Array) {
 	@(static) __fn: gde.PtrConstructor
 	if __fn == nil { __fn = gde.variant_get_ptr_constructor(.PACKED_VECTOR4_ARRAY, 2) }
-	__a_from := from
+	__a_from := transmute([1]uintptr)from
 	__args := [1]gde.ConstTypePtr{&__a_from}
 	__fn(&__r, &__args[0])
 	return
@@ -5004,7 +5004,7 @@ packed_vector4_array_append :: proc "contextless" (self: ^PackedVector4Array, va
 packed_vector4_array_append_array :: proc "contextless" (self: ^PackedVector4Array, array: PackedVector4Array) {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "append_array", 537428395) }
-	__a_array := array
+	__a_array := transmute([2]uintptr)array
 	__args := [1]gde.ConstTypePtr{&__a_array}
 	__fn(self, &__args[0], nil, 1)
 }

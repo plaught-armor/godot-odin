@@ -164,7 +164,7 @@ utility_posmod :: proc "contextless" (x: i64, y: i64) -> i64 {
 utility_floor :: proc "contextless" (x: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("floor", 4776452) }
-	__a_x := x
+	__a_x := transmute([3]uintptr)x
 	__args := [1]gde.ConstTypePtr{&__a_x}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -191,7 +191,7 @@ utility_floori :: proc "contextless" (x: f64) -> i64 {
 utility_ceil :: proc "contextless" (x: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("ceil", 4776452) }
-	__a_x := x
+	__a_x := transmute([3]uintptr)x
 	__args := [1]gde.ConstTypePtr{&__a_x}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -218,7 +218,7 @@ utility_ceili :: proc "contextless" (x: f64) -> i64 {
 utility_round :: proc "contextless" (x: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("round", 4776452) }
-	__a_x := x
+	__a_x := transmute([3]uintptr)x
 	__args := [1]gde.ConstTypePtr{&__a_x}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -245,7 +245,7 @@ utility_roundi :: proc "contextless" (x: f64) -> i64 {
 utility_abs :: proc "contextless" (x: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("abs", 4776452) }
-	__a_x := x
+	__a_x := transmute([3]uintptr)x
 	__args := [1]gde.ConstTypePtr{&__a_x}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -272,7 +272,7 @@ utility_absi :: proc "contextless" (x: i64) -> i64 {
 utility_sign :: proc "contextless" (x: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("sign", 4776452) }
-	__a_x := x
+	__a_x := transmute([3]uintptr)x
 	__args := [1]gde.ConstTypePtr{&__a_x}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -299,8 +299,8 @@ utility_signi :: proc "contextless" (x: i64) -> i64 {
 utility_snapped :: proc "contextless" (x: Variant, step: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("snapped", 459914704) }
-	__a_x := x
-	__a_step := step
+	__a_x := transmute([3]uintptr)x
+	__a_step := transmute([3]uintptr)step
 	__args := [2]gde.ConstTypePtr{&__a_x, &__a_step}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 2)
@@ -422,9 +422,9 @@ utility_step_decimals :: proc "contextless" (x: f64) -> i64 {
 utility_lerp :: proc "contextless" (from: Variant, to: Variant, weight: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("lerp", 3389874542) }
-	__a_from := from
-	__a_to := to
-	__a_weight := weight
+	__a_from := transmute([3]uintptr)from
+	__a_to := transmute([3]uintptr)to
+	__a_weight := transmute([3]uintptr)weight
 	__args := [3]gde.ConstTypePtr{&__a_from, &__a_to, &__a_weight}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 3)
@@ -642,9 +642,9 @@ utility_db_to_linear :: proc "contextless" (db: f64) -> f64 {
 utility_wrap :: proc "contextless" (value: Variant, min: Variant, max: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("wrap", 3389874542) }
-	__a_value := value
-	__a_min := min
-	__a_max := max
+	__a_value := transmute([3]uintptr)value
+	__a_min := transmute([3]uintptr)min
+	__a_max := transmute([3]uintptr)max
 	__args := [3]gde.ConstTypePtr{&__a_value, &__a_min, &__a_max}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 3)
@@ -675,8 +675,8 @@ utility_wrapf :: proc "contextless" (value: f64, min: f64, max: f64) -> f64 {
 utility_max :: proc "contextless" (arg1: Variant, arg2: Variant, rest: ..Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("max", 3896050336) }
-	__a_arg1 := arg1
-	__a_arg2 := arg2
+	__a_arg1 := transmute([3]uintptr)arg1
+	__a_arg2 := transmute([3]uintptr)arg2
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	__args[1] = &__a_arg2
@@ -709,8 +709,8 @@ utility_maxf :: proc "contextless" (a: f64, b: f64) -> f64 {
 utility_min :: proc "contextless" (arg1: Variant, arg2: Variant, rest: ..Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("min", 3896050336) }
-	__a_arg1 := arg1
-	__a_arg2 := arg2
+	__a_arg1 := transmute([3]uintptr)arg1
+	__a_arg2 := transmute([3]uintptr)arg2
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	__args[1] = &__a_arg2
@@ -743,9 +743,9 @@ utility_minf :: proc "contextless" (a: f64, b: f64) -> f64 {
 utility_clamp :: proc "contextless" (value: Variant, min: Variant, max: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("clamp", 3389874542) }
-	__a_value := value
-	__a_min := min
-	__a_max := max
+	__a_value := transmute([3]uintptr)value
+	__a_min := transmute([3]uintptr)min
+	__a_max := transmute([3]uintptr)max
 	__args := [3]gde.ConstTypePtr{&__a_value, &__a_min, &__a_max}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 3)
@@ -860,7 +860,7 @@ utility_rand_from_seed :: proc "contextless" (seed: i64) -> PackedInt64Array {
 utility_weakref :: proc "contextless" (obj: Variant) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("weakref", 4776452) }
-	__a_obj := obj
+	__a_obj := transmute([3]uintptr)obj
 	__args := [1]gde.ConstTypePtr{&__a_obj}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -869,7 +869,7 @@ utility_weakref :: proc "contextless" (obj: Variant) -> Variant {
 utility_typeof :: proc "contextless" (variable: Variant) -> i64 {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("typeof", 326422594) }
-	__a_variable := variable
+	__a_variable := transmute([3]uintptr)variable
 	__args := [1]gde.ConstTypePtr{&__a_variable}
 	__ret: i64
 	__fn(&__ret, &__args[0], 1)
@@ -878,7 +878,7 @@ utility_typeof :: proc "contextless" (variable: Variant) -> i64 {
 utility_type_convert :: proc "contextless" (variant: Variant, type_: i64) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("type_convert", 2453062746) }
-	__a_variant := variant
+	__a_variant := transmute([3]uintptr)variant
 	__a_type_ := type_
 	__args := [2]gde.ConstTypePtr{&__a_variant, &__a_type_}
 	__ret: Variant
@@ -888,7 +888,7 @@ utility_type_convert :: proc "contextless" (variant: Variant, type_: i64) -> Var
 utility_str :: proc "contextless" (arg1: Variant, rest: ..Variant) -> String {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("str", 32569176) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "str") }
@@ -918,7 +918,7 @@ utility_type_string :: proc "contextless" (type_: i64) -> String {
 utility_print :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("print", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "print") }
@@ -928,7 +928,7 @@ utility_print :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_print_rich :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("print_rich", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "print_rich") }
@@ -938,7 +938,7 @@ utility_print_rich :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_printerr :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("printerr", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "printerr") }
@@ -948,7 +948,7 @@ utility_printerr :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_printt :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("printt", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "printt") }
@@ -958,7 +958,7 @@ utility_printt :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_prints :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("prints", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "prints") }
@@ -968,7 +968,7 @@ utility_prints :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_printraw :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("printraw", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "printraw") }
@@ -978,7 +978,7 @@ utility_printraw :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_print_verbose :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("print_verbose", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "print_verbose") }
@@ -988,7 +988,7 @@ utility_print_verbose :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_push_error :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("push_error", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "push_error") }
@@ -998,7 +998,7 @@ utility_push_error :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_push_warning :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("push_warning", 2648703342) }
-	__a_arg1 := arg1
+	__a_arg1 := transmute([3]uintptr)arg1
 	__args: [32]gde.ConstTypePtr
 	__args[0] = &__a_arg1
 	if len(rest) > 31 { fail("odin: too many arguments", "push_warning") }
@@ -1008,7 +1008,7 @@ utility_push_warning :: proc "contextless" (arg1: Variant, rest: ..Variant) {
 utility_var_to_str :: proc "contextless" (variable: Variant) -> String {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("var_to_str", 866625479) }
-	__a_variable := variable
+	__a_variable := transmute([3]uintptr)variable
 	__args := [1]gde.ConstTypePtr{&__a_variable}
 	__ret: String
 	__fn(&__ret, &__args[0], 1)
@@ -1017,7 +1017,7 @@ utility_var_to_str :: proc "contextless" (variable: Variant) -> String {
 utility_str_to_var :: proc "contextless" (string_: String) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("str_to_var", 1891498491) }
-	__a_string_ := string_
+	__a_string_ := transmute([1]uintptr)string_
 	__args := [1]gde.ConstTypePtr{&__a_string_}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -1026,7 +1026,7 @@ utility_str_to_var :: proc "contextless" (string_: String) -> Variant {
 utility_var_to_bytes :: proc "contextless" (variable: Variant) -> PackedByteArray {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("var_to_bytes", 2947269930) }
-	__a_variable := variable
+	__a_variable := transmute([3]uintptr)variable
 	__args := [1]gde.ConstTypePtr{&__a_variable}
 	__ret: PackedByteArray
 	__fn(&__ret, &__args[0], 1)
@@ -1035,7 +1035,7 @@ utility_var_to_bytes :: proc "contextless" (variable: Variant) -> PackedByteArra
 utility_bytes_to_var :: proc "contextless" (bytes: PackedByteArray) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("bytes_to_var", 4249819452) }
-	__a_bytes := bytes
+	__a_bytes := transmute([2]uintptr)bytes
 	__args := [1]gde.ConstTypePtr{&__a_bytes}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -1044,7 +1044,7 @@ utility_bytes_to_var :: proc "contextless" (bytes: PackedByteArray) -> Variant {
 utility_var_to_bytes_with_objects :: proc "contextless" (variable: Variant) -> PackedByteArray {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("var_to_bytes_with_objects", 2947269930) }
-	__a_variable := variable
+	__a_variable := transmute([3]uintptr)variable
 	__args := [1]gde.ConstTypePtr{&__a_variable}
 	__ret: PackedByteArray
 	__fn(&__ret, &__args[0], 1)
@@ -1053,7 +1053,7 @@ utility_var_to_bytes_with_objects :: proc "contextless" (variable: Variant) -> P
 utility_bytes_to_var_with_objects :: proc "contextless" (bytes: PackedByteArray) -> Variant {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("bytes_to_var_with_objects", 4249819452) }
-	__a_bytes := bytes
+	__a_bytes := transmute([2]uintptr)bytes
 	__args := [1]gde.ConstTypePtr{&__a_bytes}
 	__ret: Variant
 	__fn(&__ret, &__args[0], 1)
@@ -1062,7 +1062,7 @@ utility_bytes_to_var_with_objects :: proc "contextless" (bytes: PackedByteArray)
 utility_hash :: proc "contextless" (variable: Variant) -> i64 {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("hash", 326422594) }
-	__a_variable := variable
+	__a_variable := transmute([3]uintptr)variable
 	__args := [1]gde.ConstTypePtr{&__a_variable}
 	__ret: i64
 	__fn(&__ret, &__args[0], 1)
@@ -1089,7 +1089,7 @@ utility_is_instance_id_valid :: proc "contextless" (id: i64) -> bool {
 utility_is_instance_valid :: proc "contextless" (instance: Variant) -> bool {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("is_instance_valid", 996128841) }
-	__a_instance := instance
+	__a_instance := transmute([3]uintptr)instance
 	__args := [1]gde.ConstTypePtr{&__a_instance}
 	__ret: u8
 	__fn(&__ret, &__args[0], 1)
@@ -1114,8 +1114,8 @@ utility_rid_from_int64 :: proc "contextless" (base: i64) -> RID {
 utility_is_same :: proc "contextless" (a: Variant, b: Variant) -> bool {
 	@(static) __fn: gde.PtrUtilityFunction
 	if __fn == nil { __fn = utility_function("is_same", 1409423524) }
-	__a_a := a
-	__a_b := b
+	__a_a := transmute([3]uintptr)a
+	__a_b := transmute([3]uintptr)b
 	__args := [2]gde.ConstTypePtr{&__a_a, &__a_b}
 	__ret: u8
 	__fn(&__ret, &__args[0], 2)
