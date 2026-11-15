@@ -153,6 +153,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_validates", bag_replaced_validates, {"texts"})
 	godot.method(b, "replaced_int_texts", bag_replaced_int_texts, {"numbers", "base", "capitalize_hex"})
 	godot.method(b, "replaced_chrs", bag_replaced_chrs, {"codes"})
+	godot.method(b, "replaced_scientifics", bag_replaced_scientifics, {"numbers"})
 	godot.method(b, "replaced_float_texts", bag_replaced_float_texts, {"numbers", "decimals"})
 	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
 	godot.method(b, "replaced_callables", bag_replaced_callables, {"c", "s"})
@@ -1815,6 +1816,16 @@ bag_replaced_chrs :: proc(self: ^Bag, codes: godot.PackedInt64Array) -> godot.Pa
 	out := godot.packed_string_array_new()
 	godot.packed_string_array_resize(&out, i64(len(values)))
 	for &slot, k in godot.packed_write_string(&out) { slot = godot.string_chr(values[k]) }
+	return out
+}
+
+// `string_num_scientific` of each number.
+bag_replaced_scientifics :: proc(self: ^Bag, numbers: godot.PackedFloat64Array) -> godot.PackedStringArray {
+	numbers := numbers
+	values := godot.packed_read_float64(&numbers)
+	out := godot.packed_string_array_new()
+	godot.packed_string_array_resize(&out, i64(len(values)))
+	for &slot, k in godot.packed_write_string(&out) { slot = godot.string_num_scientific(values[k]) }
 	return out
 }
 

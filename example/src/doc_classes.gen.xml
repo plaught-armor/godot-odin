@@ -312,6 +312,9 @@
 		<method name="replaced_chrs">
 			<description>The generated [code]string_chr[/code] of each code.</description>
 		</method>
+		<method name="replaced_scientifics">
+			<description>[code]string_num_scientific[/code] of each number.</description>
+		</method>
 		<method name="replaced_float_texts">
 			<description>The generated [code]string_num[/code] of each number.</description>
 		</method>

@@ -2214,6 +2214,213 @@ string_num :: proc "contextless" (number: f64, decimals: i64) -> String {
 	return string_of_float(number, i64(i32(decimals)))
 }
 
+// The engine's `String.num_scientific`: "nan", "inf" or "-inf", else the digits Grisu2 gives, which
+// read back as `number` and are the shortest such digits for all but about one number in a
+// thousand. A number from 0.0001 up to 15 digits before the point is written in full, and any
+// other as one digit, the rest after a '.', and an exponent of at least two digits with its sign.
+// Owns what it answers: destroy it.
+string_num_scientific :: proc "contextless" (number: f64) -> (out: String) {
+	bits := transmute(u64)number
+	text: [32]byte
+	at := 0
+	if bits >> 63 != 0 {
+		text[0] = '-'
+		at = 1
+	}
+	bits &= 1 << 63 - 1
+	if bits >= 0x7FF << 52 {
+		// The engine's `num` words, and its NaN has no sign.
+		if bits > 0x7FF << 52 {
+			ascii_fill(&out, transmute([]byte)string("nan"))
+		} else {
+			ascii_fill(&out, transmute([]byte)string("-inf" if at == 1 else "inf"))
+		}
+		return
+	}
+	if bits == 0 {
+		text[at] = '0'
+		ascii_fill(&out, text[:at + 1])
+		return
+	}
+	digits: [20]byte
+	k, exponent := grisu_digits(&digits, bits)
+	// The number is the digits times 10^exponent, so its point falls after `n` of them.
+	n := k + exponent
+	switch {
+	case k <= n && n <= 15:
+		copy(text[at:], digits[:k])
+		for i in k ..< n { text[at + i] = '0' }
+		at += n
+	case 0 < n && n <= 15:
+		copy(text[at:], digits[:n])
+		text[at + n] = '.'
+		copy(text[at + n + 1:], digits[n:k])
+		at += k + 1
+	case -4 < n && n <= 0:
+		text[at] = '0'
+		text[at + 1] = '.'
+		for i in 0 ..< -n { text[at + 2 + i] = '0' }
+		copy(text[at + 2 - n:], digits[:k])
+		at += 2 - n + k
+	case:
+		text[at] = digits[0]
+		at += 1
+		if k > 1 {
+			text[at] = '.'
+			copy(text[at + 1:], digits[1:k])
+			at += k
+		}
+		e := n - 1
+		text[at] = 'e'
+		text[at + 1] = '-' if e < 0 else '+'
+		at += 2
+		e = abs(e)
+		if e >= 100 {
+			text[at] = '0' + u8(e / 100)
+			at += 1
+		}
+		text[at] = '0' + u8(e / 10 % 10)
+		text[at + 1] = '0' + u8(e % 10)
+		at += 2
+	}
+	ascii_fill(&out, text[:at])
+	return
+}
+
+// A 64-bit fraction times 2^e, as Grisu2 works a float.
+@(private)
+Grisu_Float :: struct {
+	f: u64,
+	e: int,
+}
+
+// GRISU_TENS[i] is 10^(8 * i - 300) as a 64-bit fraction and its power of two, from the engine's
+// thirdparty/grisu2/grisu2.h.
+@(private, rodata)
+GRISU_TENS := [79]Grisu_Float{
+	{0xAB70FE17C79AC6CA, -1060}, {0xFF77B1FCBEBCDC4F, -1034}, {0xBE5691EF416BD60C, -1007},
+	{0x8DD01FAD907FFC3C, -980}, {0xD3515C2831559A83, -954}, {0x9D71AC8FADA6C9B5, -927},
+	{0xEA9C227723EE8BCB, -901}, {0xAECC49914078536D, -874}, {0x823C12795DB6CE57, -847},
+	{0xC21094364DFB5637, -821}, {0x9096EA6F3848984F, -794}, {0xD77485CB25823AC7, -768},
+	{0xA086CFCD97BF97F4, -741}, {0xEF340A98172AACE5, -715}, {0xB23867FB2A35B28E, -688},
+	{0x84C8D4DFD2C63F3B, -661}, {0xC5DD44271AD3CDBA, -635}, {0x936B9FCEBB25C996, -608},
+	{0xDBAC6C247D62A584, -582}, {0xA3AB66580D5FDAF6, -555}, {0xF3E2F893DEC3F126, -529},
+	{0xB5B5ADA8AAFF80B8, -502}, {0x87625F056C7C4A8B, -475}, {0xC9BCFF6034C13053, -449},
+	{0x964E858C91BA2655, -422}, {0xDFF9772470297EBD, -396}, {0xA6DFBD9FB8E5B88F, -369},
+	{0xF8A95FCF88747D94, -343}, {0xB94470938FA89BCF, -316}, {0x8A08F0F8BF0F156B, -289},
+	{0xCDB02555653131B6, -263}, {0x993FE2C6D07B7FAC, -236}, {0xE45C10C42A2B3B06, -210},
+	{0xAA242499697392D3, -183}, {0xFD87B5F28300CA0E, -157}, {0xBCE5086492111AEB, -130},
+	{0x8CBCCC096F5088CC, -103}, {0xD1B71758E219652C, -77}, {0x9C40000000000000, -50},
+	{0xE8D4A51000000000, -24}, {0xAD78EBC5AC620000, 3}, {0x813F3978F8940984, 30},
+	{0xC097CE7BC90715B3, 56}, {0x8F7E32CE7BEA5C70, 83}, {0xD5D238A4ABE98068, 109},
+	{0x9F4F2726179A2245, 136}, {0xED63A231D4C4FB27, 162}, {0xB0DE65388CC8ADA8, 189},
+	{0x83C7088E1AAB65DB, 216}, {0xC45D1DF942711D9A, 242}, {0x924D692CA61BE758, 269},
+	{0xDA01EE641A708DEA, 295}, {0xA26DA3999AEF774A, 322}, {0xF209787BB47D6B85, 348},
+	{0xB454E4A179DD1877, 375}, {0x865B86925B9BC5C2, 402}, {0xC83553C5C8965D3D, 428},
+	{0x952AB45CFA97A0B3, 455}, {0xDE469FBD99A05FE3, 481}, {0xA59BC234DB398C25, 508},
+	{0xF6C69A72A3989F5C, 534}, {0xB7DCBF5354E9BECE, 561}, {0x88FCF317F22241E2, 588},
+	{0xCC20CE9BD35C78A5, 614}, {0x98165AF37B2153DF, 641}, {0xE2A0B5DC971F303A, 667},
+	{0xA8D9D1535CE3B396, 694}, {0xFB9B7CD9A4A7443C, 720}, {0xBB764C4CA7A44410, 747},
+	{0x8BAB8EEFB6409C1A, 774}, {0xD01FEF10A657842C, 800}, {0x9B10A4E5E9913129, 827},
+	{0xE7109BFBA19C0C9D, 853}, {0xAC2820D9623BF429, 880}, {0x80444B5E7AA7CF85, 907},
+	{0xBF21E44003ACDD2D, 933}, {0x8E679C2F5E44FF8F, 960}, {0xD433179D9C8CB841, 986},
+	{0x9E19DB92B4E31BA9, 1013},
+}
+
+// The top 64 bits of the product, rounded half up.
+@(private)
+grisu_mul :: #force_inline proc "contextless" (x, y: Grisu_Float) -> Grisu_Float {
+	return {u64((u128(x.f) * u128(y.f) + 1 << 63) >> 64), x.e + y.e + 64}
+}
+
+// `x` shifted up until its top bit is set.
+@(private)
+grisu_normal :: #force_inline proc "contextless" (x: Grisu_Float) -> Grisu_Float {
+	shift := int(intrinsics.count_leading_zeros(x.f))
+	return {x.f << uint(shift), x.e - shift}
+}
+
+// The decimal digits of the positive finite double with these `bits`, written in `digits`, and
+// the power of ten they are to be scaled by: the engine's grisu2, step for step. The digits are
+// picked between the halfway points to the doubles on either side, so they read back as this one.
+@(private)
+grisu_digits :: proc "contextless" (digits: ^[20]byte, bits: u64) -> (count: int, exponent: int) {
+	biased := int(bits >> 52)
+	fraction := bits & (1 << 52 - 1)
+	v := Grisu_Float{fraction, -1074} if biased == 0 else Grisu_Float{fraction + 1 << 52, biased - 1075}
+	// The halfway points above and below. The one below is half as far at a power of two.
+	above := grisu_normal({2 * v.f + 1, v.e - 1})
+	below := Grisu_Float{4 * v.f - 1, v.e - 2} if fraction == 0 && biased > 1 else Grisu_Float{2 * v.f - 1, v.e - 1}
+	below = {below.f << uint(below.e - above.e), above.e}
+
+	// A power of ten that brings the binary exponent between -60 and -32.
+	f := -61 - above.e
+	k := f * 78913 / (1 << 18) + int(f > 0)
+	index := (300 + k + 7) / 8
+	ten := GRISU_TENS[index]
+	exponent = 300 - 8 * index
+	w := grisu_mul(grisu_normal(v), ten)
+	low := grisu_mul(below, ten)
+	high := grisu_mul(above, ten)
+	// One unit in from each side, for the error of the three products.
+	low.f += 1
+	high.f -= 1
+
+	delta := high.f - low.f
+	dist := high.f - w.f
+	shift := uint(-high.e)
+	one := u64(1) << shift
+	whole := u32(high.f >> shift)
+	part := high.f & (one - 1)
+
+	tens: u32 = 1
+	n := 1
+	for _ in 0 ..< 9 {
+		if whole < tens * 10 { break }
+		tens *= 10
+		n += 1
+	}
+	// The digits of the whole part, stopping once what is left is inside the gap.
+	for _ in 0 ..< 10 {
+		if n == 0 { break }
+		digits[count] = '0' + u8(whole / tens)
+		count += 1
+		whole %= tens
+		n -= 1
+		if rest := u64(whole) << shift + part; rest <= delta {
+			exponent += n
+			grisu_round(digits, count, dist, delta, rest, u64(tens) << shift)
+			return
+		}
+		tens /= 10
+	}
+	// The digits of the fraction, the gap scaled with them.
+	for _ in 0 ..< 20 {
+		part *= 10
+		digits[count] = '0' + u8(part >> shift)
+		count += 1
+		part &= one - 1
+		exponent -= 1
+		delta *= 10
+		dist *= 10
+		if part <= delta { break }
+	}
+	grisu_round(digits, count, dist, delta, part, one)
+	return
+}
+
+// Steps the last digit down while that brings the digits closer to the number and keeps them
+// inside the gap. `unit` is one step of the last digit.
+@(private)
+grisu_round :: proc "contextless" (digits: ^[20]byte, count: int, dist, delta, rest, unit: u64) {
+	rest := rest
+	for _ in 0 ..< 9 {
+		if !(rest < dist && delta - rest >= unit && (rest + unit < dist || dist - rest > rest + unit - dist)) { break }
+		digits[count - 1] -= 1
+		rest += unit
+	}
+}
+
 // The digits of `m` in `base`, 2 to 36, written at the end of `buf`: the index of the first.
 @(private)
 digits_text :: proc "contextless" (buf: ^[65]rune, m: u64, base: i64, capitalize_hex: bool) -> int {

@@ -89,6 +89,7 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.num_uint64` | `string_of_uint` | Godot 4.7-stable | 58 ns | 38 ns |
 | `String.num` | `string_of_float` | Godot 4.7-stable | 173 ns | 54 ns |
 | `String.chr` | `string_of_runes` | Godot 4.7-stable | 17 ns | 9 ns |
+| `String.num_scientific` | `string_num_scientific` | Godot 4.7-stable | 40 ns | 25 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -229,6 +230,14 @@ unsigned), on -123.456 at the default places and on U+00E9. `_check_replaced_num
 them on the edges of the 64-bit range in every base from 2 to 36 and in bases the engine
 refuses, on every character up to 0x3000 and every 97th above, on place counts past both ends,
 and on 2000 seeded random integers and floats.
+
+`string_num_scientific` is the engine's Grisu2 (`thirdparty/grisu2/grisu2.h`, the same file in
+4.7 and 4.8) step for step, so it gives the engine's digits where Grisu2's are not the shortest.
+Its multiply is one 128-bit product where the C code adds four 32-bit ones, and the digits are
+written straight to their place where the C code moves them. It is timed on -123.456 and checked
+on every power of ten and of two a double holds, the doubles beside each power of ten, and
+100000 doubles of random bits, NaN and infinity among them. `String.humanize_size` stays with the
+engine: its unit names go through the project's translations.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

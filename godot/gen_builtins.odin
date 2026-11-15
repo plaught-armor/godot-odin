@@ -356,15 +356,6 @@ string_hex_decode :: proc "contextless" (self: ^String) -> PackedByteArray {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_num_scientific :: proc "contextless" (number: f64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "num_scientific", 2710373411) }
-	__a_number := number
-	__args := [1]gde.ConstTypePtr{&__a_number}
-	__ret: String
-	__fn(nil, &__args[0], &__ret, 1)
-	return __ret
-}
 string_num_int64 :: proc "contextless" (number: i64, base: i64, capitalize_hex: bool) -> String {
 	if b := i64(i32(base)); b >= 2 && b <= 36 { return string_of_int(number, b, capitalize_hex) }
 	@(static) __fn: gde.PtrBuiltInMethod

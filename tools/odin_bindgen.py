@@ -292,7 +292,7 @@ REPLACED = {
     ("String", "similarity"),
     ("String", "rsplit"), ("String", "split_floats"), ("String", "join"),
     ("String", "validate_node_name"), ("String", "validate_filename"),
-    ("String", "num"),
+    ("String", "num"), ("String", "num_scientific"),
     ("String", "get_extension"),
     ("String", "get_basename"),
     ("String", "get_file"),

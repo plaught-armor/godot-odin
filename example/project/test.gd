@@ -1536,6 +1536,31 @@ func _check_replaced_num_texts(b2: Bag) -> int:
 		if b2.replaced_float_texts(floats, decimals) != want_nums:
 			print("FAIL: Bag.replaced_float_texts %d places differs from the engine" % decimals)
 			failures += 1
+	# num_scientific: every power of ten and of two a double holds, the numbers beside them, and
+	# doubles of random bits, which cover every exponent.
+	floats.append_array([-floats[0], 1e-5, 1e-4, 0.00012345, 1e14, 1e15, 1e16, 123456789012345.0,
+		1234567890123456.0, 12345678901234567.0, 0.3, 2.0 / 3.0, 4.9e-324, 2.2250738585072014e-308, 2.225073858507201e-308,
+		9007199254740993.0, 5e-324, 1.5e300, -1.5e-300])
+	for power: int in range(-323, 309):
+		for scale: float in [1.0, 0.9999999999999999, 1.0000000000000002, 3.0]:
+			floats.append(pow(10.0, power) * scale)
+	for power: int in range(-1074, 1024):
+		floats.append(pow(2.0, power))
+	var raw: PackedByteArray = []
+	raw.resize(8)
+	for i: int in 100000:
+		raw.encode_u64(0, rng.randi() << 32 | rng.randi())
+		floats.append(raw.decode_double(0))
+	var want_sci: PackedStringArray = []
+	for v: float in floats:
+		want_sci.append(String.num_scientific(v))
+	var got_sci: PackedStringArray = b2.replaced_scientifics(floats)
+	if got_sci != want_sci:
+		for i: int in floats.size():
+			if got_sci[i] != want_sci[i]:
+				print("FAIL: Bag.replaced_scientifics gave %s, not %s" % [got_sci[i], want_sci[i]])
+				break
+		failures += 1
 	return failures
 
 

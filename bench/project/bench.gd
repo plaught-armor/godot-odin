@@ -236,6 +236,8 @@ func _initialize() -> void:
 	_report("Odin string_num, -123.456", func() -> float: return b.string_ns(137, N))
 	_report("Engine String.chr call", func() -> float: return b.string_ns(138, N))
 	_report("Odin string_chr", func() -> float: return b.string_ns(139, N))
+	_report("Engine String.num_scientific call, -123.456", func() -> float: return b.string_ns(140, N))
+	_report("Odin string_num_scientific, -123.456", func() -> float: return b.string_ns(141, N))
 	_report("Engine String.split call, cached String on a sentence", func() -> float: return b.ident_ns(52, N))
 	_report("Engine StringName.length call", func() -> float: return b.ident_ns(53, N))
 	_report("Odin string_name_length", func() -> float: return b.ident_ns(54, N))

@@ -2137,6 +2137,8 @@ String_Op :: enum i64 {
 	NUM, // string_num of the same
 	CHR_CALL, // the engine's String.chr of U+00E9
 	CHR, // string_chr of the same
+	NUM_SCI_CALL, // the engine's String.num_scientific of -123.456
+	NUM_SCI, // string_num_scientific of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2656,6 +2658,20 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 				r = godot.string_num(intrinsics.volatile_load(&v), intrinsics.volatile_load(&places))
 			} else {
 				fn(nil, &args[0], &r, 2)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .NUM_SCI_CALL, .NUM_SCI:
+		v := -123.456
+		args := [1]gde.ConstTypePtr{&v}
+		fn := godot.builtin_method(.STRING, "num_scientific", 2710373411)
+		for _ in 0 ..< n {
+			r: godot.String
+			if kind == .NUM_SCI {
+				r = godot.string_num_scientific(intrinsics.volatile_load(&v))
+			} else {
+				fn(nil, &args[0], &r, 1)
 			}
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
