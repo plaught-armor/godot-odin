@@ -306,6 +306,15 @@
 		<method name="replaced_validates">
 			<description>validate_node_name and validate_filename of each text, "1" or "0" for its is_valid_unicode_identifier, then the same of its StringName, six per text. test.gd builds the same array from the engine's methods.</description>
 		</method>
+		<method name="replaced_int_texts">
+			<description>The generated [code]string_num_int64[/code] and [code]string_num_uint64[/code] of each number, two Strings a number.</description>
+		</method>
+		<method name="replaced_chrs">
+			<description>The generated [code]string_chr[/code] of each code.</description>
+		</method>
+		<method name="replaced_float_texts">
+			<description>The generated [code]string_num[/code] of each number.</description>
+		</method>
 		<method name="replaced_same_typed">
 			<description>Whether [code]a[/code] and [code]b[/code], then [code]d[/code] and [code]e[/code], are typed alike: Array is_same_typed, then Dictionary is_same_typed, is_same_typed_key and is_same_typed_value. test.gd builds the same array from the engine's methods.</description>
 		</method>

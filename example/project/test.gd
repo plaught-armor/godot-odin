@@ -479,6 +479,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_container_flags(b2)
 	failures += _check_replaced_validity(b2)
 	failures += _check_replaced_validates(b2)
+	failures += _check_replaced_num_texts(b2)
 	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
@@ -1488,6 +1489,56 @@ func _check_bswaps_case(b2: Bag, bytes: PackedByteArray, offset: int, count: int
 # from Bag.replaced_validates, against the engine's methods called from GDScript: fixed cases,
 # every character up to 0x3000 alone and after a letter, a sample of the higher ones, then 20000
 # seeded random texts. The seed is fixed so a failure repeats. Returns 1 on a mismatch.
+# String.num_int64, num_uint64, chr and num against the engine: the edges of the 64-bit and
+# character ranges, every base from 2 to 36 and bases the engine refuses, place counts past both
+# ends, and seeded random numbers.
+func _check_replaced_num_texts(b2: Bag) -> int:
+	var failures: int = 0
+	var ints: PackedInt64Array = [0, 1, -1, 9, 10, 35, 36, 255, -256, 1 << 32, 123456789, -987654321,
+		9223372036854775807, -9223372036854775807 - 1]
+	# The codes the engine refuses with an error are few here: 0, the surrogates and those past
+	# U+10FFFF. A code is read as 32 bits.
+	var codes: PackedInt64Array = [0, 1, 0x41, 0xE9, 0x7FF, 0xD7FF, 0xD800, 0xDBFF, 0xDFFF, 0xE000, 0xFFFF, 0x10000,
+		0x10FFFF, 0x110000, 1 << 32, (1 << 32) + 0x41, -0x41, -1]
+	codes.append_array(range(1, 0x3000))
+	codes.append_array(range(0x3000, 0x110000, 97))
+	var fixed: int = ints.size()
+	var floats: PackedFloat64Array = [0.0, 1.0, -1.5, 0.1, 2.675, 123.456, 9.999999999999998, 10.000000000000002,
+		1e15, 1e22, 1.7976931348623157e308, 5e-324, 1e-7, INF, -INF, NAN]
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261129
+	for i: int in 2000:
+		ints.append((rng.randi() << 32 | rng.randi()) >> rng.randi_range(0, 63))
+		floats.append(rng.randfn() * pow(10.0, rng.randi_range(-20, 20)))
+	var bases: Array[int] = [-1, 0, 1, 37, 100, 1 << 32, (1 << 32) + 16]
+	bases.append_array(range(2, 37))
+	for base: int in bases:
+		# A base the engine refuses prints an error a number, so those take the fixed numbers only.
+		var numbers: PackedInt64Array = ints if base >= 2 and base <= 36 or base == (1 << 32) + 16 else ints.slice(0, fixed)
+		for caps: bool in [false, true]:
+			var want: PackedStringArray = []
+			for v: int in numbers:
+				want.append(String.num_int64(v, base, caps))
+				want.append(String.num_uint64(v, base, caps))
+			if b2.replaced_int_texts(numbers, base, caps) != want:
+				print("FAIL: Bag.replaced_int_texts base %d differs from the engine" % base)
+				failures += 1
+	var want_chrs: PackedStringArray = []
+	for code: int in codes:
+		want_chrs.append(String.chr(code))
+	if b2.replaced_chrs(codes) != want_chrs:
+		print("FAIL: Bag.replaced_chrs differs from the engine")
+		failures += 1
+	for decimals: int in [-1, -2, 0, 1, 2, 6, 14, 22, 23, 32, 33, 40, (1 << 32) + 3, (1 << 32) - 1]:
+		var want_nums: PackedStringArray = []
+		for v: float in floats:
+			want_nums.append(String.num(v, decimals))
+		if b2.replaced_float_texts(floats, decimals) != want_nums:
+			print("FAIL: Bag.replaced_float_texts %d places differs from the engine" % decimals)
+			failures += 1
+	return failures
+
+
 func _check_replaced_validates(b2: Bag) -> int:
 	var texts: PackedStringArray = ["", "a", "_", "1", "a1", "1a", "Player", "Player.Body:1", "@Node@2", "%Unique", "a/b\\c",
 		"  name  ", "\tmy file: draft?.txt\n", " ", "   ", "a b", "<a>|\"b\"*", "100%", "héllo_wörld2", "日本語", "приве́т", "a·b",

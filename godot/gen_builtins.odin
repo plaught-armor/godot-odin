@@ -365,17 +365,8 @@ string_num_scientific :: proc "contextless" (number: f64) -> String {
 	__fn(nil, &__args[0], &__ret, 1)
 	return __ret
 }
-string_num :: proc "contextless" (number: f64, decimals: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "num", 1555901022) }
-	__a_number := number
-	__a_decimals := decimals
-	__args := [2]gde.ConstTypePtr{&__a_number, &__a_decimals}
-	__ret: String
-	__fn(nil, &__args[0], &__ret, 2)
-	return __ret
-}
 string_num_int64 :: proc "contextless" (number: i64, base: i64, capitalize_hex: bool) -> String {
+	if b := i64(i32(base)); b >= 2 && b <= 36 { return string_of_int(number, b, capitalize_hex) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "num_int64", 2111271071) }
 	__a_number := number
@@ -387,6 +378,7 @@ string_num_int64 :: proc "contextless" (number: i64, base: i64, capitalize_hex: 
 	return __ret
 }
 string_num_uint64 :: proc "contextless" (number: i64, base: i64, capitalize_hex: bool) -> String {
+	if b := i64(i32(base)); b >= 2 && b <= 36 { return string_of_uint(u64(number), b, capitalize_hex) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "num_uint64", 2111271071) }
 	__a_number := number
@@ -398,6 +390,7 @@ string_num_uint64 :: proc "contextless" (number: i64, base: i64, capitalize_hex:
 	return __ret
 }
 string_chr :: proc "contextless" (code: i64) -> String {
+	if c := u32(code); c != 0 && c <= 0x10ffff && c & 0xfffff800 != 0xd800 { return string_of_runes([]rune{rune(c)}) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "chr", 897497541) }
 	__a_code := code

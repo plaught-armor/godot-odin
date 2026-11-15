@@ -2188,7 +2188,36 @@ string_of_int :: proc "contextless" (number: i64, base: i64 = 10, capitalize_hex
 	runtime.assert_contextless(base >= 2 && base <= 36, "godot_odin: string_of_int takes a base from 2 to 36")
 	buf: [65]rune
 	// The magnitude as unsigned, so the most negative number has one too.
-	m := u64(number) if number >= 0 else 0 - u64(number)
+	at := digits_text(&buf, u64(number) if number >= 0 else 0 - u64(number), base, capitalize_hex)
+	if number < 0 {
+		at -= 1
+		buf[at] = '-'
+	}
+	string_fill(&out, buf[at:])
+	return
+}
+
+// `number` written as the engine's `String.num_uint64` writes it: `string_of_int` for a number
+// with no sign. The caller destroys the result.
+string_of_uint :: proc "contextless" (number: u64, base: i64 = 10, capitalize_hex := false) -> (out: String) {
+	runtime.assert_contextless(base >= 2 && base <= 36, "godot_odin: string_of_uint takes a base from 2 to 36")
+	buf: [65]rune
+	at := digits_text(&buf, number, base, capitalize_hex)
+	string_fill(&out, buf[at:])
+	return
+}
+
+// The engine's `String.num`, with `decimals` read as the engine's 32-bit int.
+// Owns what it answers: destroy it.
+string_num :: proc "contextless" (number: f64, decimals: i64) -> String {
+	context = runtime.default_context()
+	return string_of_float(number, i64(i32(decimals)))
+}
+
+// The digits of `m` in `base`, 2 to 36, written at the end of `buf`: the index of the first.
+@(private)
+digits_text :: proc "contextless" (buf: ^[65]rune, m: u64, base: i64, capitalize_hex: bool) -> int {
+	m := m
 	at := len(buf)
 	if base == 10 {
 		// A constant base, so each division is a multiply.
@@ -2209,12 +2238,7 @@ string_of_int :: proc "contextless" (number: i64, base: i64 = 10, capitalize_hex
 			if m == 0 { break }
 		}
 	}
-	if number < 0 {
-		at -= 1
-		buf[at] = '-'
-	}
-	string_fill(&out, buf[at:])
-	return
+	return at
 }
 
 // `number` written as the engine's `String.num` writes it: "nan", "inf" or "-inf", else rounded to

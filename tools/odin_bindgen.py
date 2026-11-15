@@ -85,6 +85,11 @@ IN_PLACE = {
            ("hex_to_int", "if v, ok := runes_parse_radix({c}, 4); ok {{ return v }}"),
            ("bin_to_int", "if v, ok := runes_parse_radix({c}, 1); ok {{ return v }}"))},
     ("String", "hash"): "\tif string_layout_known { return i64(string_djb2(self)) }\n",
+    # godot/access.odin: the number and character texts, the engine called where it prints an
+    # error. The engine takes the base as a 32-bit int and the character as 32 bits.
+    ("String", "num_int64"): "\tif b := i64(i32(base)); b >= 2 && b <= 36 { return string_of_int(number, b, capitalize_hex) }\n",
+    ("String", "num_uint64"): "\tif b := i64(i32(base)); b >= 2 && b <= 36 { return string_of_uint(u64(number), b, capitalize_hex) }\n",
+    ("String", "chr"): "\tif c := u32(code); c != 0 && c <= 0x10ffff && c & 0xfffff800 != 0xd800 { return string_of_runes([]rune{rune(c)}) }\n",
     **{(t, "size"): "\tif packed_layout_known { return packed_stored_size(self) }\n" for t in PACKED_TYPES},
     **{(t, "is_empty"): "\tif packed_layout_known { return packed_stored_size(self) == 0 }\n" for t in PACKED_TYPES},
     # The value converted to the element type as the ptrcall converts it. PackedStringArray.set
@@ -287,6 +292,7 @@ REPLACED = {
     ("String", "similarity"),
     ("String", "rsplit"), ("String", "split_floats"), ("String", "join"),
     ("String", "validate_node_name"), ("String", "validate_filename"),
+    ("String", "num"),
     ("String", "get_extension"),
     ("String", "get_basename"),
     ("String", "get_file"),

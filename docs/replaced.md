@@ -85,6 +85,10 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.validate_node_name` | `string_validate_node_name` | Godot 4.7-stable | 50 ns | 15 ns |
 | `String.validate_filename` | `string_validate_filename` | Godot 4.7-stable | 293 ns | 26 ns |
 | `String.is_valid_unicode_identifier` | `runes_is_valid_unicode_identifier` | Godot 4.7-stable | 63 ns | 34 ns |
+| `String.num_int64` | `string_of_int` | Godot 4.7-stable | 20 ns | 16 ns |
+| `String.num_uint64` | `string_of_uint` | Godot 4.7-stable | 58 ns | 38 ns |
+| `String.num` | `string_of_float` | Godot 4.7-stable | 173 ns | 54 ns |
+| `String.chr` | `string_of_runes` | Godot 4.7-stable | 17 ns | 9 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -215,6 +219,16 @@ The three are timed on `Player.Body:1`, on ` my file: draft?.txt ` and on `héll
 `_check_replaced_validates` checks them, as String and as StringName, on fixed Strings, on every
 character up to 0x3000 alone and after a letter, on every 97th character above, and on 20000
 seeded random texts.
+
+The static `string_num_int64`, `string_num_uint64` and `string_chr` answer from `string_of_int`,
+`string_of_uint` and `string_of_runes`, and call the engine only where it prints an error: a base
+outside 2 to 36, and a character that is 0, a surrogate or past U+10FFFF. `string_num` is
+`string_of_float`, which never prints. The base, the place count and the character are read as
+32 bits, as the engine reads them. They are timed on -1234567 in base 16 (7 digits signed, 16
+unsigned), on -123.456 at the default places and on U+00E9. `_check_replaced_num_texts` checks
+them on the edges of the 64-bit range in every base from 2 to 36 and in bases the engine
+refuses, on every character up to 0x3000 and every 97th above, on place counts past both ends,
+and on 2000 seeded random integers and floats.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step
@@ -1027,8 +1041,6 @@ kept as the fallback when the check fails and wherever the engine prints an erro
 `String.hash` is djb2 up to the first 0 character, as the engine's. `string_djb2` takes two
 characters a step, which is the same sum with half the multiplies in a row; hashing a String key
 of a Dictionary uses it too.
-
-Left to the engine: `is_valid_unicode_identifier` (Unicode tables).
 
 An opaque value (String, Array, Dictionary, a packed array, Variant and the like) is an array of
 bytes to Odin. Once a wrapper is inlined, a copy of such an argument is stored a byte at a time,

@@ -575,9 +575,9 @@ Ident :: enum i64 {
 	TO_INT_RUNES,      // runes_to_int of the same String's characters
 	TO_FLOAT_ENGINE,   // the generated string_to_float of a cached "-123.456e-2", which reads it in place
 	TO_FLOAT_RUNES,    // runes_to_float of the same String's characters
-	INT_TEXT_ENGINE,   // the generated string_num_int64 of -1234567, made and destroyed
+	INT_TEXT_ENGINE,   // the engine's String.num_int64 of -1234567, made and destroyed
 	INT_TEXT,          // string_of_int of the same number
-	FLOAT_TEXT_ENGINE, // the generated string_num of -123.456 at the default places
+	FLOAT_TEXT_ENGINE, // the engine's String.num of -123.456 at the default places
 	FLOAT_TEXT,        // string_of_float of the same number
 	FIND_CALL,         // the engine's String.find, called as the bindings did before string_find replaced it
 	RFIND_CALL,        // the engine's String.rfind the same way
@@ -1610,9 +1610,12 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		p := &num
 		for _ in 0 ..< n { sum += i64(godot.runes_to_float(godot.string_read(intrinsics.volatile_load(&p)))) }
 	case .INT_TEXT_ENGINE:
-		v := i64(-1234567)
+		v, base, caps := i64(-1234567), i64(10), u8(0)
+		args := [3]gde.ConstTypePtr{&v, &base, &caps}
+		fn := godot.builtin_method(.STRING, "num_int64", 2111271071)
 		for _ in 0 ..< n {
-			s := godot.string_num_int64(intrinsics.volatile_load(&v), 10, false)
+			s: godot.String
+			fn(nil, &args[0], &s, 3)
 			sum += i64(godot.string_length(&s))
 			godot.destroy[.STRING](&s)
 		}
@@ -1624,9 +1627,12 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			godot.destroy[.STRING](&s)
 		}
 	case .FLOAT_TEXT_ENGINE:
-		v := -123.456
+		v, places := -123.456, i64(-1)
+		args := [2]gde.ConstTypePtr{&v, &places}
+		fn := godot.builtin_method(.STRING, "num", 1555901022)
 		for _ in 0 ..< n {
-			s := godot.string_num(intrinsics.volatile_load(&v), -1)
+			s: godot.String
+			fn(nil, &args[0], &s, 2)
 			sum += i64(godot.string_length(&s))
 			godot.destroy[.STRING](&s)
 		}
@@ -2123,6 +2129,14 @@ String_Op :: enum i64 {
 	VALIDATE_FILE, // string_validate_filename of the same
 	UNICODE_ID_CALL, // the engine's String.is_valid_unicode_identifier of a name with 2 accented letters
 	UNICODE_ID, // string_is_valid_unicode_identifier of the same
+	NUM_INT_CALL, // the engine's String.num_int64 of -1234567 in base 16, made and destroyed
+	NUM_INT, // string_num_int64 of the same
+	NUM_UINT_CALL, // the engine's String.num_uint64 of the same number, which is 16 digits
+	NUM_UINT, // string_num_uint64 of the same
+	NUM_CALL, // the engine's String.num of -123.456 at the default places
+	NUM, // string_num of the same
+	CHR_CALL, // the engine's String.chr of U+00E9
+	CHR, // string_chr of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2613,6 +2627,49 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			case .VALIDATE_NODE, .VALIDATE_NODE_BAD: r = godot.string_validate_node_name(s)
 			case .VALIDATE_FILE: r = godot.string_validate_filename(s)
 			case: fn(s, nil, &r, 0)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .NUM_INT_CALL, .NUM_INT, .NUM_UINT_CALL, .NUM_UINT:
+		v, base, caps := i64(-1234567), i64(16), u8(0)
+		args := [3]gde.ConstTypePtr{&v, &base, &caps}
+		unsigned := kind == .NUM_UINT_CALL || kind == .NUM_UINT
+		fn := godot.builtin_method(.STRING, "num_uint64" if unsigned else "num_int64", 2111271071)
+		for _ in 0 ..< n {
+			r: godot.String
+			#partial switch kind {
+			case .NUM_INT: r = godot.string_num_int64(intrinsics.volatile_load(&v), intrinsics.volatile_load(&base), false)
+			case .NUM_UINT: r = godot.string_num_uint64(intrinsics.volatile_load(&v), intrinsics.volatile_load(&base), false)
+			case: fn(nil, &args[0], &r, 3)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .NUM_CALL, .NUM:
+		v, places := -123.456, i64(-1)
+		args := [2]gde.ConstTypePtr{&v, &places}
+		fn := godot.builtin_method(.STRING, "num", 1555901022)
+		for _ in 0 ..< n {
+			r: godot.String
+			if kind == .NUM {
+				r = godot.string_num(intrinsics.volatile_load(&v), intrinsics.volatile_load(&places))
+			} else {
+				fn(nil, &args[0], &r, 2)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .CHR_CALL, .CHR:
+		code := i64(0xE9)
+		args := [1]gde.ConstTypePtr{&code}
+		fn := godot.builtin_method(.STRING, "chr", 897497541)
+		for _ in 0 ..< n {
+			r: godot.String
+			if kind == .CHR {
+				r = godot.string_chr(intrinsics.volatile_load(&code))
+			} else {
+				fn(nil, &args[0], &r, 1)
 			}
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)

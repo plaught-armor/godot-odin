@@ -151,6 +151,9 @@ register_extras :: proc() {
 	godot.method(b, "replaced_container_flags", bag_replaced_container_flags, {"a", "d"})
 	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
 	godot.method(b, "replaced_validates", bag_replaced_validates, {"texts"})
+	godot.method(b, "replaced_int_texts", bag_replaced_int_texts, {"numbers", "base", "capitalize_hex"})
+	godot.method(b, "replaced_chrs", bag_replaced_chrs, {"codes"})
+	godot.method(b, "replaced_float_texts", bag_replaced_float_texts, {"numbers", "decimals"})
 	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
 	godot.method(b, "replaced_callables", bag_replaced_callables, {"c", "s"})
 	godot.method(b, "replaced_packed_set", bag_replaced_packed_set, {"arrays", "values", "index", "other"})
@@ -1788,6 +1791,40 @@ bag_replaced_paths :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godot.
 		name(&out, godot.node_path_get_concatenated_subnames(&p))
 		push(&out, godot.variant(path_copies_counted(&p, names, subnames)))
 	}
+	return out
+}
+
+// The generated `string_num_int64` and `string_num_uint64` of each number, two Strings a number.
+bag_replaced_int_texts :: proc(self: ^Bag, numbers: godot.PackedInt64Array, base: i64, capitalize_hex: bool) -> godot.PackedStringArray {
+	numbers := numbers
+	values := godot.packed_read_int64(&numbers)
+	out := godot.packed_string_array_new()
+	godot.packed_string_array_resize(&out, i64(len(values)) * 2)
+	slots := godot.packed_write_string(&out)
+	for v, k in values {
+		slots[k * 2] = godot.string_num_int64(v, base, capitalize_hex)
+		slots[k * 2 + 1] = godot.string_num_uint64(v, base, capitalize_hex)
+	}
+	return out
+}
+
+// The generated `string_chr` of each code.
+bag_replaced_chrs :: proc(self: ^Bag, codes: godot.PackedInt64Array) -> godot.PackedStringArray {
+	codes := codes
+	values := godot.packed_read_int64(&codes)
+	out := godot.packed_string_array_new()
+	godot.packed_string_array_resize(&out, i64(len(values)))
+	for &slot, k in godot.packed_write_string(&out) { slot = godot.string_chr(values[k]) }
+	return out
+}
+
+// The generated `string_num` of each number.
+bag_replaced_float_texts :: proc(self: ^Bag, numbers: godot.PackedFloat64Array, decimals: i64) -> godot.PackedStringArray {
+	numbers := numbers
+	values := godot.packed_read_float64(&numbers)
+	out := godot.packed_string_array_new()
+	godot.packed_string_array_resize(&out, i64(len(values)))
+	for &slot, k in godot.packed_write_string(&out) { slot = godot.string_num(values[k], decimals) }
 	return out
 }
 
