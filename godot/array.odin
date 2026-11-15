@@ -68,9 +68,33 @@ array_stored_type :: #force_inline proc "contextless" (a: ^Array) -> gde.Variant
 	return gde.VariantType((^i32)(uintptr((^rawptr)(a)^) + ARRAY_TYPED_OFFSET)^)
 }
 
+// Whether the two ContainerTypes at `x` and `y` are equal as the engine compares them: the Variant
+// type, then the class name and the script, one pointer each.
+@(private)
+same_container_type :: #force_inline proc "contextless" (x, y: uintptr) -> bool {
+	return (^i32)(x)^ == (^i32)(y)^ && (^rawptr)(x + 8)^ == (^rawptr)(y + 8)^ && (^rawptr)(x + 16)^ == (^rawptr)(y + 16)^
+}
+
+// Whether the ContainerType `at` bytes into the storage of the container `c` names class `class`
+// and no script.
+@(private)
+container_type_names :: proc "contextless" (c: rawptr, at: uintptr, class: ^StringName) -> bool {
+	t := uintptr((^rawptr)(c)^) + at
+	return (^rawptr)(t + 8)^ == (^rawptr)(class)^ && (^rawptr)(t + 16)^ == nil
+}
+
+// Whether `a` and `other` are typed alike. `other` is read from its value, not through its
+// address: a container taken by value and then read through a pointer is first stored a byte at a
+// time, and the read waits on those stores. Only when `array_layout_known`.
+@(private)
+array_stored_same_typed :: #force_inline proc "contextless" (a: ^Array, other: Array) -> bool {
+	return same_container_type(uintptr((^rawptr)(a)^) + ARRAY_TYPED_OFFSET, uintptr(transmute(rawptr)other) + ARRAY_TYPED_OFFSET)
+}
+
 // Sets `array_layout_known` from Arrays of known contents: one of three ints shared by two
 // references, one grown by pushes so its capacity differs from its size, one emptied by a resize,
-// two typed ones and a read-only one.
+// three typed ones, one of them to a class, and a read-only one. A typed Array's script is taken to
+// be the pointer after its class name; no Array here has one.
 check_array_layout :: proc "contextless" () {
 	// The elements where the engine indexes them, after the header of reference count 1 (the
 	// Vector is not shared, the ArrayPrivate is), capacity and size `n`.
@@ -95,14 +119,20 @@ check_array_layout :: proc "contextless" () {
 	gde.array_set_typed(&ti, .INT, &no_class, &no_script)
 	tn := array_new()
 	gde.array_set_typed(&tn, .STRING_NAME, &no_class, &no_script)
+	node := name_of("Node")
+	to := array_new()
+	gde.array_set_typed(&to, .OBJECT, &node, &no_script)
 	ro := array_new()
 	array_make_read_only(&ro)
 	array_layout_known =
 		holds(&a, 3) && holds(&b, 3) && holds(&c, 37) &&
 		(^rawptr)(uintptr((^rawptr)(&e)^) + ARRAY_DATA_OFFSET)^ == nil && array_size(&e) == 0 &&
 		array_stored_type(&ti) == .INT && array_stored_type(&tn) == .STRING_NAME &&
+		array_stored_type(&to) == .OBJECT && (^rawptr)(&node)^ != nil &&
+		container_type_names(&to, ARRAY_TYPED_OFFSET, &node) && container_type_names(&ti, ARRAY_TYPED_OFFSET, &no_class) &&
 		array_stored_read_only(&ro) && !array_stored_read_only(&a) && !array_stored_read_only(&ti)
-	for x in ([?]^Array{&ro, &tn, &ti, &e, &c, &b, &a}) { destroy[.ARRAY](x) }
+	for x in ([?]^Array{&ro, &to, &tn, &ti, &e, &c, &b, &a}) { destroy[.ARRAY](x) }
+	destroy[.STRING_NAME](&node)
 }
 
 // How the in-place reads compare and copy a Variant of each type: by its value at byte 8 (as

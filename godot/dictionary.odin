@@ -123,6 +123,14 @@ dict_value_type :: #force_inline proc "contextless" (d: ^Dictionary) -> gde.Vari
 	return gde.VariantType((^i32)(uintptr((^rawptr)(d)^) + DICT_VALUE_TYPE_OFFSET)^)
 }
 
+// Whether `d` and `other` have equal ContainerTypes `at` bytes into their storage, the key type or
+// the value type. `other` is read from its value, as `array_stored_same_typed` reads its Array.
+// Only when `dict_layout_known`.
+@(private)
+dict_same_typed :: #force_inline proc "contextless" (d: ^Dictionary, other: Dictionary, at: uintptr) -> bool {
+	return same_container_type(uintptr((^rawptr)(d)^) + at, uintptr(transmute(rawptr)other) + at)
+}
+
 // The entry count of `d`, read from its storage. Only when `dict_layout_known`; the generated `size`
 // and `is_empty` use it then.
 dict_stored_size :: #force_inline proc "contextless" (d: ^Dictionary) -> i64 {
@@ -423,6 +431,14 @@ check_dict_layout :: proc "contextless" () {
 	t := dictionary_new()
 	defer destroy[.DICTIONARY](&t)
 	gde.dictionary_set_typed(&t, .INT, &no_class, &no_script, .FLOAT, &no_class, &no_script)
+	// Typed to two classes, to prove where each class name lies. A script is taken to be the
+	// pointer after it; no Dictionary here has one.
+	node, resource := name_of("Node"), name_of("Resource")
+	defer destroy[.STRING_NAME](&node)
+	defer destroy[.STRING_NAME](&resource)
+	to := dictionary_new()
+	defer destroy[.DICTIONARY](&to)
+	gde.dictionary_set_typed(&to, .OBJECT, &node, &no_script, .OBJECT, &resource, &no_script)
 
 	ro := dictionary_new()
 	defer destroy[.DICTIONARY](&ro)
@@ -432,7 +448,11 @@ check_dict_layout :: proc "contextless" () {
 		dict_read_only(&ro) && !dict_read_only(&d) && !dict_read_only(&t) &&
 		dict_map(&e).size == 0 && dictionary_size(&e) == 0 &&
 		dict_key_type(&t) == .INT && dict_key_type(&d) == .NIL &&
-		dict_value_type(&t) == .FLOAT && dict_value_type(&d) == .NIL
+		dict_value_type(&t) == .FLOAT && dict_value_type(&d) == .NIL &&
+		dict_key_type(&to) == .OBJECT && dict_value_type(&to) == .OBJECT &&
+		(^rawptr)(&node)^ != nil && (^rawptr)(&resource)^ != nil && (^rawptr)(&node)^ != (^rawptr)(&resource)^ &&
+		container_type_names(&to, DICT_KEY_TYPE_OFFSET, &node) && container_type_names(&to, DICT_VALUE_TYPE_OFFSET, &resource) &&
+		container_type_names(&t, DICT_KEY_TYPE_OFFSET, &no_class) && container_type_names(&t, DICT_VALUE_TYPE_OFFSET, &no_class)
 	if !dict_layout_known { return }
 	// The lookups themselves, which need the layout known.
 	keys := dictionary_keys(&d)

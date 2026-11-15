@@ -105,6 +105,7 @@ IN_PLACE = {
     ("Array", "is_typed"): "\tif array_layout_known { return array_stored_type(self) != .NIL }\n",
     ("Array", "get_typed_builtin"): "\tif array_layout_known { return i64(array_stored_type(self)) }\n",
     ("Array", "is_read_only"): "\tif array_layout_known { return array_stored_read_only(self) }\n",
+    ("Array", "is_same_typed"): "\tif array_layout_known { return array_stored_same_typed(self, array) }\n",
     # godot/dictionary.odin, the same way.
     ("Dictionary", "is_typed"): "\tif dict_layout_known { return dict_key_type(self) != .NIL || dict_value_type(self) != .NIL }\n",
     ("Dictionary", "is_typed_key"): "\tif dict_layout_known { return dict_key_type(self) != .NIL }\n",
@@ -112,6 +113,9 @@ IN_PLACE = {
     ("Dictionary", "get_typed_key_builtin"): "\tif dict_layout_known { return i64(dict_key_type(self)) }\n",
     ("Dictionary", "get_typed_value_builtin"): "\tif dict_layout_known { return i64(dict_value_type(self)) }\n",
     ("Dictionary", "is_read_only"): "\tif dict_layout_known { return dict_read_only(self) }\n",
+    ("Dictionary", "is_same_typed"): "\tif dict_layout_known { return dict_same_typed(self, dictionary, DICT_KEY_TYPE_OFFSET) && dict_same_typed(self, dictionary, DICT_VALUE_TYPE_OFFSET) }\n",
+    ("Dictionary", "is_same_typed_key"): "\tif dict_layout_known { return dict_same_typed(self, dictionary, DICT_KEY_TYPE_OFFSET) }\n",
+    ("Dictionary", "is_same_typed_value"): "\tif dict_layout_known { return dict_same_typed(self, dictionary, DICT_VALUE_TYPE_OFFSET) }\n",
     ("Dictionary", "size"): "\tif dict_layout_known { return dict_stored_size(self) }\n",
     ("Dictionary", "is_empty"): "\tif dict_layout_known { return dict_stored_size(self) == 0 }\n",
     ("Dictionary", "has"): "\tif r, ok := dict_stored_has(self, key); ok { return r }\n",

@@ -476,6 +476,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_decodes(b2)
 	failures += _check_replaced_container_flags(b2)
 	failures += _check_replaced_validity(b2)
+	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
 		"/root/a/b:c:d", ":x", ":x:y", "../b", "a/b/c/d/e/f:g", "Body:position:x", "\u00f1/\u00fc:\u00f6",
 		"/root/check_node_path/layout:position:x", "a//b", "a/./b/../c"]))
@@ -882,6 +883,64 @@ func _check_replaced_container_flags(b2: Bag) -> int:
 		if got != want:
 			print("FAIL: Bag.replaced_container_flags of pair %d gave %s, not %s" % [i, got, want])
 			return 1
+	return 0
+
+
+# Two scripts of one native class, to type containers with.
+class _SameTypedA extends RefCounted:
+	pass
+
+
+class _SameTypedB extends RefCounted:
+	pass
+
+
+# is_same_typed of every pair of Arrays, and is_same_typed, is_same_typed_key and
+# is_same_typed_value of every pair of Dictionaries, from Bag.replaced_same_typed, against the
+# engine's methods called from GDScript. The containers are untyped, typed to builtin types, to
+# classes and to scripts, each type twice so equal types in two containers are met. Returns 1 on a
+# mismatch.
+func _check_replaced_same_typed(b2: Bag) -> int:
+	var arrays: Array = []
+	var dicts: Array = []
+	for round: int in 2:
+		var ints: Array[int] = [round]
+		var floats: Array[float] = []
+		var names: Array[StringName] = []
+		var nodes: Array[Node] = []
+		var nodes2d: Array[Node2D] = []
+		var refs: Array[RefCounted] = []
+		var scripted_a: Array[_SameTypedA] = []
+		var scripted_b: Array[_SameTypedB] = []
+		arrays.append_array([[], [round, "a"], ints, floats, names, nodes, nodes2d, refs, scripted_a, scripted_b])
+		var int_int: Dictionary[int, int] = {round: 1}
+		var int_float: Dictionary[int, float] = {}
+		var float_int: Dictionary[float, int] = {}
+		var int_any: Dictionary[int, Variant] = {}
+		var any_int: Dictionary[Variant, int] = {}
+		var node_ref: Dictionary[Node, RefCounted] = {}
+		var node_node: Dictionary[Node, Node] = {}
+		var a_b: Dictionary[_SameTypedA, _SameTypedB] = {}
+		var b_a: Dictionary[_SameTypedB, _SameTypedA] = {}
+		var a_ref: Dictionary[_SameTypedA, RefCounted] = {}
+		dicts.append_array([{}, {round: 2}, int_int, int_float, float_int, int_any, any_int, node_ref, node_node, a_b, b_a, a_ref])
+	var same := 0
+	for i: int in arrays.size() * dicts.size():
+		var a: Array = arrays[i % arrays.size()]
+		var d: Dictionary = dicts[i % dicts.size()]
+		for j: int in arrays.size() * dicts.size():
+			var b: Array = arrays[j % arrays.size()]
+			var e: Dictionary = dicts[j % dicts.size()]
+			var want: PackedInt64Array = [int(a.is_same_typed(b)), int(d.is_same_typed(e)),
+				int(d.is_same_typed_key(e)), int(d.is_same_typed_value(e))]
+			var got: PackedInt64Array = b2.replaced_same_typed(a, b, d, e)
+			if got != want:
+				print("FAIL: Bag.replaced_same_typed of pair %d, %d gave %s, not %s" % [i, j, got, want])
+				return 1
+			same += want[0] + want[1]
+	if same < 100 or same == 2 * (arrays.size() * dicts.size()) ** 2:
+		print("FAIL: Bag.replaced_same_typed saw %d equal types, too few or all" % same)
+		return 1
 	return 0
 
 

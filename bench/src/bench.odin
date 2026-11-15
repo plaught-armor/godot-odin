@@ -633,6 +633,10 @@ Ident :: enum i64 {
 	HTML_COLOR,        // the generated string_is_valid_html_color of the same
 	IP_ADDRESS_CALL,   // the engine's String.is_valid_ip_address of "2001:db8:85a3::8a2e:370:7334", the same way
 	IP_ADDRESS,        // the generated string_is_valid_ip_address of the same
+	ARRAY_SAME_CALL,   // the engine's Array.is_same_typed of two empty Arrays, the same way
+	ARRAY_SAME,        // the generated array_is_same_typed of the same, read from their data
+	DICT_SAME_CALL,    // the engine's Dictionary.is_same_typed of two empty Dictionaries, the same way
+	DICT_SAME,         // the generated dictionary_is_same_typed of the same, read from their data
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1294,6 +1298,38 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		for _ in 0 ..< n {
 			v: u8
 			fn(intrinsics.volatile_load(&p), nil, &v, 0)
+			sum += i64(v)
+		}
+	case .ARRAY_SAME_CALL, .ARRAY_SAME:
+		a, o := godot.array_new(), godot.array_new()
+		defer godot.destroy[.ARRAY](&a)
+		defer godot.destroy[.ARRAY](&o)
+		p, q := &a, &o
+		if kind == .ARRAY_SAME {
+			for _ in 0 ..< n { sum += i64(godot.array_is_same_typed(intrinsics.volatile_load(&p), intrinsics.volatile_load(&q)^)) }
+			break
+		}
+		fn := godot.builtin_method(.ARRAY, "is_same_typed", 2988181878)
+		for _ in 0 ..< n {
+			v: u8
+			args := [1]gde.ConstTypePtr{intrinsics.volatile_load(&q)}
+			fn(intrinsics.volatile_load(&p), &args[0], &v, 1)
+			sum += i64(v)
+		}
+	case .DICT_SAME_CALL, .DICT_SAME:
+		a, o := godot.dictionary_new(), godot.dictionary_new()
+		defer godot.destroy[.DICTIONARY](&a)
+		defer godot.destroy[.DICTIONARY](&o)
+		p, q := &a, &o
+		if kind == .DICT_SAME {
+			for _ in 0 ..< n { sum += i64(godot.dictionary_is_same_typed(intrinsics.volatile_load(&p), intrinsics.volatile_load(&q)^)) }
+			break
+		}
+		fn := godot.builtin_method(.DICTIONARY, "is_same_typed", 3471775634)
+		for _ in 0 ..< n {
+			v: u8
+			args := [1]gde.ConstTypePtr{intrinsics.volatile_load(&q)}
+			fn(intrinsics.volatile_load(&p), &args[0], &v, 1)
 			sum += i64(v)
 		}
 	case .HTML_COLOR, .IP_ADDRESS:

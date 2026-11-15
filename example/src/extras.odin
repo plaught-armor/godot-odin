@@ -132,6 +132,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_decodes", bag_replaced_decodes, {"bytes"})
 	godot.method(b, "replaced_container_flags", bag_replaced_container_flags, {"a", "d"})
 	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
+	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
 	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "name_copies_counted", bag_name_copies_counted, {"texts"})
 	godot.method(b, "string_copies_counted", bag_string_copies_counted, {"texts"})
@@ -1081,6 +1082,22 @@ bag_replaced_container_flags :: proc(self: ^Bag, a: godot.Array, d: godot.Dictio
 		godot.dictionary_get_typed_key_builtin(&d),
 		godot.dictionary_get_typed_value_builtin(&d),
 		i64(godot.dictionary_is_read_only(&d)),
+	}
+	for v in r { godot.packed_int64_array_append(&out, v) }
+	return out
+}
+
+// Whether `a` and `b`, then `d` and `e`, are typed alike: Array is_same_typed, then Dictionary
+// is_same_typed, is_same_typed_key and is_same_typed_value. test.gd builds the same array from the
+// engine's methods.
+bag_replaced_same_typed :: proc(self: ^Bag, a, b: godot.Array, d, e: godot.Dictionary) -> godot.PackedInt64Array {
+	a, d := a, d
+	out := godot.packed_int64_array_new()
+	r := [4]i64{
+		i64(godot.array_is_same_typed(&a, b)),
+		i64(godot.dictionary_is_same_typed(&d, e)),
+		i64(godot.dictionary_is_same_typed_key(&d, e)),
+		i64(godot.dictionary_is_same_typed_value(&d, e)),
 	}
 	for v in r { godot.packed_int64_array_append(&out, v) }
 	return out

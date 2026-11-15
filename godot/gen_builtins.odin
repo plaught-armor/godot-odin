@@ -2510,6 +2510,7 @@ dictionary_is_typed_value :: proc "contextless" (self: ^Dictionary) -> bool {
 	return __ret != 0
 }
 dictionary_is_same_typed :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary) -> bool {
+	if dict_layout_known { return dict_same_typed(self, dictionary, DICT_KEY_TYPE_OFFSET) && dict_same_typed(self, dictionary, DICT_VALUE_TYPE_OFFSET) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_same_typed", 3471775634) }
 	__a_dictionary := transmute([1]uintptr)dictionary
@@ -2519,6 +2520,7 @@ dictionary_is_same_typed :: proc "contextless" (self: ^Dictionary, dictionary: D
 	return __ret != 0
 }
 dictionary_is_same_typed_key :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary) -> bool {
+	if dict_layout_known { return dict_same_typed(self, dictionary, DICT_KEY_TYPE_OFFSET) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_same_typed_key", 3471775634) }
 	__a_dictionary := transmute([1]uintptr)dictionary
@@ -2528,6 +2530,7 @@ dictionary_is_same_typed_key :: proc "contextless" (self: ^Dictionary, dictionar
 	return __ret != 0
 }
 dictionary_is_same_typed_value :: proc "contextless" (self: ^Dictionary, dictionary: Dictionary) -> bool {
+	if dict_layout_known { return dict_same_typed(self, dictionary, DICT_VALUE_TYPE_OFFSET) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_same_typed_value", 3471775634) }
 	__a_dictionary := transmute([1]uintptr)dictionary
@@ -3084,6 +3087,7 @@ array_is_typed :: proc "contextless" (self: ^Array) -> bool {
 	return __ret != 0
 }
 array_is_same_typed :: proc "contextless" (self: ^Array, array: Array) -> bool {
+	if array_layout_known { return array_stored_same_typed(self, array) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "is_same_typed", 2988181878) }
 	__a_array := transmute([1]uintptr)array

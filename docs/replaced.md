@@ -733,21 +733,31 @@ kept as the fallback when the check fails and wherever the engine prints an erro
   `is_typed_key`, `is_typed_value`, `get_typed_key_builtin`, `get_typed_value_builtin` and
   `is_read_only`, read the element types and the read-only pointer. `check_array_layout` and
   `check_dict_layout` prove the read-only pointer on a container made read-only.
+- `Array.is_same_typed`, and `Dictionary.is_same_typed`, `is_same_typed_key` and
+  `is_same_typed_value`, compare the Variant type, the class name and the script of the two
+  containers, as the engine's `ContainerType` does. The layout checks prove where the class name
+  lies on containers typed to a class; the script is taken to be the pointer after it. The other
+  container is read from its by-value argument, never through its address (see below).
 
 `String.hash` is djb2 up to the first 0 character, as the engine's. `string_djb2` takes two
 characters a step, which is the same sum with half the multiplies in a row; hashing a String key
 of a Dictionary uses it too.
 
-Left to the engine: `is_valid_unicode_identifier` (Unicode tables), and `is_same_typed` and its
-Dictionary kin. Those take the other container by value, which Odin stores a byte at a time; the
-8-byte read of its pointer then waits on those stores, and comparing the element types in place
-measured 2.6 ns against the engine's 1.9 ns.
+Left to the engine: `is_valid_unicode_identifier` (Unicode tables).
+
+An opaque value (String, Array, Dictionary, a packed array, Variant and the like) is an array of
+bytes to Odin. Once a wrapper is inlined, a copy of such an argument is stored a byte at a time,
+and a word-sized read of the copy then waits on those stores, about 1 ns. So an in-place read
+takes the value itself (`transmute`), and every generated wrapper copies an opaque argument as
+words (`transmute([N]uintptr)`): `Array.is_same_typed` forwarded to the engine went from 2.84 ns
+to 1.90 ns on 4.8, against 1.71 ns for the bare call.
 
 Checked against Godot 4.7-stable and 4.8 by `_check_replaced_scalars`,
 `_check_replaced_decodes` (every offset from one before the first byte to one past the last, and
-every 16-bit pattern), `_check_replaced_container_flags` and `_check_replaced_validity` (fixed
-colours and addresses, then 12,000 texts made from them by one to three edits), each against the engine's methods
-called from GDScript.
+every 16-bit pattern), `_check_replaced_container_flags`, `_check_replaced_validity` (fixed
+colours and addresses, then 12,000 texts made from them by one to three edits) and
+`_check_replaced_same_typed` (every pair of containers untyped and typed to builtin types,
+classes and scripts), each against the engine's methods called from GDScript.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -760,10 +770,13 @@ called from GDScript.
 | `String.is_valid_html_color` | 9.09 ns | 3.38 ns |
 | `String.is_valid_ip_address` | 25.7 ns | 22.4 ns |
 | `Array.is_typed` | 2.25 ns | 0.94 ns |
+| `Array.is_same_typed` | 2.35 ns | 0.85 ns |
+| `Dictionary.is_same_typed` | 2.58 ns | 1.34 ns |
 
 Timings are from `bench/build.sh` on 4.7-stable: the decodes at offset 4 of 16 bytes, the String
 reads of "7fffABCD1234", `is_valid_html_color` of "#7fffABCD", `is_valid_ip_address` of
-"2001:db8:85a3::8a2e:370:7334", `is_typed` of an empty Array.
+"2001:db8:85a3::8a2e:370:7334", `is_typed` of an empty Array, `is_same_typed` of two empty
+Arrays and of two empty Dictionaries.
 
 ## NodePath
 
