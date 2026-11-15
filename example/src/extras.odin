@@ -130,6 +130,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
 	godot.method(b, "replaced_decodes", bag_replaced_decodes, {"bytes"})
+	godot.method(b, "replaced_encodes", bag_replaced_encodes, {"bytes", "ints", "floats", "at", "other"})
 	godot.method(b, "replaced_container_flags", bag_replaced_container_flags, {"a", "d"})
 	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
 	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
@@ -1066,6 +1067,42 @@ bag_replaced_decodes :: proc(self: ^Bag, bytes: godot.PackedByteArray) -> godot.
 		for v in r { godot.packed_int64_array_append(&out, v) }
 	}
 	return out
+}
+
+// The bytes a copy of `bytes` holds after each generated PackedByteArray encode in turn, one copy
+// after another: encode_u8, s8, u16, s16, u32, s32, u64 and s64 of each of `ints`, then encode_half,
+// float and double of each of `floats`. Each copy is encoded at `at` and then at `other`: the first
+// encode finds the copy sharing its storage with `bytes`, the second finds it alone when the first
+// was in range.
+bag_replaced_encodes :: proc(self: ^Bag, bytes: godot.PackedByteArray, ints: godot.PackedInt64Array, floats: godot.PackedFloat64Array, at, other: i64) -> godot.PackedByteArray {
+	ints, floats := ints, floats
+	out := godot.packed_byte_array_new()
+	int_encodes := [8]proc "contextless" (_: ^godot.PackedByteArray, _: i64, _: i64) {
+		godot.packed_byte_array_encode_u8, godot.packed_byte_array_encode_s8,
+		godot.packed_byte_array_encode_u16, godot.packed_byte_array_encode_s16,
+		godot.packed_byte_array_encode_u32, godot.packed_byte_array_encode_s32,
+		godot.packed_byte_array_encode_u64, godot.packed_byte_array_encode_s64,
+	}
+	float_encodes := [3]proc "contextless" (_: ^godot.PackedByteArray, _: i64, _: f64) {
+		godot.packed_byte_array_encode_half, godot.packed_byte_array_encode_float, godot.packed_byte_array_encode_double,
+	}
+	for i in 0 ..< godot.packed_int64_array_size(&ints) {
+		for encode in int_encodes { put_encoded(&out, bytes, at, other, godot.packed_int64_array_get(&ints, i), encode) }
+	}
+	for i in 0 ..< godot.packed_float64_array_size(&floats) {
+		for encode in float_encodes { put_encoded(&out, bytes, at, other, godot.packed_float64_array_get(&floats, i), encode) }
+	}
+	return out
+}
+
+// Appends to `out` the bytes of a copy of `bytes` after `encode` of `v` at `at` and then at `other`.
+put_encoded :: proc(out: ^godot.PackedByteArray, bytes: godot.PackedByteArray, at, other: i64, v: $V,
+	encode: proc "contextless" (_: ^godot.PackedByteArray, _: i64, _: V)) {
+	x := godot.packed_byte_array_new_from_packed_byte_array(bytes)
+	encode(&x, at, v)
+	encode(&x, other, v)
+	godot.packed_byte_array_append_array(out, x)
+	godot.packed_byte_array_destroy(&x)
 }
 
 // What `a` and `d` say of themselves: Array is_typed, get_typed_builtin and is_read_only, then

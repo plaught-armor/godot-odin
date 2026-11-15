@@ -647,6 +647,10 @@ Ident :: enum i64 {
 	PACKED_SET,         // the generated packed_int64_array_set of the same, stored in place
 	PACKED_SET_V3_CALL, // the engine's PackedVector3Array.set the same way
 	PACKED_SET_V3,      // the generated packed_vector3_array_set of the same
+	ENCODE_U32_CALL,    // the engine's PackedByteArray.encode_u32 at offset 4 of 16 bytes, the storage not shared
+	ENCODE_U32,         // the generated packed_byte_array_encode_u32 of the same, stored in place
+	ENCODE_HALF_CALL,   // the engine's PackedByteArray.encode_half the same way
+	ENCODE_HALF,        // the generated packed_byte_array_encode_half of the same
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1392,6 +1396,39 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			}
 		}
 		sum += i64(godot.packed_vector3_array_get(&a, 4)[0])
+	case .ENCODE_U32_CALL, .ENCODE_U32:
+		a := godot.packed_byte_array_new()
+		defer godot.packed_byte_array_destroy(&a)
+		godot.packed_byte_array_resize(&a, 16)
+		p := &a
+		if kind == .ENCODE_U32 {
+			for i in 0 ..< n { godot.packed_byte_array_encode_u32(intrinsics.volatile_load(&p), 4, i) }
+		} else {
+			fn := godot.builtin_method(.PACKED_BYTE_ARRAY, "encode_u32", 3638975848)
+			for i in 0 ..< n {
+				at, value: i64 = 4, i
+				args := [2]gde.ConstTypePtr{&at, &value}
+				fn(intrinsics.volatile_load(&p), &args[0], nil, 2)
+			}
+		}
+		sum += godot.packed_byte_array_decode_u32(&a, 4)
+	case .ENCODE_HALF_CALL, .ENCODE_HALF:
+		a := godot.packed_byte_array_new()
+		defer godot.packed_byte_array_destroy(&a)
+		godot.packed_byte_array_resize(&a, 16)
+		p := &a
+		if kind == .ENCODE_HALF {
+			for i in 0 ..< n { godot.packed_byte_array_encode_half(intrinsics.volatile_load(&p), 4, f64(i & 1023)) }
+		} else {
+			fn := godot.builtin_method(.PACKED_BYTE_ARRAY, "encode_half", 1113000516)
+			for i in 0 ..< n {
+				at: i64 = 4
+				value := f64(i & 1023)
+				args := [2]gde.ConstTypePtr{&at, &value}
+				fn(intrinsics.volatile_load(&p), &args[0], nil, 2)
+			}
+		}
+		sum += godot.packed_byte_array_decode_u16(&a, 4)
 	case .DICT_SAME_CALL, .DICT_SAME:
 		a, o := godot.dictionary_new(), godot.dictionary_new()
 		defer godot.destroy[.DICTIONARY](&a)

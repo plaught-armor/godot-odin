@@ -3589,6 +3589,7 @@ packed_byte_array_bswap64 :: proc "contextless" (self: ^PackedByteArray, offset:
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_u8 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: i64) {
+	if packed_encode(self, byte_offset, u8(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_u8", 3638975848) }
 	__a_byte_offset := byte_offset
@@ -3597,6 +3598,7 @@ packed_byte_array_encode_u8 :: proc "contextless" (self: ^PackedByteArray, byte_
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_s8 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: i64) {
+	if packed_encode(self, byte_offset, u8(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_s8", 3638975848) }
 	__a_byte_offset := byte_offset
@@ -3605,6 +3607,7 @@ packed_byte_array_encode_s8 :: proc "contextless" (self: ^PackedByteArray, byte_
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_u16 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: i64) {
+	if packed_encode(self, byte_offset, u16(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_u16", 3638975848) }
 	__a_byte_offset := byte_offset
@@ -3613,6 +3616,7 @@ packed_byte_array_encode_u16 :: proc "contextless" (self: ^PackedByteArray, byte
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_s16 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: i64) {
+	if packed_encode(self, byte_offset, u16(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_s16", 3638975848) }
 	__a_byte_offset := byte_offset
@@ -3621,6 +3625,7 @@ packed_byte_array_encode_s16 :: proc "contextless" (self: ^PackedByteArray, byte
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_u32 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: i64) {
+	if packed_encode(self, byte_offset, u32(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_u32", 3638975848) }
 	__a_byte_offset := byte_offset
@@ -3629,6 +3634,7 @@ packed_byte_array_encode_u32 :: proc "contextless" (self: ^PackedByteArray, byte
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_s32 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: i64) {
+	if packed_encode(self, byte_offset, u32(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_s32", 3638975848) }
 	__a_byte_offset := byte_offset
@@ -3637,6 +3643,7 @@ packed_byte_array_encode_s32 :: proc "contextless" (self: ^PackedByteArray, byte
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_u64 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: i64) {
+	if packed_encode(self, byte_offset, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_u64", 3638975848) }
 	__a_byte_offset := byte_offset
@@ -3645,6 +3652,7 @@ packed_byte_array_encode_u64 :: proc "contextless" (self: ^PackedByteArray, byte
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_s64 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: i64) {
+	if packed_encode(self, byte_offset, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_s64", 3638975848) }
 	__a_byte_offset := byte_offset
@@ -3653,6 +3661,7 @@ packed_byte_array_encode_s64 :: proc "contextless" (self: ^PackedByteArray, byte
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_half :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: f64) {
+	if packed_encode(self, byte_offset, float_to_half(f32(value))) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_half", 1113000516) }
 	__a_byte_offset := byte_offset
@@ -3661,6 +3670,7 @@ packed_byte_array_encode_half :: proc "contextless" (self: ^PackedByteArray, byt
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_float :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: f64) {
+	if packed_encode(self, byte_offset, f32(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_float", 1113000516) }
 	__a_byte_offset := byte_offset
@@ -3669,6 +3679,7 @@ packed_byte_array_encode_float :: proc "contextless" (self: ^PackedByteArray, by
 	__fn(self, &__args[0], nil, 2)
 }
 packed_byte_array_encode_double :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64, value: f64) {
+	if packed_encode(self, byte_offset, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "encode_double", 1113000516) }
 	__a_byte_offset := byte_offset

@@ -465,6 +465,35 @@ packed_decode :: #force_inline proc "contextless" ($T: typeid, a: ^PackedByteArr
 	return intrinsics.unaligned_load((^T)(&xs[offset])), true
 }
 
+// Stores `v` at byte `offset` of `a`, as the generated `encode_*` of PackedByteArray write it, or
+// answers false and stores nothing: the engine is called then. That is when the layout is unknown,
+// when the value does not fit inside the array, where the engine prints its error, and when the
+// storage is shared with another array, which the engine copies first.
+packed_encode :: #force_inline proc "contextless" (a: ^PackedByteArray, offset: i64, v: $T) -> bool {
+	if !packed_layout_known { return false }
+	p := ([^]rawptr)(a)[PACKED_DATA_WORD]
+	if p == nil { return false }
+	h := ([^]i64)(uintptr(p) - PACKED_DATA_OFFSET)
+	if offset < 0 || offset > h[2] - size_of(T) || intrinsics.atomic_load(&h[0]) != 1 { return false }
+	intrinsics.unaligned_store((^T)(uintptr(p) + uintptr(offset)), v)
+	return true
+}
+
+// The 16-bit half float for `f`, as Math::make_half_float of the engine gives it: the significand
+// cut to ten bits, not rounded, zero for a magnitude of 2^-15 or less, infinity for one of 65536 or
+// more, and a NaN with all ten significand bits set.
+float_to_half :: proc "contextless" (f: f32) -> u16 {
+	x := transmute(u32)f
+	sign := u16(x >> 31) << 15
+	sig := x & 0x007fffff
+	exp := x & 0x7f800000
+	if exp >= 0x47800000 {
+		return sign | 0x7c00 | (exp == 0x7f800000 && sig != 0 ? 0x03ff : 0)
+	}
+	if exp <= 0x38000000 { return 0 }
+	return sign | u16((exp - 0x38000000) >> 13) | u16(sig >> 13)
+}
+
 // The float a 16-bit half float `h` stands for, as Math::half_to_float of the engine gives it: a
 // NaN keeps its ten significand bits at the top of the float's.
 half_to_float :: proc "contextless" (h: u16) -> f32 {

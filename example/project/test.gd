@@ -474,6 +474,7 @@ func _check_extras() -> int:
 		"1111111111111111111111111111111111111111111111111111111111111111"])
 	failures += _check_replaced_scalars(b2, scalar_texts)
 	failures += _check_replaced_decodes(b2)
+	failures += _check_replaced_encodes(b2)
 	failures += _check_replaced_container_flags(b2)
 	failures += _check_replaced_validity(b2)
 	failures += _check_replaced_same_typed(b2)
@@ -800,6 +801,72 @@ func _check_replaced_decodes(b2: Bag) -> int:
 				print("FAIL: Bag.replaced_decodes of %d bytes at offset %d, read %d, gave %d, not %d" % [bytes.size(), i / 11 - 1, i % 11, got[i], want[i]])
 				return 1
 	return 0
+
+
+# The PackedByteArray encodes, from Bag.replaced_encodes, against the engine's methods called from
+# GDScript. Nine bytes take one integer and one float at every pair of offsets with one of the two
+# at the start and the other from one before the first byte to one past the last, so each encode
+# meets shared and unshared storage in and out of range. Then offsets 0 and 1 take integers of
+# every width's limits and the floats: every half float, values a half float cannot hold, and
+# NaNs. Returns 1 on a mismatch.
+func _check_replaced_encodes(b2: Bag) -> int:
+	var bytes: PackedByteArray = []
+	for i: int in 9:
+		bytes.append((i * 151 + 77) & 0xff)
+	for k: int in range(-1, bytes.size() + 1):
+		if _check_encodes_case(b2, bytes, [-0x0123456789abcdef], [-1.5], 0, k) != 0:
+			return 1
+		if _check_encodes_case(b2, bytes, [-0x0123456789abcdef], [-1.5], k, 0) != 0:
+			return 1
+	var ints: PackedInt64Array = [0, 1, -1, 0x7f, 0x80, 0xff, 0x100, 0x7fff, 0x8000, 0xffff, 0x10000,
+			0x7fffffff, 0x80000000, 0xffffffff, 0x100000000, 0x7fffffffffffffff, -0x7fffffffffffffff - 1, 0x0123456789abcdef]
+	var halves: PackedByteArray = []
+	halves.resize(2 * 65536)
+	var floats: PackedFloat64Array = [-0.0, 1e-5, -1e-5, 3.0517578125e-05, 3.05175818e-05, 6.103515625e-05,
+			1.0000001, 1.00097, 1.00098, -2.9999, 65504.0, 65519.99, 65535.99, 65536.0, -65536.0, 1e9, 1e39, -1e39,
+			1e-39, 1e-46, 1e308, 5e-324, PI, -TAU, INF, -INF, NAN, -NAN]
+	for h: int in 65536:
+		halves.encode_u16(2 * h, h)
+		floats.append(halves.decode_half(2 * h))
+	return _check_encodes_case(b2, bytes, ints, floats, 0, 1)
+
+
+# Bag.replaced_encodes against the engine's encodes at `at` and then `other` on a copy of `bytes`
+# for each of `ints` and `floats`; `bytes` must come back unchanged itself.
+func _check_encodes_case(b2: Bag, bytes: PackedByteArray, ints: PackedInt64Array, floats: PackedFloat64Array, at: int, other: int) -> int:
+	var before: PackedByteArray = bytes.duplicate()
+	var want: PackedByteArray = []
+	for v: int in ints:
+		for kind: int in 8:
+			var c: PackedByteArray = bytes.duplicate()
+			for o: int in [at, other]:
+				match kind:
+					0: c.encode_u8(o, v)
+					1: c.encode_s8(o, v)
+					2: c.encode_u16(o, v)
+					3: c.encode_s16(o, v)
+					4: c.encode_u32(o, v)
+					5: c.encode_s32(o, v)
+					6: c.encode_u64(o, v)
+					7: c.encode_s64(o, v)
+			want.append_array(c)
+	for f: float in floats:
+		for kind: int in 3:
+			var c: PackedByteArray = bytes.duplicate()
+			for o: int in [at, other]:
+				match kind:
+					0: c.encode_half(o, f)
+					1: c.encode_float(o, f)
+					2: c.encode_double(o, f)
+			want.append_array(c)
+	var got: PackedByteArray = b2.replaced_encodes(bytes, ints, floats, at, other)
+	if got == want and bytes == before:
+		return 0
+	var i: int = 0
+	while i < mini(got.size(), want.size()) and got[i] == want[i]:
+		i += 1
+	print("FAIL: Bag.replaced_encodes at %d then %d differs at byte %d of %d (%d wanted), copy %d" % [at, other, i, got.size(), want.size(), i / bytes.size()])
+	return 1
 
 
 # is_valid_html_color and is_valid_ip_address of String and StringName, from Bag.replaced_validity,

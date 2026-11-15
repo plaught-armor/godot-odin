@@ -735,6 +735,12 @@ kept as the fallback when the check fails and wherever the engine prints an erro
   `decode_u64`, `decode_s64`, `decode_half`, `decode_float` and `decode_double` load the value at
   the offset (`packed_decode` in `godot/packed.odin`). An offset out of range goes to the engine.
   `half_to_float` gives the bits of the engine's `Math::half_to_float` for all 65,536 halves.
+- `PackedByteArray.encode_u8`, `encode_s8`, `encode_u16`, `encode_s16`, `encode_u32`, `encode_s32`,
+  `encode_u64`, `encode_s64`, `encode_half`, `encode_float` and `encode_double` store the value at
+  the offset (`packed_encode` in `godot/packed.odin`) when the offset is in range and the array's
+  reference count is 1. The engine is called for an offset out of range, where it prints, and for
+  storage shared with another array, which it copies first. `float_to_half` gives the bits of the
+  engine's `Math::make_half_float`. `encode_var` always calls the engine.
 - String and StringName `unicode_at`, `is_absolute_path`, `is_relative_path`,
   `is_valid_ascii_identifier`, `is_valid_identifier`, `is_valid_hex_number`, `is_valid_filename`,
   `hex_to_int` and `bin_to_int`, and `String.hash`, read the text in place (`godot/access.odin`).
@@ -774,7 +780,9 @@ to 1.90 ns on 4.8, against 1.71 ns for the bare call.
 
 Checked against Godot 4.7-stable and 4.8 by `_check_replaced_scalars`,
 `_check_replaced_decodes` (every offset from one before the first byte to one past the last, and
-every 16-bit pattern), `_check_replaced_container_flags`, `_check_replaced_validity` (fixed
+every 16-bit pattern), `_check_replaced_encodes` (shared and unshared storage at every offset
+from one before the first byte to one past the last, the limits of every integer width, every
+half float, floats a half cannot hold and NaNs), `_check_replaced_container_flags`, `_check_replaced_validity` (fixed
 colours and addresses, then 12,000 texts made from them by one to three edits) and
 `_check_replaced_same_typed` (every pair of containers untyped and typed to builtin types,
 classes and scripts) and `_check_replaced_callables` (null, standard and custom Callables, and
@@ -784,6 +792,8 @@ Signals, of live and freed objects), each against the engine's methods called fr
 |---|---|---|
 | `PackedByteArray.decode_u32` | 2.68 ns | 0.47 ns |
 | `PackedByteArray.decode_half` | 1.91 ns | 1.14 ns |
+| `PackedByteArray.encode_u32` | 3.26 ns | 0.57 ns |
+| `PackedByteArray.encode_half` | 3.14 ns | 1.16 ns |
 | `String.unicode_at` | 2.46 ns | 1.14 ns |
 | `String.hex_to_int` | 9.50 ns | 6.84 ns |
 | `String.hash` | 4.57 ns | 3.55 ns |
@@ -797,8 +807,8 @@ Signals, of live and freed objects), each against the engine's methods called fr
 | `Callable.get_object_id` | 2.53 ns | 1.17 ns |
 | `Signal.is_null` | 2.33 ns | 0.97 ns |
 
-Timings are from `bench/build.sh` on 4.7-stable: the decodes at offset 4 of 16 bytes, the String
-reads of "7fffABCD1234", `is_valid_html_color` of "#7fffABCD", `is_valid_ip_address` of
+Timings are from `bench/build.sh` on 4.7-stable: the decodes and encodes at offset 4 of 16
+bytes not shared, the String reads of "7fffABCD1234", `is_valid_html_color` of "#7fffABCD", `is_valid_ip_address` of
 "2001:db8:85a3::8a2e:370:7334", `is_typed` of an empty Array, `is_same_typed` of two empty
 Arrays and of two empty Dictionaries, the Callable and Signal reads of ones naming a member of an
 Object.
