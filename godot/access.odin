@@ -1769,6 +1769,89 @@ uri_keeps :: #force_inline proc "contextless" (u: u32) -> bool {
 	return (u | 0x20) - 'a' < 26 || u - '0' < 10 || u == '-' || u == '.' || u == '_' || u == '~'
 }
 
+// Whether the engine's `uri_decode` takes a lower-case hexadecimal digit after '%'. 4.8 takes any
+// hexadecimal digit; 4.7 takes a digit or any upper-case ASCII letter. `check_caps_version` sets it.
+@(private)
+uri_reads_lower: bool
+
+// The value of `c` as a digit after '%' in `uri_decoded`: -1 when the engine does not take it as
+// one, -2 for a letter from G to Z on 4.7, which the engine takes and then cannot read.
+@(private)
+uri_digit :: #force_inline proc "contextless" (c: rune) -> i64 {
+	if uri_reads_lower { return hex_digit(c) }
+	if d := u32(c) - '0'; d <= 9 { return i64(d) }
+	if d := u32(c) - 'A'; d <= 5 { return i64(d) + 10 }
+	if d := u32(c) - 'G'; d <= 'Z' - 'G' { return -2 }
+	return -1
+}
+
+// The byte the escape at `chars[i]` spells, from 1 to 255, when that is '%' and two digits. -1
+// when the engine keeps the '%': it is not one, or fewer than two characters follow, or the first
+// is no digit. -2 when the engine drops the '%': only the second is no digit. -3 where
+// `uri_decoded` gives up: a byte of 0, or a letter from G to Z on 4.7.
+@(private)
+uri_escape :: #force_inline proc "contextless" (chars: []rune, i: int) -> i64 {
+	if i + 2 >= len(chars) || chars[i] != '%' { return -1 }
+	high := uri_digit(chars[i + 1])
+	if high == -1 { return -1 }
+	low := uri_digit(chars[i + 2])
+	if low == -1 { return -2 }
+	if high < 0 || low < 0 || high | low == 0 { return -3 }
+	return high << 4 | low
+}
+
+// `self` with each '%' and two hexadecimal digits read as a byte of UTF-8, and '+' as a space when
+// `PLUS`: the engine's `uri_decode` and `uri_file_decode`. False where the engine prints an error
+// or the text is unusual, and the caller then asks the engine: a character that is not a Unicode
+// one, a byte of 0, bytes that are not UTF-8 or are only so together with characters outside the
+// escapes, and a byte order mark at the front, which the engine drops.
+@(private)
+uri_decoded :: #force_inline proc "contextless" (self: ^String, $PLUS: bool) -> (out: String, ok: bool) {
+	chars := string_read(self)
+	if len(chars) == 0 { return {}, true }
+	// An escape is never shorter than the character it stands for.
+	w := string_storage(&out, len(chars) + 1)
+	at := 0
+	valid := true
+	for i := 0; i < len(chars) && valid; i += 1 {
+		c := chars[i]
+		if u := u32(c); u == 0 || u > 0x10ffff || u & 0xfffff800 == 0xd800 {
+			valid = false
+		} else if b := uri_escape(chars, i); b == -2 {
+			continue
+		} else if b >= 0x80 {
+			// The first byte of a character: the rest of its bytes must be escapes too.
+			count := 2 if b >= 0xc0 && b < 0xe0 else 3 if b >= 0xe0 && b < 0xf0 else 4 if b >= 0xf0 && b < 0xf8 else 1
+			value := b & (0x7f >> uint(count))
+			for k in 1 ..< count {
+				next := uri_escape(chars, i + 3 * k)
+				valid &&= next >= 0x80 && next < 0xc0
+				value = value << 6 | next & 0x3f
+			}
+			least := [5]i64{0, 0, 0x80, 0x800, 0x10000}
+			valid &&= count > 1 && value >= least[count] && value <= 0x10ffff && value & 0xfffff800 != 0xd800
+			c = rune(value)
+			i += 3 * count - 1
+		} else if b > 0 {
+			c = rune(b)
+			i += 2
+		} else if b == -3 {
+			valid = false
+		} else if PLUS && c == '+' {
+			c = ' '
+		}
+		w[at] = c
+		at += 1
+	}
+	if !valid || w[0] == 0xfeff {
+		destroy[.STRING](&out)
+		return {}, false
+	}
+	w[at] = 0
+	if at < len(chars) { string_storage_trim(&out, at + 1) }
+	return out, true
+}
+
 // `self` with '_' in place of each character a node name may not hold, which are . : @ / " and
 // %: the engine's `validate_node_name`. The caller destroys the result.
 string_validate_node_name :: proc "contextless" (self: ^String) -> String {
@@ -3366,7 +3449,8 @@ ranges_has :: proc "contextless" (bounds: []u32, c: rune) -> bool {
 	return lo & 1 == 1
 }
 
-// Points the case tables at those of the engine's version. Called once at load.
+// Points the case tables at those of the engine's version, and notes how its `uri_decode` reads
+// digits. Called once at load.
 @(private)
 check_caps_version :: proc "contextless" () {
 	v: gde.GodotVersion2
@@ -3376,6 +3460,7 @@ check_caps_version :: proc "contextless" () {
 		caps_lower_from, caps_lower_to = CAPS_LOWER_FROM_48[:], CAPS_LOWER_TO_48[:]
 		letter_upper, letter_lower = LETTER_UPPER_48[:], LETTER_LOWER_48[:]
 		xid_start, xid_continue = XID_START_48[:], XID_CONTINUE_48[:]
+		uri_reads_lower = true
 	} else {
 		caps_upper_from, caps_upper_to = CAPS_UPPER_FROM[:], CAPS_UPPER_TO[:]
 		caps_lower_from, caps_lower_to = CAPS_LOWER_FROM[:], CAPS_LOWER_TO[:]

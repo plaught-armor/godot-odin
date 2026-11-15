@@ -2151,6 +2151,10 @@ String_Op :: enum i64 {
 	XML_UNESCAPE, // string_xml_unescape of the same
 	URI_ENCODE_CALL, // the engine's String.uri_encode of a file name with 7 characters to encode
 	URI_ENCODE, // string_uri_encode of the same
+	URI_DECODE_CALL, // the engine's String.uri_decode of a file name with 7 escapes
+	URI_DECODE, // string_uri_decode of the same
+	URI_FILE_DECODE_CALL, // the engine's String.uri_file_decode of the same file name
+	URI_FILE_DECODE, // string_uri_file_decode of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2675,7 +2679,8 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			godot.destroy[.STRING](&r)
 		}
 	case .C_ESCAPE_CALL, .C_ESCAPE, .JSON_ESCAPE_CALL, .JSON_ESCAPE, .XML_ESCAPE_CALL, .XML_ESCAPE, .C_UNESCAPE_CALL,
-	     .C_UNESCAPE, .XML_UNESCAPE_CALL, .XML_UNESCAPE, .URI_ENCODE_CALL, .URI_ENCODE:
+	     .C_UNESCAPE, .XML_UNESCAPE_CALL, .XML_UNESCAPE, .URI_ENCODE_CALL, .URI_ENCODE, .URI_DECODE_CALL, .URI_DECODE,
+	     .URI_FILE_DECODE_CALL, .URI_FILE_DECODE:
 		source := "a line\twith \"quotes\" and a \\ in it\n"
 		name: cstring = "c_escape"
 		#partial switch kind {
@@ -2685,6 +2690,9 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 		case .XML_UNESCAPE_CALL, .XML_UNESCAPE:
 			source, name = "&lt;a href=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;", "xml_unescape"
 		case .URI_ENCODE_CALL, .URI_ENCODE: source, name = "a file name (1) \u00e9.txt", "uri_encode"
+		case .URI_DECODE_CALL, .URI_DECODE: source, name = "a%20file%20name%20%281%29%20%C3%A9.txt", "uri_decode"
+		case .URI_FILE_DECODE_CALL, .URI_FILE_DECODE:
+			source, name = "a%20file%20name%20%281%29%20%C3%A9.txt", "uri_file_decode"
 		}
 		subject := godot.string_of(source)
 		defer godot.destroy[.STRING](&subject)
@@ -2708,6 +2716,8 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			case .C_UNESCAPE: r = godot.string_c_unescape(s)
 			case .XML_UNESCAPE: r = godot.string_xml_unescape(s)
 			case .URI_ENCODE: r = godot.string_uri_encode(s)
+			case .URI_DECODE: r = godot.string_uri_decode(s)
+			case .URI_FILE_DECODE: r = godot.string_uri_file_decode(s)
 			case: fn(s, &args[0], &r, argc)
 			}
 			sum += godot.string_stored_length(&r)

@@ -152,6 +152,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
 	godot.method(b, "replaced_validates", bag_replaced_validates, {"texts"})
 	godot.method(b, "replaced_escapes", bag_replaced_escapes, {"texts"})
+	godot.method(b, "replaced_uri_decodes", bag_replaced_uri_decodes, {"texts"})
 	godot.method(b, "replaced_int_texts", bag_replaced_int_texts, {"numbers", "base", "capitalize_hex"})
 	godot.method(b, "replaced_chrs", bag_replaced_chrs, {"codes"})
 	godot.method(b, "replaced_scientifics", bag_replaced_scientifics, {"numbers"})
@@ -1393,6 +1394,28 @@ bag_replaced_escapes :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godo
 			godot.string_name_c_unescape(&n),
 			godot.string_name_xml_unescape(&n),
 			godot.string_name_uri_encode(&n),
+		}
+		for &v in r {
+			godot.packed_string_array_append(&out, v)
+			godot.destroy[.STRING](&v)
+		}
+	}
+	return out
+}
+
+// uri_decode and uri_file_decode of each text, then the same of its StringName, four per text.
+// test.gd builds the same array from the engine's methods.
+bag_replaced_uri_decodes :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godot.PackedStringArray {
+	texts := texts
+	out := godot.packed_string_array_new()
+	for &t in godot.packed_read_string(&texts) {
+		n := godot.string_name_new_from_string(t)
+		defer godot.destroy[.STRING_NAME](&n)
+		r := [4]godot.String {
+			godot.string_uri_decode(&t),
+			godot.string_uri_file_decode(&t),
+			godot.string_name_uri_decode(&n),
+			godot.string_name_uri_file_decode(&n),
 		}
 		for &v in r {
 			godot.packed_string_array_append(&out, v)

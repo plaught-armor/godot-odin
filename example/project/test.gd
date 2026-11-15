@@ -481,6 +481,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_validates(b2)
 	failures += _check_replaced_num_texts(b2)
 	failures += _check_replaced_escapes(b2)
+	failures += _check_replaced_uri_decodes(b2)
 	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
@@ -1616,6 +1617,56 @@ func _check_replaced_escapes(b2: Bag) -> int:
 			return 1
 	if changed < 5000:
 		print("FAIL: Bag.replaced_escapes saw only %d texts unescaped, too few to prove anything" % changed)
+		return 1
+	return 0
+
+
+# uri_decode and uri_file_decode of String and StringName, from Bag.replaced_uri_decodes, against
+# the engine's methods called from GDScript: fixed cases, among them escapes cut short, bytes that
+# are not UTF-8 and a byte order mark, every character up to 0x3000 alone and after an escape, a
+# sample of the higher ones, then 10000 seeded random texts built from pieces of escapes. The
+# engine prints an error for many of them, and the bindings call it for those. The seed is fixed
+# so a failure repeats. Returns 1 on a mismatch.
+func _check_replaced_uri_decodes(b2: Bag) -> int:
+	var texts: PackedStringArray = ["", "a", "%", "%%", "%4", "%41", "%41%", "%41%4", "a%41b", "%4g", "%g4", "%G1", "%1G", "%ZZ",
+		"%e9", "%E9", "%C3%A9", "%c3%a9", "%C3%a9", "%C3", "%C3x", "%C3%41", "%C3é", "é%A9", "%E6%97%A5", "%E6%97", "%E6%97x",
+		"%F0%9F%98%80", "%F0%9F%98", "%EF%BB%BFa", "\ufeffa", "a\ufeff", "a%EF%BB%BF", "%00", "a%00b", "a+b", "+", "a%20b", "a%2Bb",
+		"%ED%A0%80", "%C0%80", "%C1%81", "%E0%80%80", "%F0%80%80%80", "%F4%8F%BF%BF", "%F4%90%80%80", "%F8%88%80%80%80", "%FF",
+		"%80", "%BF", "%7F", "%01", "a%20file%20name%20%281%29%20%C3%A9.txt", "100%", "100% sure", "%é", "%4é", "日本語"]
+	for code: int in range(1, 0x3000):
+		texts.append(String.chr(code))
+		texts.append("%4" + String.chr(code))
+	for code: int in range(0x3000, 0x110000, 97):
+		# No String holds half of a surrogate pair.
+		if code < 0xd800 or code > 0xdfff:
+			texts.append(String.chr(code))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261131
+	var alphabet: Array[String] = ["%", "%", "%", "4", "1", "C3", "A9", "a9", "c3", "E6", "97", "A5", "F0", "9F", "98", "80", "G",
+		"g", "+", "a", "é", "日", "0", "f", "E", "%C3%A9", "%20"]
+	for round: int in 10000:
+		var s := ""
+		for i: int in rng.randi_range(0, 10):
+			s += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		texts.append(s)
+	var want := PackedStringArray()
+	var changed := 0
+	for s: String in texts:
+		for v: Variant in [s, StringName(s)]:
+			want.append(v.uri_decode())
+			want.append(v.uri_file_decode())
+			changed += int(v.uri_decode() != s)
+	var got: PackedStringArray = b2.replaced_uri_decodes(texts)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_uri_decodes gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	for i: int in want.size():
+		if got[i] != want[i]:
+			print("FAIL: Bag.replaced_uri_decodes on %s, read %d, gave %s, not %s" % [texts[i / 4].c_escape(), i % 4,
+					got[i].c_escape(), want[i].c_escape()])
+			return 1
+	if changed < 5000:
+		print("FAIL: Bag.replaced_uri_decodes saw only %d texts decoded, too few to prove anything" % changed)
 		return 1
 	return 0
 

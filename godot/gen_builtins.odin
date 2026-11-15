@@ -158,6 +158,7 @@ string_uri_encode :: proc "contextless" (self: ^String) -> String {
 	return __ret
 }
 string_uri_decode :: proc "contextless" (self: ^String) -> String {
+	if out, ok := uri_decoded(self, true); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "uri_decode", 3942272618) }
 	__ret: String
@@ -165,6 +166,7 @@ string_uri_decode :: proc "contextless" (self: ^String) -> String {
 	return __ret
 }
 string_uri_file_decode :: proc "contextless" (self: ^String) -> String {
+	if out, ok := uri_decoded(self, false); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "uri_file_decode", 3942272618) }
 	__ret: String
@@ -1120,6 +1122,7 @@ string_name_uri_encode :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_uri_decode :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { if out, ok := uri_decoded(name_text(self), true); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "uri_decode", 3942272618) }
 	__ret: String
@@ -1127,6 +1130,7 @@ string_name_uri_decode :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_uri_file_decode :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { if out, ok := uri_decoded(name_text(self), false); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "uri_file_decode", 3942272618) }
 	__ret: String

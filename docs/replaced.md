@@ -96,6 +96,8 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.c_unescape` | `string_c_unescape` | Godot 4.7-stable | 435 ns | 117 ns |
 | `String.xml_unescape` | `string_xml_unescape` | Godot 4.7-stable | 52 ns | 27 ns |
 | `String.uri_encode` | `string_uri_encode` | Godot 4.7-stable | 234 ns | 40 ns |
+| `String.uri_decode` | `string_uri_decode` | Godot 4.7-stable | 251 ns | 41 ns |
+| `String.uri_file_decode` | `string_uri_file_decode` | Godot 4.7-stable | 247 ns | 43 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -261,6 +263,18 @@ them, as String and as StringName, on fixed Strings, on every character up to 0x
 between letters, on every 97th character above, and on 30000 seeded random texts built from
 pieces of escapes. `String.hex_decode` stays with the engine: a fast path measured 35 ns against
 the engine's 25 ns, because making and sizing the byte array costs two engine calls more.
+
+`string_uri_decode` and `string_uri_file_decode` read each `%` and two digits as a byte and decode
+the bytes as UTF-8 straight into the result, where the engine builds a UTF-8 copy, a byte buffer
+and then the String. The digits follow the engine's version: 4.8 takes any hexadecimal digit, 4.7
+a digit or an upper-case letter, so `%c3` stays as written on 4.7. A `%` whose first digit is good
+and second is not is dropped, as the engine drops it. The engine is called for everything else it
+treats specially: a byte of 0, bytes that are not UTF-8 or that form a character only together
+with text outside the escapes, a byte order mark at the front, a character that is not a Unicode
+one, and on 4.7 a letter from G to Z after `%`. They are timed on a 38-character file name with 7
+escapes. `_check_replaced_uri_decodes` checks them, as String and as StringName, on fixed Strings,
+on every character up to 0x3000 alone and after an escape, on every 97th character above, and on
+10000 seeded random texts built from pieces of escapes.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

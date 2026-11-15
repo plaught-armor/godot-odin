@@ -92,6 +92,10 @@ IN_PLACE = {
     # godot/access.odin: each gives false where the engine prints an error, and the engine is called.
     ("String", "xml_unescape"): "\tif out, ok := xml_unescaped(self); ok { return out }\n",
     ("String", "uri_encode"): "\tif out, ok := uri_encoded(self); ok { return out }\n",
+    ("String", "uri_decode"): "\tif out, ok := uri_decoded(self, true); ok { return out }\n",
+    ("String", "uri_file_decode"): "\tif out, ok := uri_decoded(self, false); ok { return out }\n",
+    ("StringName", "uri_decode"): "\tif dict_layout_known { if out, ok := uri_decoded(name_text(self), true); ok { return out } }\n",
+    ("StringName", "uri_file_decode"): "\tif dict_layout_known { if out, ok := uri_decoded(name_text(self), false); ok { return out } }\n",
     ("StringName", "xml_unescape"): "\tif dict_layout_known { if out, ok := xml_unescaped(name_text(self)); ok { return out } }\n",
     ("StringName", "uri_encode"): "\tif dict_layout_known { if out, ok := uri_encoded(name_text(self)); ok { return out } }\n",
     ("String", "chr"): "\tif c := u32(code); c != 0 && c <= 0x10ffff && c & 0xfffff800 != 0xd800 { return string_of_runes([]rune{rune(c)}) }\n",
