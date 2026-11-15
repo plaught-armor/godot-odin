@@ -240,6 +240,9 @@
 		<method name="replaced_case">
 			<description>to_upper and to_lower of [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
+		<method name="replaced_trims">
+			<description>get_slice of part [code]slice[/code] on [code]other[/code], trim_prefix and trim_suffix of [code]other[/code], and strip_edges at [code]left[/code] and [code]right[/code], of [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
+		</method>
 		<method name="replaced_name_ops">
 			<description>bag_replaced_ops through the StringName methods on [code]n[/code], then its length, is_empty as 0 or 1 and hash. test.gd builds the same array from the engine's StringName methods.</description>
 		</method>

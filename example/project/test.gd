@@ -760,6 +760,53 @@ func _check_replaced_slices(b2: Bag, s: String) -> int:
 	return failures
 
 
+# get_slice on `other`, trim_prefix and trim_suffix of `other`, and strip_edges, of `s`, as String
+# and as StringName, from Bag.replaced_trims against the engine's: every part either side of the
+# first and the last, ones that wrap to those as 32-bit ints, and each pair of edges. Returns the
+# number of mismatches.
+func _check_replaced_trim(b2: Bag, s: String, other: String) -> int:
+	var failures := 0
+	var n := StringName(s)
+	var parts := s.get_slice_count(other)
+	var k := 0
+	for slice: int in [-(1 << 32) - 1, -(1 << 32) + 1, -1, 0, 1, 2, parts - 1, parts, parts + 1, 1 << 32, (1 << 32) + 1]:
+		var left := k % 2 == 0
+		var right := k % 4 < 2
+		k += 1
+		var want := PackedStringArray([s.get_slice(other, slice), s.trim_prefix(other), s.trim_suffix(other),
+				s.strip_edges(left, right), n.get_slice(other, slice), n.trim_prefix(other),
+				n.trim_suffix(other), n.strip_edges(left, right)])
+		var got: PackedStringArray = b2.replaced_trims(s, n, other, slice, left, right)
+		if got != want:
+			print("FAIL: Bag.replaced_trims(%s, %s, %d, %s, %s) gave %s, not %s" % [s, other, slice, left, right, got, want])
+			failures += 1
+	return failures
+
+
+# _check_replaced_trim on fixed Strings and then on 2000 seeded random ones over a small alphabet
+# with whitespace, so that delimiters, prefixes and suffixes are found often. The seed is fixed so
+# a failure repeats.
+func _check_replaced_trims(b2: Bag) -> int:
+	var failures := 0
+	for c: Array in [["", ""], ["", "a"], ["a", ""], ["a", "a"], ["abc", "abc"], ["abc", "abcd"], [" ", " "],
+			["  ", " "], [" \t\n ", "\t"], ["  a b  ", " "], ["\ta\n", "a"], ["res://scenes/level_01.tscn", "/"],
+			["res://scenes/level_01.tscn", "res://"], ["res://scenes/level_01.tscn", ".tscn"], ["a,b,,c,", ","],
+			[",,", ","], ["aXXbXXc", "XX"], ["aaa", "aa"], ["héllo wörld", "ö"], ["abc", "x"]]:
+		failures += _check_replaced_trim(b2, c[0], c[1])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261119
+	var alphabet: Array[String] = [" ", "\t", "a", "b", "/", "é"]
+	for round: int in 2000:
+		var s := ""
+		for i: int in rng.randi_range(0, 14):
+			s += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		var other := ""
+		for i: int in rng.randi_range(0, 3):
+			other += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		failures += _check_replaced_trim(b2, s, other)
+	return failures
+
+
 # to_upper and to_lower of `s`, as String and as StringName, from Bag.replaced_case against the
 # engine's. Returns 1 on a mismatch.
 func _check_replaced_case(b2: Bag, s: String) -> int:
@@ -803,6 +850,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 	for s: String in ["", "a", "ab", "héllo wörld", "res://scenes/level_01.tscn", "a".repeat(70)]:
 		failures += _check_replaced_slices(b2, s)
 	failures += _check_replaced_cases(b2)
+	failures += _check_replaced_trims(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

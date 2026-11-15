@@ -476,6 +476,53 @@ string_to_lower :: proc "contextless" (self: ^String) -> (out: String) {
 	return
 }
 
+// Part `slice` of `self` split on `delimiter`, counted from 0: the engine's `get_slice`. Empty when
+// either String is empty, when `slice` is negative, a 32-bit int as in the engine, or when there
+// are fewer parts; all of `self` when `delimiter` is not in it, whatever `slice` is. The caller
+// destroys the result.
+string_get_slice :: proc "contextless" (self: ^String, delimiter: String, slice: i64) -> String {
+	chars, d := string_read(self), string_chars(delimiter)
+	slice := i64(i32(slice))
+	if len(chars) == 0 || len(d) == 0 || slice < 0 { return {} }
+	pos := find_string(self, delimiter, 0, false)
+	if pos == -1 { return string_copy(self) }
+	from := i64(0)
+	// Each round passes a delimiter of at least one character, so there are at most as many
+	// rounds as characters, and one more for the last part.
+	for i in 0 ..= i64(len(chars)) {
+		if i == slice { return substr_of(self, from, pos - from) }
+		if pos == i64(len(chars)) { break }
+		from = pos + i64(len(d))
+		pos = find_string(self, delimiter, from, false)
+		if pos == -1 { pos = i64(len(chars)) }
+	}
+	return {}
+}
+
+// `self` without `prefix` at its start when it begins with it, else a copy: the engine's
+// `trim_prefix`. The caller destroys the result.
+string_trim_prefix :: proc "contextless" (self: ^String, prefix: String) -> String {
+	if !string_begins_with(self, prefix) { return string_copy(self) }
+	return substr_of(self, i64(len(string_chars(prefix))), -1)
+}
+
+// `self` without `suffix` at its end when it ends with it, else a copy: the engine's
+// `trim_suffix`. The caller destroys the result.
+string_trim_suffix :: proc "contextless" (self: ^String, suffix: String) -> String {
+	if !string_ends_with(self, suffix) { return string_copy(self) }
+	return substr_of(self, 0, i64(len(string_read(self)) - len(string_chars(suffix))))
+}
+
+// `self` without the whitespace at its `left` and `right` ends, as `runes_strip_edges` trims it:
+// the engine's `strip_edges`. A copy that shares the storage when nothing is trimmed. The caller
+// destroys the result.
+string_strip_edges :: proc "contextless" (self: ^String, left: bool, right: bool) -> String {
+	chars := string_read(self)
+	kept := runes_strip_edges(chars, left, right)
+	if len(kept) == len(chars) { return string_copy(self) }
+	return string_of_runes(kept)
+}
+
 // A String of the `n` characters of `chars` from `from`, which lie inside it, `n` at least 1.
 // All of `chars`, the characters of `self`, is a copy that shares its storage, as the engine
 // returns.

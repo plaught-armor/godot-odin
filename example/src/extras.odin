@@ -129,6 +129,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_matches", bag_replaced_matches, {"s", "n", "other"})
 	godot.method(b, "replaced_slices", bag_replaced_slices, {"s", "n", "from", "len"})
 	godot.method(b, "replaced_case", bag_replaced_case, {"s", "n"})
+	godot.method(b, "replaced_trims", bag_replaced_trims, {"s", "n", "other", "slice", "left", "right"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -731,6 +732,29 @@ bag_replaced_case :: proc(self: ^Bag, s: godot.String, n: godot.StringName) -> g
 		godot.string_to_lower(&s),
 		godot.string_name_to_upper(&n),
 		godot.string_name_to_lower(&n),
+	}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
+	return out
+}
+
+// get_slice of part `slice` on `other`, trim_prefix and trim_suffix of `other`, and strip_edges
+// at `left` and `right`, of `s`, then the same through the StringName methods on `n`. test.gd
+// builds the same array from the engine's.
+bag_replaced_trims :: proc(self: ^Bag, s: godot.String, n: godot.StringName, other: godot.String, slice: i64, left: bool, right: bool) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [8]godot.String{
+		godot.string_get_slice(&s, other, slice),
+		godot.string_trim_prefix(&s, other),
+		godot.string_trim_suffix(&s, other),
+		godot.string_strip_edges(&s, left, right),
+		godot.string_name_get_slice(&n, other, slice),
+		godot.string_name_trim_prefix(&n, other),
+		godot.string_name_trim_suffix(&n, other),
+		godot.string_name_strip_edges(&n, left, right),
 	}
 	out := godot.packed_string_array_new()
 	for &v in r {

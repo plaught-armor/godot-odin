@@ -40,6 +40,10 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.right` | `string_right` | Godot 4.7-stable | 18.3 ns | 10.5 ns |
 | `String.to_upper` | `string_to_upper` | Godot 4.7-stable | 341 ns | 29 ns |
 | `String.to_lower` | `string_to_lower` | Godot 4.7-stable | 392 ns | 31 ns |
+| `String.get_slice` | `string_get_slice` | Godot 4.7-stable | 34 ns | 28 ns |
+| `String.trim_prefix` | `string_trim_prefix` | Godot 4.7-stable | 26 ns | 12 ns |
+| `String.trim_suffix` | `string_trim_suffix` | Godot 4.7-stable | 26 ns | 14 ns |
+| `String.strip_edges` | `string_strip_edges` | Godot 4.7-stable | 22 ns | 12 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -71,6 +75,15 @@ replacement that ignores case folds through the same tables. `_check_replaced_ca
 methods on every character from 1 to 0x1FFFF but the surrogates, on 4.7 and on 4.8. The engine
 stops at a zero character inside a String and leaves the rest of the result unset; the
 replacements change the rest too.
+
+`string_get_slice`, `string_trim_prefix`, `string_trim_suffix` and `string_strip_edges` find the
+part to keep with the replaced searches and return it as `string_substr` does, a copy that shares
+the storage when nothing is cut. `get_slice` returns all of the String when the delimiter is not
+in it, whatever the part asked for, as the engine does, and its part number wraps to 32 bits. The
+timings are part 3 of the sentence split on spaces, the sentence's first and last two words
+trimmed, and both edges stripped of the sentence with two spaces before it and a tab and a
+newline after. `_check_replaced_trims` checks all four, as String and as StringName, on fixed
+cases and on 2000 seeded random Strings, for every part either side of the first and the last.
 
 ## Vector2, Vector3 and Vector4
 

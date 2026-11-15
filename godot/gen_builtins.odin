@@ -83,16 +83,6 @@ string_length :: proc "contextless" (self: ^String) -> i64 {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_get_slice :: proc "contextless" (self: ^String, delimiter: String, slice: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "get_slice", 3535100402) }
-	__a_delimiter := transmute([1]uintptr)delimiter
-	__a_slice := slice
-	__args := [2]gde.ConstTypePtr{&__a_delimiter, &__a_slice}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 string_get_slicec :: proc "contextless" (self: ^String, delimiter: i64, slice: i64) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "get_slicec", 787537301) }
@@ -266,16 +256,6 @@ string_join :: proc "contextless" (self: ^String, parts: PackedStringArray) -> S
 	__args := [1]gde.ConstTypePtr{&__a_parts}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_strip_edges :: proc "contextless" (self: ^String, left: bool, right: bool) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "strip_edges", 907855311) }
-	__a_left := u8(left)
-	__a_right := u8(right)
-	__args := [2]gde.ConstTypePtr{&__a_left, &__a_right}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
 string_strip_escapes :: proc "contextless" (self: ^String) -> String {
@@ -662,24 +642,6 @@ string_pad_zeros :: proc "contextless" (self: ^String, digits: i64) -> String {
 	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
-string_trim_prefix :: proc "contextless" (self: ^String, prefix: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "trim_prefix", 3134094431) }
-	__a_prefix := transmute([1]uintptr)prefix
-	__args := [1]gde.ConstTypePtr{&__a_prefix}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_trim_suffix :: proc "contextless" (self: ^String, suffix: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "trim_suffix", 3134094431) }
-	__a_suffix := transmute([1]uintptr)suffix
-	__args := [1]gde.ConstTypePtr{&__a_suffix}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_to_ascii_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_ascii_buffer", 247621236) }
@@ -893,6 +855,7 @@ string_name_substr :: proc "contextless" (self: ^StringName, from: i64, len: i64
 	return __ret
 }
 string_name_get_slice :: proc "contextless" (self: ^StringName, delimiter: String, slice: i64) -> String {
+	if dict_layout_known { return string_get_slice(name_text(self), delimiter, slice) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_slice", 3535100402) }
 	__a_delimiter := transmute([1]uintptr)delimiter
@@ -1286,6 +1249,7 @@ string_name_right :: proc "contextless" (self: ^StringName, length: i64) -> Stri
 	return __ret
 }
 string_name_strip_edges :: proc "contextless" (self: ^StringName, left: bool, right: bool) -> String {
+	if dict_layout_known { return string_strip_edges(name_text(self), left, right) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "strip_edges", 907855311) }
 	__a_left := u8(left)
@@ -1692,6 +1656,7 @@ string_name_pad_zeros :: proc "contextless" (self: ^StringName, digits: i64) -> 
 	return __ret
 }
 string_name_trim_prefix :: proc "contextless" (self: ^StringName, prefix: String) -> String {
+	if dict_layout_known { return string_trim_prefix(name_text(self), prefix) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "trim_prefix", 3134094431) }
 	__a_prefix := transmute([1]uintptr)prefix
@@ -1701,6 +1666,7 @@ string_name_trim_prefix :: proc "contextless" (self: ^StringName, prefix: String
 	return __ret
 }
 string_name_trim_suffix :: proc "contextless" (self: ^StringName, suffix: String) -> String {
+	if dict_layout_known { return string_trim_suffix(name_text(self), suffix) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "trim_suffix", 3134094431) }
 	__a_suffix := transmute([1]uintptr)suffix

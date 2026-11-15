@@ -2019,6 +2019,14 @@ String_Op :: enum i64 {
 	TO_UPPER,       // string_to_upper of the same
 	TO_LOWER_CALL,  // the engine's String.to_lower of the sentence, the result destroyed
 	TO_LOWER,       // string_to_lower of the same
+	GET_SLICE_CALL,   // the engine's String.get_slice of part 3 of the sentence split on spaces, the result destroyed
+	GET_SLICE,        // string_get_slice of the same
+	TRIM_PREFIX_CALL, // the engine's String.trim_prefix of the sentence's first two words, the result destroyed
+	TRIM_PREFIX,      // string_trim_prefix of the same
+	TRIM_SUFFIX_CALL, // the engine's String.trim_suffix of the sentence's last two words, the result destroyed
+	TRIM_SUFFIX,      // string_trim_suffix of the same
+	STRIP_EDGES_CALL, // the engine's String.strip_edges of the sentence with two spaces before it and a tab and a newline after, the result destroyed
+	STRIP_EDGES,      // string_strip_edges of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2034,6 +2042,12 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	from, to := i64(0), i64(0)
 	last := i64(-1)
 	slice_from, slice_len, left_len, right_len := i64(4), i64(5), i64(9), i64(8)
+	padded := godot.string_of("  " + FIND_HAY + "\t\n")
+	defer godot.destroy[.STRING](&padded)
+	p := &padded
+	space := godot.intern_text(" ")
+	part := i64(3)
+	both := true
 	sum: i64
 	start := time.tick_now()
 	switch kind {
@@ -2163,6 +2177,58 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .TO_LOWER:
 		for _ in 0 ..< n {
 			r := godot.string_to_lower(intrinsics.volatile_load(&h))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .GET_SLICE_CALL:
+		fn := godot.builtin_method(.STRING, "get_slice", 3535100402)
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&space, &part}
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 2)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .GET_SLICE:
+		for _ in 0 ..< n {
+			r := godot.string_get_slice(intrinsics.volatile_load(&h), space, part)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .TRIM_PREFIX_CALL, .TRIM_SUFFIX_CALL:
+		other := &head if kind == .TRIM_PREFIX_CALL else &tail
+		fn := godot.builtin_method(.STRING, "trim_prefix" if kind == .TRIM_PREFIX_CALL else "trim_suffix", 3134094431)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{other}
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 1)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .TRIM_PREFIX:
+		for _ in 0 ..< n {
+			r := godot.string_trim_prefix(intrinsics.volatile_load(&h), head)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .TRIM_SUFFIX:
+		for _ in 0 ..< n {
+			r := godot.string_trim_suffix(intrinsics.volatile_load(&h), tail)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .STRIP_EDGES_CALL:
+		fn := godot.builtin_method(.STRING, "strip_edges", 907855311)
+		for _ in 0 ..< n {
+			args := [2]gde.ConstTypePtr{&both, &both}
+			r: godot.String
+			fn(intrinsics.volatile_load(&p), &args[0], &r, 2)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .STRIP_EDGES:
+		for _ in 0 ..< n {
+			r := godot.string_strip_edges(intrinsics.volatile_load(&p), both, both)
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}
