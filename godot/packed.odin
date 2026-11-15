@@ -276,7 +276,14 @@ packed_rfind :: proc "contextless" (xs: []$E, v: ^E, from: i64) -> i64 {
 			if hits != 0 { return last - 3 + i64((31 - intrinsics.count_leading_zeros(hits)) / 3) }
 			last -= 4
 		}
-	} else when E != String && E != Vector4 && E != Color {
+	} else when E == Vector4 || E == Color {
+		// Four to a pass going down from `last`, each one vector compare that returns on a match,
+		// so the loop's own test runs once for four elements.
+		#no_bounds_check for _ in 0 ..< (from + 1) / 4 {
+			#unroll for k in 0 ..< 4 { if elem_eq(&xs[last - i64(k)], v) { return last - i64(k) } }
+			last -= 4
+		}
+	} else when E != String {
 		// Blocks ending at `last`, tested as in `packed_find`, going down.
 		#no_bounds_check for _ in 0 ..< (from + 1) / PACKED_BLOCK {
 			hit := false

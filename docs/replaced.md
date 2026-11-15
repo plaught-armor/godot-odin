@@ -447,7 +447,8 @@ these and `packed_read` fall back to engine calls.
 
 `find` and `rfind` test whole blocks of eight elements with no branch per element, so the
 compares vectorize, and search the block holding a match one by one. Vector4 and Color elements
-are the exception: each is compared as one four-float vector, element by element. Vector3
+are the exception: each is compared as one four-float vector, element by element, and `rfind`
+takes four of them to a pass so the loop's own test runs once for four. Vector3
 elements go four at a time: their twelve floats are compared as three vectors of four against the
 value repeated in step, and the twelve-bit mask is folded to one bit per whole element, which
 `find` and `rfind` scan for the first or last bit and `count` counts. `count` adds
@@ -474,6 +475,7 @@ seeded random sets, half of them of up to 40 elements with a value set at random
 | `PackedByteArray.bsearch` | 4.6 ns | 2.5 ns |
 | `PackedVector2Array.rfind` | 13.4 ns | 7.1 ns |
 | `PackedVector4Array.find` | 18.3 ns | 11.9 ns |
+| `PackedVector4Array.rfind` | 9.2 ns | 6.6 ns |
 | `PackedVector3Array.find` | 18.0 ns | 11.0 ns |
 | `PackedVector3Array.count` | 26.0 ns | 16.0 ns |
 | `PackedVector4Array.count` | 26.2 ns | 22.6 ns |
@@ -536,10 +538,10 @@ for every method in `REPLACED` and `REPLACED_TYPES` that `bench/project/bench.gd
 by hand, with sample arguments picked by type and argument name. Run it after adding a
 replacement, then `bench/build.sh`; a replacement slower than its engine call is a defect to fix
 or drop. On Godot 4.7-stable every pair is at or ahead of the engine within run-to-run noise of
-about 5%, and the same holds on a locally built 4.8. One row swings further between builds
-without a change in its code: `PackedVector4Array.rfind` shares its machine code with
-`PackedColorArray.rfind` and has read 8.6 ns and 9.8 ns in two builds of the bench library, so
-where the loop lands in the library accounts for the difference.
+about 5%, and the same holds on a locally built 4.8. Where a loop lands in the library can move
+a row by 1 ns between builds with no change in its code: `PackedVector4Array.rfind` and
+`PackedColorArray.rfind` once read 8.6 ns and 9.8 ns against the engine's 9.2 ns for that reason,
+and now take four elements to a pass and read 6.6 ns.
 
 The replacement's loop rereads a pointer to every argument each round and loads through it, as
 the engine call must. Passing an argument as a loop constant lets the compiler hoist whatever
