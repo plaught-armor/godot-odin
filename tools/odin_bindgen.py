@@ -86,6 +86,14 @@ IN_PLACE = {
     ("String", "hash"): "\tif string_layout_known { return i64(string_djb2(self)) }\n",
     **{(t, "size"): "\tif packed_layout_known { return packed_stored_size(self) }\n" for t in PACKED_TYPES},
     **{(t, "is_empty"): "\tif packed_layout_known { return packed_stored_size(self) == 0 }\n" for t in PACKED_TYPES},
+    # The value converted to the element type as the ptrcall converts it. PackedStringArray.set
+    # stays with the engine: storing a String counts references.
+    **{(t, "set"): f"\tif packed_layout_known && packed_stored_set(self, index, {v}) {{ return }}\n"
+       for t, v in (("PackedByteArray", "u8(value)"), ("PackedInt32Array", "i32(value)"),
+                    ("PackedInt64Array", "value"), ("PackedFloat32Array", "f32(value)"),
+                    ("PackedFloat64Array", "value"), ("PackedVector2Array", "value"),
+                    ("PackedVector3Array", "value"), ("PackedColorArray", "value"),
+                    ("PackedVector4Array", "value"))},
     # godot/packed.odin: the engine is called for an offset out of range, where it prints an error.
     **{("PackedByteArray", f"decode_{m}"): f"\tif v, ok := packed_decode({t}, self, byte_offset); ok {{ return {conv} }}\n"
        for m, t, conv in (

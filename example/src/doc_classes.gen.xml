@@ -255,6 +255,9 @@
 		<method name="replaced_callables">
 			<description>What [code]c[/code] and [code]s[/code] say of themselves: Callable is_null, is_custom, is_standard and get_object_id, then Signal is_null and get_object_id. test.gd builds the same array from the engine's methods.</description>
 		</method>
+		<method name="replaced_packed_set">
+			<description>A copy of each of [code]arrays[/code], one array of each packed type in the order of their Variant types, after the generated [code]set[/code] of the value at the same place in [code]values[/code], at [code]index[/code] and then at [code]other[/code]. The first set finds the copy sharing its storage with the original, the second finds it alone when the first was in range.</description>
+		</method>
 		<method name="replaced_paths">
 			<description></description>
 		</method>

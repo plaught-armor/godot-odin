@@ -445,6 +445,12 @@ header, as the String `length` does. `check_packed_layout`, run at load, proves 
 shared array, a pushed one whose capacity differs from its size, and an emptied one; when it fails,
 these and `packed_read` fall back to engine calls.
 
+The generated `set` of the nine packed types other than `PackedStringArray` stores the element in
+place (`packed_stored_set`) when the index is in range and the reference count in that header is
+1. The engine is called for an index out of range, where it prints, and for storage shared with
+another array, which it copies first. `PackedStringArray.set` always calls the engine: storing a
+String counts references.
+
 `find` and `rfind` test whole blocks of eight elements with no branch per element, so the
 compares vectorize, and search the block holding a match one by one. Vector4 and Color elements
 are the exception: each is compared as one four-float vector, element by element, and `rfind`
@@ -463,7 +469,9 @@ Checked against Godot
 from `Bag.replaced_packed`, the out-of-range errors included, on empty, sorted and unsorted arrays
 holding repeats, NaN, -0 and the extremes; on values that hit, miss, or hit only after the ptrcall
 conversion; on indices and starts either side of 0, of each end, and the `int64` extremes; on 600
-seeded random sets, half of them of up to 40 elements with a value set at random places.
+seeded random sets, half of them of up to 40 elements with a value set at random places. `set` is
+checked by `_check_packed_set_case`: two sets in turn on a copy of each array, in range and out of
+it, on storage shared and then not, against the engine's and with the original unchanged.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -480,11 +488,14 @@ seeded random sets, half of them of up to 40 elements with a value set at random
 | `PackedVector3Array.count` | 26.0 ns | 16.0 ns |
 | `PackedVector4Array.count` | 26.2 ns | 22.6 ns |
 | `PackedVector4Array.bsearch` | 7.2 ns | 4.0 ns |
+| `PackedInt64Array.set` | 2.65 ns | 1.33 ns |
+| `PackedVector3Array.set` | 3.99 ns | 1.05 ns |
 | `PackedStringArray.bsearch` | 13.9 ns | 10.3 ns |
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an array of 0 to 63,
 and `find` of "12" in a PackedStringArray of "0" to "15". The rows from `PackedByteArray.count`
-down search 64 ascending elements for element 40, `rfind` from the end.
+down search 64 ascending elements for element 40, `rfind` from the end. `set` stores at index 4
+of 16 in an array that shares its storage with no other.
 
 ## Sine and cosine
 

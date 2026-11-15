@@ -3165,6 +3165,7 @@ packed_byte_array_destroy :: proc "contextless" (self: ^PackedByteArray) {
 	__fn(self)
 }
 packed_byte_array_set :: proc "contextless" (self: ^PackedByteArray, index: i64, value: i64) {
+	if packed_layout_known && packed_stored_set(self, index, u8(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "set", 3638975848) }
 	__a_index := index
@@ -3714,6 +3715,7 @@ packed_int32_array_destroy :: proc "contextless" (self: ^PackedInt32Array) {
 	__fn(self)
 }
 packed_int32_array_set :: proc "contextless" (self: ^PackedInt32Array, index: i64, value: i64) {
+	if packed_layout_known && packed_stored_set(self, index, i32(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "set", 3638975848) }
 	__a_index := index
@@ -3871,6 +3873,7 @@ packed_int64_array_destroy :: proc "contextless" (self: ^PackedInt64Array) {
 	__fn(self)
 }
 packed_int64_array_set :: proc "contextless" (self: ^PackedInt64Array, index: i64, value: i64) {
+	if packed_layout_known && packed_stored_set(self, index, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "set", 3638975848) }
 	__a_index := index
@@ -4028,6 +4031,7 @@ packed_float32_array_destroy :: proc "contextless" (self: ^PackedFloat32Array) {
 	__fn(self)
 }
 packed_float32_array_set :: proc "contextless" (self: ^PackedFloat32Array, index: i64, value: f64) {
+	if packed_layout_known && packed_stored_set(self, index, f32(value)) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "set", 1113000516) }
 	__a_index := index
@@ -4185,6 +4189,7 @@ packed_float64_array_destroy :: proc "contextless" (self: ^PackedFloat64Array) {
 	__fn(self)
 }
 packed_float64_array_set :: proc "contextless" (self: ^PackedFloat64Array, index: i64, value: f64) {
+	if packed_layout_known && packed_stored_set(self, index, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "set", 1113000516) }
 	__a_index := index
@@ -4499,6 +4504,7 @@ packed_vector2_array_destroy :: proc "contextless" (self: ^PackedVector2Array) {
 	__fn(self)
 }
 packed_vector2_array_set :: proc "contextless" (self: ^PackedVector2Array, index: i64, value: Vector2) {
+	if packed_layout_known && packed_stored_set(self, index, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "set", 635767250) }
 	__a_index := index
@@ -4656,6 +4662,7 @@ packed_vector3_array_destroy :: proc "contextless" (self: ^PackedVector3Array) {
 	__fn(self)
 }
 packed_vector3_array_set :: proc "contextless" (self: ^PackedVector3Array, index: i64, value: Vector3) {
+	if packed_layout_known && packed_stored_set(self, index, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "set", 3975343409) }
 	__a_index := index
@@ -4813,6 +4820,7 @@ packed_color_array_destroy :: proc "contextless" (self: ^PackedColorArray) {
 	__fn(self)
 }
 packed_color_array_set :: proc "contextless" (self: ^PackedColorArray, index: i64, value: Color) {
+	if packed_layout_known && packed_stored_set(self, index, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "set", 1444096570) }
 	__a_index := index
@@ -4970,6 +4978,7 @@ packed_vector4_array_destroy :: proc "contextless" (self: ^PackedVector4Array) {
 	__fn(self)
 }
 packed_vector4_array_set :: proc "contextless" (self: ^PackedVector4Array, index: i64, value: Vector4) {
+	if packed_layout_known && packed_stored_set(self, index, value) { return }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "set", 1350366223) }
 	__a_index := index

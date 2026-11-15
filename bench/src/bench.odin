@@ -643,6 +643,10 @@ Ident :: enum i64 {
 	CALLABLE_ID,        // the generated callable_get_object_id of the same
 	SIGNAL_NULL_CALL,   // the engine's Signal.is_null of a Signal naming a signal of an object
 	SIGNAL_NULL,        // the generated signal_is_null of the same
+	PACKED_SET_CALL,    // the engine's PackedInt64Array.set at index 4 of 16, the storage not shared
+	PACKED_SET,         // the generated packed_int64_array_set of the same, stored in place
+	PACKED_SET_V3_CALL, // the engine's PackedVector3Array.set the same way
+	PACKED_SET_V3,      // the generated packed_vector3_array_set of the same
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1355,6 +1359,39 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 				sum += i64(v)
 			}
 		}
+	case .PACKED_SET_CALL, .PACKED_SET:
+		a := godot.packed_int64_array_new()
+		defer godot.packed_int64_array_destroy(&a)
+		godot.packed_int64_array_resize(&a, 16)
+		p := &a
+		if kind == .PACKED_SET {
+			for i in 0 ..< n { godot.packed_int64_array_set(intrinsics.volatile_load(&p), 4, i) }
+		} else {
+			fn := godot.builtin_method(.PACKED_INT64_ARRAY, "set", 3638975848)
+			for i in 0 ..< n {
+				index, value: i64 = 4, i
+				args := [2]gde.ConstTypePtr{&index, &value}
+				fn(intrinsics.volatile_load(&p), &args[0], nil, 2)
+			}
+		}
+		sum += godot.packed_int64_array_get(&a, 4)
+	case .PACKED_SET_V3_CALL, .PACKED_SET_V3:
+		a := godot.packed_vector3_array_new()
+		defer godot.packed_vector3_array_destroy(&a)
+		godot.packed_vector3_array_resize(&a, 16)
+		p := &a
+		if kind == .PACKED_SET_V3 {
+			for i in 0 ..< n { godot.packed_vector3_array_set(intrinsics.volatile_load(&p), 4, godot.Vector3{f32(i), 1, 2}) }
+		} else {
+			fn := godot.builtin_method(.PACKED_VECTOR3_ARRAY, "set", 3975343409)
+			for i in 0 ..< n {
+				index: i64 = 4
+				value := godot.Vector3{f32(i), 1, 2}
+				args := [2]gde.ConstTypePtr{&index, &value}
+				fn(intrinsics.volatile_load(&p), &args[0], nil, 2)
+			}
+		}
+		sum += i64(godot.packed_vector3_array_get(&a, 4)[0])
 	case .DICT_SAME_CALL, .DICT_SAME:
 		a, o := godot.dictionary_new(), godot.dictionary_new()
 		defer godot.destroy[.DICTIONARY](&a)

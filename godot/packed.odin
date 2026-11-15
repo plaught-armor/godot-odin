@@ -59,6 +59,20 @@ packed_stored_size :: #force_inline proc "contextless" (a: rawptr) -> i64 {
 	return (^i64)(uintptr(p) - PACKED_SIZE_OFFSET)^
 }
 
+// Vector::set where it only stores: element `index` of packed array `a` becomes `v` when `index`
+// is in range and `a` alone holds its storage. False with nothing written otherwise: out of range,
+// where the engine prints, and storage shared with another array, which the engine copies first.
+// Not for a String element, whose store counts references. Only when `packed_layout_known`; the
+// generated `set` of the nine other packed types tries it first (tools/odin_bindgen.py IN_PLACE).
+packed_stored_set :: #force_inline proc "contextless" (a: rawptr, index: i64, v: $E) -> bool {
+	p := ([^]rawptr)(a)[PACKED_DATA_WORD]
+	if p == nil { return false }
+	h := ([^]i64)(uintptr(p) - PACKED_DATA_OFFSET)
+	if u64(index) >= u64(h[2]) || intrinsics.atomic_load(&h[0]) != 1 { return false }
+	#no_bounds_check ([^]E)(p)[index] = v
+	return true
+}
+
 // Sets `packed_layout_known` from packed arrays of known size: one shared by two references, one
 // grown by a push so its capacity differs from its size, and one emptied by a resize.
 check_packed_layout :: proc "contextless" () {

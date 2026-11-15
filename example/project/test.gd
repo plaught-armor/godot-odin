@@ -2435,6 +2435,23 @@ func _check_packed_case(b2: Bag, arrays: Array, values: Array, index: int, from:
 	return 1
 
 
+# Bag.replaced_packed_set against the engine's set at `index` and then `other` on a copy of each
+# of `arrays`, which must come back unchanged themselves. Compared as bytes, so a NaN matches.
+func _check_packed_set_case(b2: Bag, arrays: Array, values: Array, index: int, other: int) -> int:
+	var before: PackedByteArray = var_to_bytes(arrays)
+	var want: Array = []
+	for k: int in arrays.size():
+		var a: Variant = arrays[k].duplicate()
+		a.set(index, values[k])
+		a.set(other, values[k])
+		want.append(a)
+	var got: Array = b2.replaced_packed_set(arrays, values, index, other)
+	if var_to_bytes(got) != var_to_bytes(want) or var_to_bytes(arrays) != before:
+		print("FAIL: Bag.replaced_packed_set(%s, %s, %d, %d) gave %s, not %s" % [arrays, values, index, other, got, want])
+		return 1
+	return 0
+
+
 # One packed array of each type, in the order of their Variant types, each of up to `most` elements
 # drawn from `pools`, sorted when `sorted`.
 func _random_packed_set(rng: RandomNumberGenerator, pools: Array, most: int, sorted: bool) -> Array:
@@ -2495,6 +2512,13 @@ func _check_replaced_packed(b2: Bag) -> int:
 			Color(0, 0, nz, 0), Vector4(0, 0, nz, 0)]]
 	var indices: Array[int] = [-1, 0, 1, 4, 5, 6, 7, 100, lowest, 9223372036854775807]
 	var froms: Array[int] = [-100, -7, -6, -5, -1, 0, 1, 3, 5, 6, 100, lowest, 9223372036854775807]
+	# set, at two indices in turn: in range and out of it, on storage shared and then not.
+	var places: Array[Array] = [[0, 1], [4, 0], [1, -1], [5, 3], [-1, 2], [100, lowest], [2, 2], [3, 9223372036854775807]]
+	for arrays: Array in [empty, sorted, odd]:
+		for vi: int in value_sets.size():
+			for t: int in 3:
+				var q: Array = places[(vi * 3 + t) % places.size()]
+				failures += _check_packed_set_case(b2, arrays, value_sets[vi], q[0], q[1])
 	for arrays: Array in [empty, sorted, odd]:
 		for vi: int in value_sets.size():
 			for fi: int in froms.size():

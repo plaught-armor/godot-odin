@@ -134,6 +134,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
 	godot.method(b, "replaced_same_typed", bag_replaced_same_typed, {"a", "b", "d", "e"})
 	godot.method(b, "replaced_callables", bag_replaced_callables, {"c", "s"})
+	godot.method(b, "replaced_packed_set", bag_replaced_packed_set, {"arrays", "values", "index", "other"})
 	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "name_copies_counted", bag_name_copies_counted, {"texts"})
 	godot.method(b, "string_copies_counted", bag_string_copies_counted, {"texts"})
@@ -1938,6 +1939,42 @@ bag_replaced_dict :: proc(self: ^Bag, dicts: godot.Array, keys: godot.Array, key
 		}
 	}
 	return out
+}
+
+// A copy of each of `arrays`, one array of each packed type in the order of their Variant types,
+// after the generated `set` of the value at the same place in `values`, at `index` and then at
+// `other`. The first set finds the copy sharing its storage with the original, the second finds it
+// alone when the first was in range.
+bag_replaced_packed_set :: proc(self: ^Bag, arrays: godot.Array, values: godot.Array, index, other: i64) -> godot.Array {
+	arrays, values := arrays, values
+	out := godot.array_new()
+	as, vs := godot.array_read(&arrays), godot.array_read(&values)
+	if len(as) != 10 || len(vs) != 10 { return out }
+	put_packed_set(&out, godot.PackedByteArray, i64, &as[0], &vs[0], index, other, godot.packed_byte_array_new_from_packed_byte_array, godot.packed_byte_array_set, godot.packed_byte_array_destroy)
+	put_packed_set(&out, godot.PackedInt32Array, i64, &as[1], &vs[1], index, other, godot.packed_int32_array_new_from_packed_int32_array, godot.packed_int32_array_set, godot.packed_int32_array_destroy)
+	put_packed_set(&out, godot.PackedInt64Array, i64, &as[2], &vs[2], index, other, godot.packed_int64_array_new_from_packed_int64_array, godot.packed_int64_array_set, godot.packed_int64_array_destroy)
+	put_packed_set(&out, godot.PackedFloat32Array, f64, &as[3], &vs[3], index, other, godot.packed_float32_array_new_from_packed_float32_array, godot.packed_float32_array_set, godot.packed_float32_array_destroy)
+	put_packed_set(&out, godot.PackedFloat64Array, f64, &as[4], &vs[4], index, other, godot.packed_float64_array_new_from_packed_float64_array, godot.packed_float64_array_set, godot.packed_float64_array_destroy)
+	put_packed_set(&out, godot.PackedStringArray, godot.String, &as[5], &vs[5], index, other, godot.packed_string_array_new_from_packed_string_array, godot.packed_string_array_set, godot.packed_string_array_destroy)
+	put_packed_set(&out, godot.PackedVector2Array, godot.Vector2, &as[6], &vs[6], index, other, godot.packed_vector2_array_new_from_packed_vector2_array, godot.packed_vector2_array_set, godot.packed_vector2_array_destroy)
+	put_packed_set(&out, godot.PackedVector3Array, godot.Vector3, &as[7], &vs[7], index, other, godot.packed_vector3_array_new_from_packed_vector3_array, godot.packed_vector3_array_set, godot.packed_vector3_array_destroy)
+	put_packed_set(&out, godot.PackedColorArray, godot.Color, &as[8], &vs[8], index, other, godot.packed_color_array_new_from_packed_color_array, godot.packed_color_array_set, godot.packed_color_array_destroy)
+	put_packed_set(&out, godot.PackedVector4Array, godot.Vector4, &as[9], &vs[9], index, other, godot.packed_vector4_array_new_from_packed_vector4_array, godot.packed_vector4_array_set, godot.packed_vector4_array_destroy)
+	return out
+}
+
+// Appends to `out` a copy of the array `a` holds after `set` of the value `v` holds at `index` and
+// then at `other`.
+put_packed_set :: proc(out: ^godot.Array, $A, $V: typeid, a, v: ^godot.Variant, index, other: i64,
+	dup: proc "contextless" (A) -> A, set: proc "contextless" (^A, i64, V), free: proc "contextless" (^A)) {
+	x := dup(godot.from_variant(A, a))
+	y := godot.from_variant(V, v)
+	set(&x, index, y)
+	set(&x, other, y)
+	held := godot.variant(x)
+	godot.array_push_back(out, held)
+	gde.variant_destroy(&held)
+	free(&x)
 }
 
 // Appends the eight reads of `bag_replaced_packed` on the array `a` holds, with the value `v` holds.
