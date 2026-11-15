@@ -79,6 +79,8 @@ IN_PLACE = {
            ("is_valid_identifier", "return runes_is_valid_ascii_identifier({c})"),
            ("is_valid_hex_number", "return runes_is_valid_hex_number({c}, with_prefix)"),
            ("is_valid_filename", "return runes_is_valid_filename({c})"),
+           ("is_valid_html_color", "return runes_is_valid_html_color({c})"),
+           ("is_valid_ip_address", "return runes_is_valid_ip_address({c})"),
            ("hex_to_int", "if v, ok := runes_parse_radix({c}, 4); ok {{ return v }}"),
            ("bin_to_int", "if v, ok := runes_parse_radix({c}, 1); ok {{ return v }}"))},
     ("String", "hash"): "\tif string_layout_known { return i64(string_djb2(self)) }\n",

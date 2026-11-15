@@ -656,6 +656,7 @@ string_is_valid_hex_number :: proc "contextless" (self: ^String, with_prefix: bo
 	return __ret != 0
 }
 string_is_valid_html_color :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_valid_html_color(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_html_color", 3918633141) }
 	__ret: u8
@@ -663,6 +664,7 @@ string_is_valid_html_color :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_is_valid_ip_address :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_valid_ip_address(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_ip_address", 3918633141) }
 	__ret: u8
@@ -1673,6 +1675,7 @@ string_name_is_valid_hex_number :: proc "contextless" (self: ^StringName, with_p
 	return __ret != 0
 }
 string_name_is_valid_html_color :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_valid_html_color(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_html_color", 3918633141) }
 	__ret: u8
@@ -1680,6 +1683,7 @@ string_name_is_valid_html_color :: proc "contextless" (self: ^StringName) -> boo
 	return __ret != 0
 }
 string_name_is_valid_ip_address :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_valid_ip_address(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_ip_address", 3918633141) }
 	__ret: u8

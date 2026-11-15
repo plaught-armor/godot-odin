@@ -131,6 +131,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
 	godot.method(b, "replaced_decodes", bag_replaced_decodes, {"bytes"})
 	godot.method(b, "replaced_container_flags", bag_replaced_container_flags, {"a", "d"})
+	godot.method(b, "replaced_validity", bag_replaced_validity, {"texts"})
 	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "name_copies_counted", bag_name_copies_counted, {"texts"})
 	godot.method(b, "string_copies_counted", bag_string_copies_counted, {"texts"})
@@ -1014,6 +1015,25 @@ bag_replaced_scalars :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godo
 			i64(godot.string_name_is_valid_filename(&n)),
 			godot.string_name_hex_to_int(&n),
 			godot.string_name_bin_to_int(&n),
+		}
+		for v in r { godot.packed_int64_array_append(&out, v) }
+	}
+	return out
+}
+
+// is_valid_html_color and is_valid_ip_address of each text, then of its StringName, four per text.
+// test.gd builds the same array from the engine's methods.
+bag_replaced_validity :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godot.PackedInt64Array {
+	texts := texts
+	out := godot.packed_int64_array_new()
+	for &t in godot.packed_read_string(&texts) {
+		n := godot.string_name_new_from_string(t)
+		defer godot.destroy[.STRING_NAME](&n)
+		r := [4]i64{
+			i64(godot.string_is_valid_html_color(&t)),
+			i64(godot.string_is_valid_ip_address(&t)),
+			i64(godot.string_name_is_valid_html_color(&n)),
+			i64(godot.string_name_is_valid_ip_address(&n)),
 		}
 		for v in r { godot.packed_int64_array_append(&out, v) }
 	}

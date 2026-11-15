@@ -629,6 +629,10 @@ Ident :: enum i64 {
 	FILENAME,          // the generated string_is_valid_filename of the same
 	ARRAY_TYPED_CALL,  // the engine's Array.is_typed of an empty Array, the same way
 	ARRAY_TYPED,       // the generated array_is_typed of the same, read from its data
+	HTML_COLOR_CALL,   // the engine's String.is_valid_html_color of "#7fffABCD", the same way
+	HTML_COLOR,        // the generated string_is_valid_html_color of the same
+	IP_ADDRESS_CALL,   // the engine's String.is_valid_ip_address of "2001:db8:85a3::8a2e:370:7334", the same way
+	IP_ADDRESS,        // the generated string_is_valid_ip_address of the same
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1282,6 +1286,25 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 		defer godot.destroy[.ARRAY](&a)
 		p := &a
 		for _ in 0 ..< n { sum += i64(godot.array_is_typed(intrinsics.volatile_load(&p))) }
+	case .HTML_COLOR_CALL, .IP_ADDRESS_CALL:
+		text := godot.string_of("#7fffABCD" if kind == .HTML_COLOR_CALL else "2001:db8:85a3::8a2e:370:7334")
+		defer godot.destroy[.STRING](&text)
+		p := &text
+		fn := godot.builtin_method(.STRING, "is_valid_html_color" if kind == .HTML_COLOR_CALL else "is_valid_ip_address", 3918633141)
+		for _ in 0 ..< n {
+			v: u8
+			fn(intrinsics.volatile_load(&p), nil, &v, 0)
+			sum += i64(v)
+		}
+	case .HTML_COLOR, .IP_ADDRESS:
+		text := godot.string_of("#7fffABCD" if kind == .HTML_COLOR else "2001:db8:85a3::8a2e:370:7334")
+		defer godot.destroy[.STRING](&text)
+		p := &text
+		if kind == .HTML_COLOR {
+			for _ in 0 ..< n { sum += i64(godot.string_is_valid_html_color(intrinsics.volatile_load(&p))) }
+		} else {
+			for _ in 0 ..< n { sum += i64(godot.string_is_valid_ip_address(intrinsics.volatile_load(&p))) }
+		}
 	case .VALID_FLOAT_CALL:
 		num := godot.string_of("-123.456e-2")
 		defer godot.destroy[.STRING](&num)

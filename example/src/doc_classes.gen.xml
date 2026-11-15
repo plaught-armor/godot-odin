@@ -246,6 +246,9 @@
 		<method name="replaced_container_flags">
 			<description>What [code]a[/code] and [code]d[/code] say of themselves: Array is_typed, get_typed_builtin and is_read_only, then Dictionary is_typed, is_typed_key, is_typed_value, get_typed_key_builtin, get_typed_value_builtin and is_read_only. test.gd builds the same array from the engine's methods.</description>
 		</method>
+		<method name="replaced_validity">
+			<description>is_valid_html_color and is_valid_ip_address of each text, then of its StringName, four per text. test.gd builds the same array from the engine's methods.</description>
+		</method>
 		<method name="replaced_paths">
 			<description></description>
 		</method>

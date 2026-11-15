@@ -735,6 +735,99 @@ runes_parse_radix :: #force_inline proc "contextless" (chars: []rune, bits: uint
 	return -v if negative else v, true
 }
 
+// Whether `chars` spell a colour as the engine's `is_valid_html_color` reads a String: an optional
+// '#', then 3, 4, 6 or 8 hexadecimal digits.
+runes_is_valid_html_color :: proc "contextless" (chars: []rune) -> bool {
+	s := chars
+	if len(s) != 0 && s[0] == '#' { s = s[1:] }
+	switch len(s) {
+	case 3, 4, 6, 8:
+	case: return false
+	}
+	for c in s {
+		if hex_digit(c) < 0 { return false }
+	}
+	return true
+}
+
+// Whether `chars` are four decimal numbers of at most 255, each of one digit or more, with a '.'
+// between them, as IPAddress::_parse_ipv4 of the engine accepts them.
+@(private)
+runes_is_ipv4 :: proc "contextless" (chars: []rune) -> bool {
+	dots, next := 0, u32(0)
+	parsed := false
+	for c in chars {
+		if c == '.' {
+			if !parsed || dots == 3 { return false }
+			parsed = false
+			next = 0
+			dots += 1
+			continue
+		}
+		d := u32(c) - '0'
+		if d > 9 { return false }
+		parsed = true
+		next = next * 10 + d
+		if next > 255 { return false }
+	}
+	return parsed && dots == 3
+}
+
+// Whether `s` is an IPv6 address as IPAddress::_parse_ipv6 of the engine accepts it, followed line
+// by line: groups of one to four hexadecimal digits with a ':' between them, eight of them or fewer
+// around one "::", or the IPv4-mapped form, zero groups, "ffff", then an IPv4 address. `i` is where
+// the current group starts and `j` the character read; a ':' ends the group.
+@(private)
+runes_is_ipv6 :: proc "contextless" (s: []rune) -> bool {
+	n := len(s)
+	group: [8]u16
+	cur, shift := 0, -1
+	for i := 0; i < n; i += 1 {
+		for j := i; j < n; j += 1 {
+			c := s[j]
+			if c == ':' {
+				if j + 1 == n { return false }
+				if s[j + 1] == ':' {
+					if shift > -1 { return false }
+					shift = cur if j == 0 else cur + 1
+					j += 1
+				} else if i == j {
+					return false
+				}
+				i = j
+				break
+			}
+			if j - i > 3 { return false }
+			if c == '.' {
+				// The group before must be ffff, sixth unless a "::" came, and those before it zero.
+				if cur < 1 || group[cur - 1] != 0xffff || (shift < 0 && cur != 6) { return false }
+				for g in group[:cur - 1] {
+					if g != 0 { return false }
+				}
+				return runes_is_ipv4(s[i:])
+			}
+			d := hex_digit(c)
+			if d < 0 { return false }
+			group[cur] = group[cur] << 4 | u16(d)
+			if j + 1 == n { i = j }
+		}
+		cur += 1
+		if cur > 8 || (cur == 8 && i + 1 != n) { return false }
+	}
+	return cur == 8 if shift < 0 else shift <= 7
+}
+
+// Whether `chars` spell an address as the engine's `is_valid_ip_address` reads a String: IPv6 when
+// shorter than 40 characters with a ':', else IPv4 when shorter than 16.
+runes_is_valid_ip_address :: proc "contextless" (chars: []rune) -> bool {
+	if len(chars) < 40 {
+		for c in chars {
+			if c == ':' { return runes_is_ipv6(chars) }
+		}
+	}
+	return len(chars) < 16 && runes_is_ipv4(chars)
+}
+
 // Whether `chars` spell a float as the engine's `is_valid_float` reads a String: after an optional
 // '+' or '-', digits with at most one '.' before any exponent, then an 'e' or 'E' after a digit
 // with an optional sign and digits. At least one mantissa digit; an exponent may have none.

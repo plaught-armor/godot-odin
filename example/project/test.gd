@@ -475,6 +475,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_scalars(b2, scalar_texts)
 	failures += _check_replaced_decodes(b2)
 	failures += _check_replaced_container_flags(b2)
+	failures += _check_replaced_validity(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
 		"/root/a/b:c:d", ":x", ":x:y", "../b", "a/b/c/d/e/f:g", "Body:position:x", "\u00f1/\u00fc:\u00f6",
 		"/root/check_node_path/layout:position:x", "a//b", "a/./b/../c"]))
@@ -796,6 +797,58 @@ func _check_replaced_decodes(b2: Bag) -> int:
 			if got[i] != want[i]:
 				print("FAIL: Bag.replaced_decodes of %d bytes at offset %d, read %d, gave %d, not %d" % [bytes.size(), i / 11 - 1, i % 11, got[i], want[i]])
 				return 1
+	return 0
+
+
+# is_valid_html_color and is_valid_ip_address of String and StringName, from Bag.replaced_validity,
+# against the engine's methods called from GDScript: fixed cases, then 12,000 texts each made from
+# one of them by up to three edits (a character replaced, removed or inserted). Returns 1 on a
+# mismatch.
+func _check_replaced_validity(b2: Bag) -> int:
+	var texts: PackedStringArray = ["", "#", "fff", "#fff", "#ffff", "#fffff", "#ffffff", "#fffffff", "#ffffffff", "#fffffffff",
+		"FFF", "ff", "f", "#ff", "abcdef", "ABCDEF12", "#12345g", "##fff", "fff#", " fff", "#\u00e9ff", "1234567", "12345",
+		"0.0.0.0", "127.0.0.1", "255.255.255.255", "256.0.0.1", "1.2.3", "1.2.3.4.5", "1..2.3", ".1.2.3", "1.2.3.", "1.2.3.4.",
+		"01.02.03.04", "001.002.003.004", "0000.0.0.0", "1.2.3.a", "1.2.3.-4", " 1.2.3.4", "1.2.3.4 ", "1", ".", "...", "*",
+		"::", "::1", "1::", ":", ":::", "::1::", "1:2:3:4:5:6:7:8", "1:2:3:4:5:6:7", "1:2:3:4:5:6:7:8:9", "1:2:3:4:5:6:7::",
+		"::2:3:4:5:6:7:8", "1::3:4:5:6:7:8", "1:2:3:4:5:6:7:8:", ":1:2:3:4:5:6:7:8", "1:2:3:4:5:6:7::8", "1::8", "::8:",
+		"2001:db8:85a3::8a2e:370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:DB8::FFFF", "12345::", "1234::", "g::",
+		"::ffff:127.0.0.1", "::FFFF:1.2.3.4", "0:0:0:0:0:ffff:1.2.3.4", "0:0:0:0:ffff:1.2.3.4", "::fffe:1.2.3.4", "1::ffff:1.2.3.4",
+		"::ffff:1.2.3", "::ffff:256.2.3.4", "::1.2.3.4", "ffff:1.2.3.4", "::ffff:1234.2.3.4", "::ffff:1.2.3.4:", "0::ffff:1.2.3.4",
+		"1:2:3:4:5:6:7:8:1.2.3.4", "::ffff:ffff:1.2.3.4", "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "::ffff:", "a:b:c:d:e:f:0:1",
+		"1111:2222:3333:4444:5555:6666:7777:8888", "1111:2222:3333:4444:5555:6666:7777:88888", "1.2.3.4:5", "1234567890123456",
+		"1111:2222:3333:4444:5555:6666:7777:8888:", "0000:0000:0000:0000:0000:0000:0000:00001", "123.123.123.1234"]
+	var alphabet := "0123456789abcfABF:.:.#g "
+	var fixed := texts.size()
+	var state := 20261115
+	for i: int in 12000:
+		var t := texts[i % fixed]
+		for edit: int in 1 + i % 3:
+			state = (state * 1103515245 + 12345) & 0x7fffffff
+			var at := (state >> 8) % (t.length() + 1)
+			var c := alphabet[(state >> 16) % alphabet.length()]
+			match state % 3:
+				0: t = t.left(at) + c + t.substr(at + 1)
+				1: t = t.left(at) + t.substr(at + 1)
+				_: t = t.left(at) + c + t.substr(at)
+		texts.append(t)
+	var want: PackedInt64Array = []
+	for t: String in texts:
+		for v: Variant in [t, StringName(t)]:
+			want.append(int(v.is_valid_html_color()))
+			want.append(int(v.is_valid_ip_address()))
+	var got: PackedInt64Array = b2.replaced_validity(texts)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_validity gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	var valid := 0
+	for i: int in want.size():
+		valid += want[i]
+		if got[i] != want[i]:
+			print("FAIL: Bag.replaced_validity on \"%s\", read %d, gave %d, not %d" % [texts[i / 4], i % 4, got[i], want[i]])
+			return 1
+	if valid < 2000:
+		print("FAIL: Bag.replaced_validity saw only %d valid answers, too few to prove anything" % valid)
+		return 1
 	return 0
 
 

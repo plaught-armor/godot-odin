@@ -725,6 +725,8 @@ kept as the fallback when the check fails and wherever the engine prints an erro
 - String and StringName `unicode_at`, `is_absolute_path`, `is_relative_path`,
   `is_valid_ascii_identifier`, `is_valid_identifier`, `is_valid_hex_number`, `is_valid_filename`,
   `hex_to_int` and `bin_to_int`, and `String.hash`, read the text in place (`godot/access.odin`).
+  So do `is_valid_html_color` and `is_valid_ip_address`: `runes_is_ipv6` follows the engine's
+  `IPAddress::_parse_ipv6` line by line, without the address it fills.
   The engine is called for `unicode_at` out of range, and for `hex_to_int` and `bin_to_int` where
   it prints: a hexadecimal character that is no digit, and a value past the 64-bit range.
 - `Array.is_typed`, `get_typed_builtin` and `is_read_only`, and `Dictionary.is_typed`,
@@ -736,13 +738,15 @@ kept as the fallback when the check fails and wherever the engine prints an erro
 characters a step, which is the same sum with half the multiplies in a row; hashing a String key
 of a Dictionary uses it too.
 
-Left to the engine: `is_valid_unicode_identifier` (Unicode tables), `is_valid_html_color`,
-`is_valid_ip_address`, and `is_same_typed` and its Dictionary kin (they compare class names and
-scripts).
+Left to the engine: `is_valid_unicode_identifier` (Unicode tables), and `is_same_typed` and its
+Dictionary kin. Those take the other container by value, which Odin stores a byte at a time; the
+8-byte read of its pointer then waits on those stores, and comparing the element types in place
+measured 2.6 ns against the engine's 1.9 ns.
 
 Checked against Godot 4.7-stable and 4.8 by `_check_replaced_scalars`,
 `_check_replaced_decodes` (every offset from one before the first byte to one past the last, and
-every 16-bit pattern) and `_check_replaced_container_flags`, each against the engine's methods
+every 16-bit pattern), `_check_replaced_container_flags` and `_check_replaced_validity` (fixed
+colours and addresses, then 12,000 texts made from them by one to three edits), each against the engine's methods
 called from GDScript.
 
 | Method | Engine call | Replacement |
@@ -753,10 +757,13 @@ called from GDScript.
 | `String.hex_to_int` | 9.50 ns | 6.84 ns |
 | `String.hash` | 4.57 ns | 3.55 ns |
 | `String.is_valid_filename` | 88.5 ns | 5.74 ns |
+| `String.is_valid_html_color` | 9.09 ns | 3.38 ns |
+| `String.is_valid_ip_address` | 25.7 ns | 22.4 ns |
 | `Array.is_typed` | 2.25 ns | 0.94 ns |
 
 Timings are from `bench/build.sh` on 4.7-stable: the decodes at offset 4 of 16 bytes, the String
-reads of "7fffABCD1234", `is_typed` of an empty Array.
+reads of "7fffABCD1234", `is_valid_html_color` of "#7fffABCD", `is_valid_ip_address` of
+"2001:db8:85a3::8a2e:370:7334", `is_typed` of an empty Array.
 
 ## NodePath
 
