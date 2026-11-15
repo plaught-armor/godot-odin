@@ -148,6 +148,8 @@ IN_PLACE = {
     ("Dictionary", "has"): "\tif r, ok := dict_stored_has(self, key); ok { return r }\n",
     ("Dictionary", "has_all"): "\tif r, ok := dict_stored_has_all(self, keys); ok { return r }\n",
     ("Dictionary", "get"): "\tif v, ok := dict_stored_get(self, key, default); ok { return v }\n",
+    ("Dictionary", "set"): "\tif dict_stored_set(self, key, value) { return true }\n",
+    ("Dictionary", "get_or_add"): "\tif v, ok := dict_stored_get_or_add(self, key); ok { return v }\n",
     ("Dictionary", "find_key"): "\tif k, ok := dict_stored_find_key(self, value); ok { return k }\n",
     ("Dictionary", "keys"): "\tif a, ok := dict_stored_list(self, false); ok { return a }\n",
     ("Dictionary", "values"): "\tif a, ok := dict_stored_list(self, true); ok { return a }\n",

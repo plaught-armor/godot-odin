@@ -160,6 +160,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_array", bag_replaced_array, {"arrays", "values", "index", "from"})
 	godot.method(b, "replaced_array_set", bag_replaced_array_set, {"a", "index", "value"})
 	godot.method(b, "replaced_dict", bag_replaced_dict, {"dicts", "keys", "key_sets", "default"})
+	godot.method(b, "replaced_dict_store", bag_replaced_dict_store, {"d", "keys", "value", "add"})
 	godot.method(b, "layouts_proven", bag_layouts_proven)
 	godot.method(b, "find_text", bag_find_text, {"s", "part", "from"})
 	godot.method(b, "has_text", bag_has_text, {"s", "part"})
@@ -2018,6 +2019,23 @@ bag_replaced_dict :: proc(self: ^Bag, dicts: godot.Array, keys: godot.Array, key
 			godot.array_push_back(&out, key)
 			gde.variant_destroy(&key)
 		}
+	}
+	return out
+}
+
+// What dictionary_set of `value` returns at each of `keys` of `d` in turn, or with `add` what
+// dictionary_get_or_add of it returns; test.gd compares them, and `d` after, with the engine's.
+bag_replaced_dict_store :: proc(self: ^Bag, d: godot.Dictionary, keys: godot.Array, value: godot.Variant, add: bool) -> godot.Array {
+	d, keys := d, keys
+	out := godot.array_new()
+	for &k in godot.array_read(&keys) {
+		if !add {
+			godot.array_push_back(&out, godot.variant(godot.dictionary_set(&d, k, value)))
+			continue
+		}
+		got := godot.dictionary_get_or_add(&d, k, value)
+		godot.array_push_back(&out, got)
+		gde.variant_destroy(&got)
 	}
 	return out
 }

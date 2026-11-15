@@ -317,6 +317,29 @@ dict_stored_get :: #force_inline proc "contextless" (d: ^Dictionary, key, defaul
 	return stored_copy((^Variant)(&default)), true
 }
 
+// Dictionary.set where it only stores: the value `key` maps to becomes a copy of `value`. True when
+// stored, as the engine's set then returns. False with nothing written when the engine must do
+// more: a read-only Dictionary, where it prints its error; a key the lookup leaves to the engine or
+// one not in `d` yet, which it adds; and a value `stored_put` does not store. The generated `set`
+// tries this first (tools/odin_bindgen.py IN_PLACE).
+dict_stored_set :: #force_inline proc "contextless" (d: ^Dictionary, key, value: Variant) -> bool {
+	if !dict_layout_known || dict_read_only(d) { return false }
+	key := variant_reload(key)
+	e, ok := dict_lookup(d, (^Variant)(&key))
+	if !ok || e == nil { return false }
+	value := value
+	return stored_put(&e.value, &value, dict_value_type(d))
+}
+
+// Dictionary.get_or_add where it only reads: a copy of the value `key` maps to. False when the
+// engine answers: for a key the lookup leaves to it, and for one not in `d` yet, which it adds.
+dict_stored_get_or_add :: #force_inline proc "contextless" (d: ^Dictionary, key: Variant) -> (Variant, bool) {
+	key := variant_reload(key)
+	e, ok := dict_lookup(d, (^Variant)(&key))
+	if !ok || e == nil { return {}, false }
+	return stored_copy(&e.value), true
+}
+
 // The first element of `m`, in insertion order, whose value equals `v` under Variant::hash_compare,
 // as Dictionary.find_key compares, both values comparing as `E`s; nil when none does.
 @(private)

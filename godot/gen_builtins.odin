@@ -2432,6 +2432,7 @@ dictionary_get :: proc "contextless" (self: ^Dictionary, key: Variant, default: 
 	return __ret
 }
 dictionary_get_or_add :: proc "contextless" (self: ^Dictionary, key: Variant, default: Variant) -> Variant {
+	if v, ok := dict_stored_get_or_add(self, key); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "get_or_add", 1052551076) }
 	__a_key := transmute([3]uintptr)key
@@ -2442,6 +2443,7 @@ dictionary_get_or_add :: proc "contextless" (self: ^Dictionary, key: Variant, de
 	return __ret
 }
 dictionary_set :: proc "contextless" (self: ^Dictionary, key: Variant, value: Variant) -> bool {
+	if dict_stored_set(self, key, value) { return true }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "set", 2175348267) }
 	__a_key := transmute([3]uintptr)key

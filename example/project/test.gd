@@ -2828,6 +2828,7 @@ func _check_replaced_dict(b2: Bag) -> int:
 		[9, Vector2(0, 1)], pool]
 	failures += _check_dict_case(b2, dicts, keys, key_sets, "default")
 	failures += _check_dict_case(b2, dicts, keys, key_sets, Vector2(1, 2))
+	failures += _check_replaced_dict_store(b2, dicts, keys, pool)
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = 20261114
 	for i: int in 300:
@@ -2844,6 +2845,55 @@ func _check_replaced_dict(b2: Bag) -> int:
 		for k: int in 12:
 			some_keys.append(pool[rng.randi() % pool.size()] if rng.randi() % 2 == 0 else rng.randi_range(-60, 60))
 		failures += _check_dict_case(b2, some, some_keys, [some_keys.slice(0, 3), some_keys.slice(3, 5)], pool[rng.randi() % pool.size()])
+	return failures
+
+
+# Dictionary.set, or with `add` Dictionary.get_or_add, from Bag.replaced_dict_store against the
+# engine's: each of `values` stored at every one of `keys` in turn of a copy of each of `dicts`,
+# comparing what every call returned and the Dictionary left. Returns the number of mismatches.
+func _check_dict_store_case(b2: Bag, dicts: Array, keys: Array, values: Array, add: bool) -> int:
+	for d: Dictionary in dicts:
+		for v: Variant in values:
+			var want: Dictionary = d.duplicate()
+			var got: Dictionary = d.duplicate()
+			var want_results: Array = []
+			for k: Variant in keys:
+				want_results.append(want.get_or_add(k, v) if add else want.set(k, v))
+			var got_results: Array = b2.replaced_dict_store(got, keys, v, add)
+			if var_to_bytes([got_results, got]) != var_to_bytes([want_results, want]) or str(got) != str(want):
+				print("FAIL: Bag.replaced_dict_store(%s, %s, %s, %s) gave %s and left %s, not %s and %s" % [d, keys, v, add, got_results, got, want_results, want])
+				return 1
+	return 0
+
+
+# The Dictionary.set and get_or_add that dict_stored_set and dict_stored_get_or_add answer, on the
+# Dictionaries and keys of _check_replaced_dict: values of every type stored over values of every
+# type at keys present and absent, in untyped and typed Dictionaries, a read-only one, and seeded
+# random ones.
+func _check_replaced_dict_store(b2: Bag, dicts: Array, keys: Array, pool: Array) -> int:
+	var failures: int = 0
+	var values: Array = [null, true, 3, 1.5, NAN, "", "ab", &"ab", rid_from_int64(5), Vector2(0, 1), Color(1, 0, 0, 1), [1], b2]
+	for add: bool in [false, true]:
+		failures += _check_dict_store_case(b2, dicts, keys, values, add)
+	var read_only: Dictionary = {1: 2, "a": 3}
+	read_only.make_read_only()
+	var results: Array = b2.replaced_dict_store(read_only, [1, "a", 9], 5, false)
+	results.append_array(b2.replaced_dict_store(read_only, [1, "a"], 5, true))
+	if results != [false, false, false, 2, 3] or read_only != {1: 2, "a": 3}:
+		print("FAIL: Bag.replaced_dict_store on a read-only Dictionary gave %s and left %s" % [results, read_only])
+		failures += 1
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 20261117
+	for i: int in 300:
+		var d: Dictionary = {}
+		for j: int in rng.randi_range(0, 40):
+			var key: Variant = pool[rng.randi() % pool.size()] if rng.randi() % 2 == 0 else rng.randi_range(-60, 60)
+			d[key] = pool[rng.randi() % pool.size()]
+		var some_keys: Array = []
+		for k: int in 12:
+			some_keys.append(pool[rng.randi() % pool.size()] if rng.randi() % 2 == 0 else rng.randi_range(-60, 60))
+		var some_values: Array = [pool[rng.randi() % pool.size()], pool[rng.randi() % pool.size()]]
+		failures += _check_dict_store_case(b2, [d], some_keys, some_values, i % 2 == 1)
 	return failures
 
 

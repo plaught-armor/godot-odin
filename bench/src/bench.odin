@@ -2605,6 +2605,10 @@ Dict_Op :: enum i64 {
 	VALUES,          // dictionary_values, of 64 ints
 	FIND_KEY_CALL,   // the engine's Dictionary.find_key, of the 41st value of 64 ints
 	FIND_KEY,        // dictionary_find_key, of the 41st value of 64 ints
+	SET_CALL,        // the engine's Dictionary.set, of an int at a key present
+	SET,             // dictionary_set, of an int at a key present
+	GET_OR_ADD_CALL, // the engine's Dictionary.get_or_add, at a key present
+	GET_OR_ADD,      // dictionary_get_or_add, at a key present
 }
 
 // Nanoseconds per `kind` round on a Dictionary of the ints 0 to 63, each mapped to three times
@@ -2635,6 +2639,8 @@ dict_ns :: proc(self: ^Bench, kind: Dict_Op, n: i64) -> f64 {
 	keys_fn := godot.builtin_method(.DICTIONARY, "keys", 4144163970)
 	values_fn := godot.builtin_method(.DICTIONARY, "values", 4144163970)
 	find_key_fn := godot.builtin_method(.DICTIONARY, "find_key", 1988825835)
+	set_fn := godot.builtin_method(.DICTIONARY, "set", 2175348267)
+	get_or_add_fn := godot.builtin_method(.DICTIONARY, "get_or_add", 1052551076)
 	value := i64(120)
 	sum: i64
 	start := time.tick_now()
@@ -2704,6 +2710,31 @@ dict_ns :: proc(self: ^Bench, kind: Dict_Op, n: i64) -> f64 {
 	case .FIND_KEY:
 		for _ in 0 ..< n {
 			r := godot.dictionary_find_key(&d, godot.variant(intrinsics.volatile_load(&value)))
+			sum += godot.from_variant(i64, &r)
+		}
+	case .SET_CALL:
+		for i in 0 ..< n {
+			k, v := godot.variant(intrinsics.volatile_load(&at)), godot.variant(i)
+			args := [2]gde.ConstTypePtr{&k, &v}
+			r: u8
+			set_fn(&d, &args[0], &r, 2)
+			sum += i64(r)
+		}
+	case .SET:
+		for i in 0 ..< n {
+			sum += i64(godot.dictionary_set(&d, godot.variant(intrinsics.volatile_load(&at)), godot.variant(i)))
+		}
+	case .GET_OR_ADD_CALL:
+		for _ in 0 ..< n {
+			v := godot.variant(intrinsics.volatile_load(&at))
+			args := [2]gde.ConstTypePtr{&v, &nothing}
+			r: godot.Variant
+			get_or_add_fn(&d, &args[0], &r, 2)
+			sum += godot.from_variant(i64, &r)
+		}
+	case .GET_OR_ADD:
+		for _ in 0 ..< n {
+			r := godot.dictionary_get_or_add(&d, godot.variant(intrinsics.volatile_load(&at)), nothing)
 			sum += godot.from_variant(i64, &r)
 		}
 	}

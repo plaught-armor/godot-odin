@@ -333,6 +333,9 @@
 		<method name="replaced_dict">
 			<description>The Dictionary reads of godot/dictionary.odin on each Dictionary of [code]dicts[/code], in the order test.gd's [code]_dict_read_results[/code] makes them: size, is_empty, has_all of each Array of [code]key_sets[/code], keys and values, then has, get with [code]default[/code], the found flag and value of dict_get, and find_key of each of [code]keys[/code].</description>
 		</method>
+		<method name="replaced_dict_store">
+			<description>What dictionary_set of [code]value[/code] returns at each of [code]keys[/code] of [code]d[/code] in turn, or with [code]add[/code] what dictionary_get_or_add of it returns; test.gd compares them, and [code]d[/code] after, with the engine's.</description>
+		</method>
 		<method name="layouts_proven">
 			<description>Whether the layout checks at load all passed, so the in-place reads are on.</description>
 		</method>

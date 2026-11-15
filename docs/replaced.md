@@ -685,12 +685,22 @@ Dictionary's, which the engine converts or rejects. `keys` and `values` make a n
 through the engine, then copy each key or value into its storage, which no other Array shares yet;
 of a typed Dictionary they call the engine, which types the Array.
 
+The generated `set` and `get_or_add` use the same lookup when the key is already in the
+Dictionary. `set` then stores a copy of the value over the old one and returns true, as
+`Array.set` stores an element: only over a value that holds nothing counted or allocated, only a
+value of a type copied in place (a String or StringName takes a reference), and in a Dictionary
+with typed values only a value of that type. `get_or_add` then returns a copy of the value. A key
+not yet there, which the engine adds, a read-only Dictionary and every other case go to the engine.
+
 Checked against Godot 4.7-stable by `_check_replaced_dict`, which compares every read from GDScript
 and from `Bag.replaced_dict` on empty, emptied, typed and mixed Dictionaries, one of 300 ints
 thinned by erasing, keys of every type with NaN, -0, the empty String and StringName, a String
 holding a control character, and pairs of ints, floats, Strings and StringNames whose hashes are
 equal, Dictionaries holding values of every type twice over, -0, NaN and a StringName among their
 values, and ones with typed values; and on 300 seeded random sets of three Dictionaries.
+`_check_replaced_dict_store` compares what `set` and `get_or_add` from `Bag.replaced_dict_store`
+return, and the Dictionary they leave, with the engine's: values of thirteen types at every key in
+turn of a copy of each of those Dictionaries, on a read-only one, and on 300 seeded random ones.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -699,12 +709,14 @@ values, and ones with typed values; and on 300 seeded random sets of three Dicti
 | `Dictionary.get` on ints | 23.3 ns | 11.6 ns |
 | `Dictionary.has` on Strings | 19.1 ns | 10.2 ns |
 | `Dictionary.find_key` on ints | 86 ns | 38 ns |
+| `Dictionary.set` on ints | 16.4 ns | 8.4 ns |
+| `Dictionary.get_or_add` on ints | 17.6 ns | 6.6 ns |
 | `Dictionary.keys` of 64 ints | 412 ns | 186 ns |
 | `Dictionary.values` of 64 ints | 357 ns | 198 ns |
 
-Timings are from `bench/build.sh`: `has` and `get` of 40 in a Dictionary mapping the ints 0 to 63
-to three times themselves, `find_key` of 120 in it, `keys` and `values` of it, and `has` of "12" in
-one of the Strings "0" to "15".
+Timings are from `bench/build.sh`: `has`, `get`, `set` and `get_or_add` of 40 in a Dictionary
+mapping the ints 0 to 63 to three times themselves, `find_key` of 120 in it, `keys` and `values` of
+it, and `has` of "12" in one of the Strings "0" to "15".
 
 ## StringName
 
