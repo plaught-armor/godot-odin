@@ -483,6 +483,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_escapes(b2)
 	failures += _check_replaced_uri_decodes(b2)
 	failures += _check_replaced_buffers(b2)
+	failures += _check_replaced_byte_texts(b2)
 	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
@@ -1618,6 +1619,88 @@ func _check_replaced_escapes(b2: Bag) -> int:
 			return 1
 	if changed < 5000:
 		print("FAIL: Bag.replaced_escapes saw only %d texts unescaped, too few to prove anything" % changed)
+		return 1
+	return 0
+
+
+# Whether the engine's get_string_from_utf16 of `bytes` holds a character it never wrote, whose
+# value differs from call to call: it counts the first half of a surrogate pair that an ordinary
+# unit follows, and then drops it.
+func _utf16_unsettled(bytes: PackedByteArray) -> bool:
+	var swapped := bytes.size() >= 2 and bytes[0] == 0xfe and bytes[1] == 0xff
+	var lead := false
+	for at: int in bytes.size() / 2:
+		var unit := bytes[2 * at] << 8 | bytes[2 * at + 1] if swapped else bytes[2 * at + 1] << 8 | bytes[2 * at]
+		if unit == 0:
+			return false
+		if lead and unit & 0xf800 != 0xd800:
+			return true
+		lead = unit & 0xfc00 == 0xd800
+	return false
+
+
+# get_string_from_ascii, get_string_from_utf8, get_string_from_utf16, get_string_from_utf32,
+# get_string_from_wchar and hex_encode of PackedByteArray, from Bag.replaced_byte_texts, against
+# the engine's methods called from GDScript. The byte arrays travel as hexadecimal digits: fixed
+# cases, among them byte order marks, bytes of 0, surrogate pairs whole and halved and lengths
+# that leave bytes over, every byte alone, 17 first bytes before every second byte, then 6000
+# seeded random arrays built from pieces of UTF-8, UTF-16 and UTF-32, a quarter each of one
+# encoding only and a quarter mixed. The engine prints an error for most of the mixed ones, and
+# the bindings call it for those. The UTF-16 text is not compared where `_utf16_unsettled`. The
+# seed is fixed so a failure repeats. Returns 1 on a mismatch.
+func _check_replaced_byte_texts(b2: Bag) -> int:
+	var digits: PackedStringArray = ["", "61", "616263", "610062", "00", "0061", "e9", "61e962", "c3a9", "e697a5", "f09f9880",
+		"efbbbf", "efbbbf61", "61efbbbf", "efbb", "c3", "c341", "a9", "e697", "f09f98", "c080", "c1bf", "e08080", "eda080",
+		"f4908080", "f48fbfbf", "f8888080", "ff", "6100", "61006200", "610062", "fffe6100", "feff0061", "fffe", "6100fffe",
+		"3dd800de", "3dd8", "00de", "00de3dd8", "3dd83dd800de", "3dd86100", "61000000", "0000", "00006100", "e565",
+		"61000000", "6100000062000000", "610000006200", "00f60100", "ffff1000", "00001100", "00d80000", "ffdf0000",
+		"00000000", "6100000000000000", "fffe0000", "fffe000061000000", "ffffffff", "610000", "61000000ff"]
+	for byte: int in 256:
+		digits.append("%02x" % byte)
+	for first: int in [0x00, 0x41, 0x7f, 0x80, 0xbf, 0xc0, 0xc2, 0xdf, 0xe0, 0xef, 0xf0, 0xf4, 0xf5, 0xff, 0xd8, 0xdc, 0xfe]:
+		for second: int in 256:
+			digits.append("%02x%02x" % [first, second])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261133
+	var pieces: Array[Array] = [["61", "20", "c3a9", "e697a5", "f09f9880", "7a"], ["6100", "e900", "e565", "3dd800de", "2000"],
+		["61000000", "e9000000", "e5650000", "00f60100"],
+		["61", "c3a9", "e697a5", "6100", "3dd8", "00de", "61000000", "00", "ff", "80", "d8", "fffe", "efbbbf"]]
+	for round: int in 6000:
+		var from: Array = pieces[round % 4]
+		var s := ""
+		for i: int in rng.randi_range(0, 8):
+			s += from[rng.randi_range(0, from.size() - 1)]
+		digits.append(s)
+	var want := PackedStringArray()
+	var filled: Array[int] = [0, 0, 0, 0, 0, 0]
+	var unsettled: Dictionary[int, bool] = {}
+	var i := 0
+	for d: String in digits:
+		var bytes := d.hex_decode()
+		var made: Array[String] = [bytes.get_string_from_ascii(), bytes.get_string_from_utf8(), bytes.get_string_from_utf16(),
+			bytes.get_string_from_utf32(), bytes.get_string_from_wchar(), bytes.hex_encode()]
+		for k: int in 6:
+			filled[k] += int(not made[k].is_empty())
+		if _utf16_unsettled(bytes):
+			unsettled[i] = true
+		want.append_array(made)
+		i += 1
+	var got: PackedStringArray = b2.replaced_byte_texts(digits)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_byte_texts gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	for at: int in want.size():
+		if at % 6 == 2 and unsettled.has(at / 6):
+			continue
+		if got[at] != want[at]:
+			print("FAIL: Bag.replaced_byte_texts on %s, read %d, gave %s, not %s" % [digits[at / 6], at % 6,
+					got[at].to_utf32_buffer().hex_encode(), want[at].to_utf32_buffer().hex_encode()])
+			return 1
+	if unsettled.size() > 600:
+		print("FAIL: Bag.replaced_byte_texts left %d UTF-16 texts unchecked, too many" % unsettled.size())
+		return 1
+	if filled.min() < 3000:
+		print("FAIL: Bag.replaced_byte_texts saw too few texts with characters to prove anything: %s" % str(filled))
 		return 1
 	return 0
 

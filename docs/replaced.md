@@ -104,6 +104,12 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.to_utf16_buffer` | `string_to_utf16_buffer` | Godot 4.7-stable | 43 ns | 27 ns |
 | `String.to_utf32_buffer` | `string_to_utf32_buffer` | Godot 4.7-stable | 18 ns | 16 ns |
 | `String.to_wchar_buffer` | `string_to_wchar_buffer` | Godot 4.7-stable | 18 ns | 16 ns |
+| `PackedByteArray.get_string_from_ascii` | `packed_byte_array_get_string_from_ascii` | Godot 4.7-stable | 38 ns | 18 ns |
+| `PackedByteArray.get_string_from_utf8` | `packed_byte_array_get_string_from_utf8` | Godot 4.7-stable | 29 ns | 24 ns |
+| `PackedByteArray.get_string_from_utf16` | `packed_byte_array_get_string_from_utf16` | Godot 4.7-stable | 40 ns | 20 ns |
+| `PackedByteArray.get_string_from_utf32` | `packed_byte_array_get_string_from_utf32` | Godot 4.7-stable | 25 ns | 18 ns |
+| `PackedByteArray.get_string_from_wchar` | `packed_byte_array_get_string_from_wchar` | Godot 4.7-stable | 26 ns | 19 ns |
+| `PackedByteArray.hex_encode` | `packed_byte_array_hex_encode` | Godot 4.7-stable | 20 ns | 12 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -299,6 +305,22 @@ bindings made. The hashes (`md5_text`, `sha1_text`, `sha256_text` and their buff
 `to_multibyte_char_buffer` and `humanize_size` stay with the engine: hashing takes far longer than
 the call, `format` takes Variants, and the last two depend on the system's encodings and the
 engine's translations.
+
+`packed_byte_array_get_string_from_ascii`, `packed_byte_array_get_string_from_utf8`,
+`packed_byte_array_get_string_from_utf16`, `packed_byte_array_get_string_from_utf32`,
+`packed_byte_array_get_string_from_wchar` and `packed_byte_array_hex_encode` read the bytes in
+place and write the characters into storage that `string_storage` makes. The ASCII text takes
+each byte up to the first 0 as a character, as the engine does, and the hexadecimal text never
+fails. The others call the engine where it prints an error or treats the bytes specially: bytes
+that are not UTF-8, a byte, unit or character of 0, a byte order mark at the front of UTF-8 or
+UTF-16, half of a surrogate pair, and a character above 0x10FFFF. The UTF-8 and UTF-16 texts are
+decoded in one pass into storage sized for one character a byte or a unit, and the stored length
+is lowered afterwards. They are timed on a 24-character ASCII line, a 24-character line with 3
+characters that are not ASCII in each encoding, and 12 bytes. `_check_replaced_byte_texts` checks
+them on fixed byte arrays, on every byte alone, on 17 first bytes before every second byte, and
+on 6000 seeded random arrays built from pieces of the three encodings. It leaves the UTF-16 text
+out where the first half of a surrogate pair comes before an ordinary unit: the engine counts
+that half and never writes it, so its answer ends in a character that differs from call to call.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

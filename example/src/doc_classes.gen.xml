@@ -315,6 +315,9 @@
 		<method name="replaced_buffers">
 			<description>hex_decode and the ascii, utf8, utf16, utf32 and wchar buffers of each text, then the same of its StringName, each as the hexadecimal text of its bytes, twelve per text. test.gd builds the same array from the engine's methods.</description>
 		</method>
+		<method name="replaced_byte_texts">
+			<description>The six texts of the bytes each of [code]digits[/code] spells in hexadecimal: get_string_from_ascii, get_string_from_utf8, get_string_from_utf16, get_string_from_utf32, get_string_from_wchar and hex_encode. test.gd builds the same array from the engine's methods.</description>
+		</method>
 		<method name="replaced_int_texts">
 			<description>The generated [code]string_num_int64[/code] and [code]string_num_uint64[/code] of each number, two Strings a number.</description>
 		</method>

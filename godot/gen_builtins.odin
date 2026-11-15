@@ -2867,6 +2867,7 @@ packed_byte_array_erase :: proc "contextless" (self: ^PackedByteArray, value: i6
 	return __ret != 0
 }
 packed_byte_array_get_string_from_ascii :: proc "contextless" (self: ^PackedByteArray) -> String {
+	if out, ok := bytes_ascii_text(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "get_string_from_ascii", 3942272618) }
 	__ret: String
@@ -2874,6 +2875,7 @@ packed_byte_array_get_string_from_ascii :: proc "contextless" (self: ^PackedByte
 	return __ret
 }
 packed_byte_array_get_string_from_utf8 :: proc "contextless" (self: ^PackedByteArray) -> String {
+	if out, ok := bytes_utf8_text(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "get_string_from_utf8", 3942272618) }
 	__ret: String
@@ -2881,6 +2883,7 @@ packed_byte_array_get_string_from_utf8 :: proc "contextless" (self: ^PackedByteA
 	return __ret
 }
 packed_byte_array_get_string_from_utf16 :: proc "contextless" (self: ^PackedByteArray) -> String {
+	if out, ok := bytes_utf16_text(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "get_string_from_utf16", 3942272618) }
 	__ret: String
@@ -2888,6 +2891,7 @@ packed_byte_array_get_string_from_utf16 :: proc "contextless" (self: ^PackedByte
 	return __ret
 }
 packed_byte_array_get_string_from_utf32 :: proc "contextless" (self: ^PackedByteArray) -> String {
+	if out, ok := bytes_utf32_text(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "get_string_from_utf32", 3942272618) }
 	__ret: String
@@ -2895,6 +2899,7 @@ packed_byte_array_get_string_from_utf32 :: proc "contextless" (self: ^PackedByte
 	return __ret
 }
 packed_byte_array_get_string_from_wchar :: proc "contextless" (self: ^PackedByteArray) -> String {
+	when ODIN_OS != .Windows { if out, ok := bytes_utf32_text(self); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "get_string_from_wchar", 3942272618) }
 	__ret: String
@@ -2911,6 +2916,7 @@ packed_byte_array_get_string_from_multibyte_char :: proc "contextless" (self: ^P
 	return __ret
 }
 packed_byte_array_hex_encode :: proc "contextless" (self: ^PackedByteArray) -> String {
+	if out, ok := bytes_hex_text(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "hex_encode", 3942272618) }
 	__ret: String

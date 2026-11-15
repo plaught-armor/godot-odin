@@ -154,6 +154,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_escapes", bag_replaced_escapes, {"texts"})
 	godot.method(b, "replaced_uri_decodes", bag_replaced_uri_decodes, {"texts"})
 	godot.method(b, "replaced_buffers", bag_replaced_buffers, {"texts"})
+	godot.method(b, "replaced_byte_texts", bag_replaced_byte_texts, {"digits"})
 	godot.method(b, "replaced_int_texts", bag_replaced_int_texts, {"numbers", "base", "capitalize_hex"})
 	godot.method(b, "replaced_chrs", bag_replaced_chrs, {"codes"})
 	godot.method(b, "replaced_scientifics", bag_replaced_scientifics, {"numbers"})
@@ -1395,6 +1396,31 @@ bag_replaced_escapes :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godo
 			godot.string_name_c_unescape(&n),
 			godot.string_name_xml_unescape(&n),
 			godot.string_name_uri_encode(&n),
+		}
+		for &v in r {
+			godot.packed_string_array_append(&out, v)
+			godot.destroy[.STRING](&v)
+		}
+	}
+	return out
+}
+
+// The six texts of the bytes each of `digits` spells in hexadecimal: get_string_from_ascii,
+// get_string_from_utf8, get_string_from_utf16, get_string_from_utf32, get_string_from_wchar and
+// hex_encode. test.gd builds the same array from the engine's methods.
+bag_replaced_byte_texts :: proc(self: ^Bag, digits: godot.PackedStringArray) -> godot.PackedStringArray {
+	digits := digits
+	out := godot.packed_string_array_new()
+	for &d in godot.packed_read_string(&digits) {
+		bytes := godot.string_hex_decode(&d)
+		defer godot.destroy[.PACKED_BYTE_ARRAY](&bytes)
+		r := [6]godot.String {
+			godot.packed_byte_array_get_string_from_ascii(&bytes),
+			godot.packed_byte_array_get_string_from_utf8(&bytes),
+			godot.packed_byte_array_get_string_from_utf16(&bytes),
+			godot.packed_byte_array_get_string_from_utf32(&bytes),
+			godot.packed_byte_array_get_string_from_wchar(&bytes),
+			godot.packed_byte_array_hex_encode(&bytes),
 		}
 		for &v in r {
 			godot.packed_string_array_append(&out, v)

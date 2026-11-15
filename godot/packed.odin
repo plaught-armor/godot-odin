@@ -69,6 +69,146 @@ packed_byte_storage :: #force_inline proc "contextless" (a: ^PackedByteArray, n:
 	return ([^]u8)(data)
 }
 
+// The bytes of `self` as characters, one each, up to the first byte of 0: the engine's
+// `get_string_from_ascii`, which takes the bytes above 0x7F as they are.
+@(private)
+bytes_ascii_text :: #force_inline proc "contextless" (self: ^PackedByteArray) -> (out: String, ok: bool) {
+	bytes := packed_read_byte(self)
+	n := len(bytes)
+	for b, i in bytes {
+		if b == 0 {
+			n = i
+			break
+		}
+	}
+	if n == 0 { return {}, true }
+	w := string_storage(&out, n + 1)
+	for i in 0 ..< n { w[i] = rune(bytes[i]) }
+	w[n] = 0
+	return out, true
+}
+
+// The bytes of `self` read as UTF-8: the engine's `get_string_from_utf8`. False where the engine
+// prints an error or the bytes are unusual, and the caller then asks the engine: bytes that are
+// not UTF-8, a byte of 0, and a byte order mark at the front, which the engine drops.
+@(private)
+bytes_utf8_text :: #force_inline proc "contextless" (self: ^PackedByteArray) -> (out: String, ok: bool) {
+	bytes := packed_read_byte(self)
+	if len(bytes) == 0 { return {}, true }
+	if len(bytes) >= 3 && bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf { return {}, false }
+	// A character is never more than one for each byte.
+	w := string_storage(&out, len(bytes) + 1)
+	at := 0
+	valid := true
+	#no_bounds_check for i := 0; i < len(bytes) && valid; {
+		b := u32(bytes[i])
+		if b < 0x80 {
+			valid = b != 0
+			w[at] = rune(b)
+			at += 1
+			i += 1
+			continue
+		}
+		size := 2 if b >= 0xc0 && b < 0xe0 else 3 if b >= 0xe0 && b < 0xf0 else 4 if b >= 0xf0 && b < 0xf8 else 0
+		if size == 0 || i + size > len(bytes) {
+			valid = false
+			break
+		}
+		value := b & (0x7f >> uint(size - 1))
+		for k in 1 ..< size {
+			next := u32(bytes[i + k])
+			valid &&= next & 0xc0 == 0x80
+			value = value << 6 | next & 0x3f
+		}
+		// The least value each length may spell: a smaller one is spelled too long.
+		least := [5]u32{0, 0, 0x80, 0x800, 0x10000}
+		valid &&= value >= least[size] && value <= 0x10ffff && value & 0xfffff800 != 0xd800
+		w[at] = rune(value)
+		at += 1
+		i += size
+	}
+	if !valid {
+		destroy[.STRING](&out)
+		return {}, false
+	}
+	w[at] = 0
+	if at < len(bytes) { string_storage_trim(&out, at + 1) }
+	return out, true
+}
+
+// The bytes of `self` read as UTF-16, low byte first, an odd last byte left out: the engine's
+// `get_string_from_utf16`. False where the engine prints an error or the bytes are unusual, and
+// the caller then asks the engine: half of a surrogate pair alone, a unit of 0, and a byte order
+// mark at the front.
+@(private)
+bytes_utf16_text :: #force_inline proc "contextless" (self: ^PackedByteArray) -> (out: String, ok: bool) {
+	bytes := packed_read_byte(self)
+	n := len(bytes) / 2
+	if n == 0 { return {}, true }
+	// The storage of a packed array is aligned for any type.
+	units := ([^]u16)(raw_data(bytes))[:n]
+	if units[0] == 0xfeff || units[0] == 0xfffe { return {}, false }
+	w := string_storage(&out, n + 1)
+	at := 0
+	valid := true
+	#no_bounds_check for i := 0; i < n && valid; i += 1 {
+		c := u32(units[i])
+		if c & 0xfc00 == 0xd800 {
+			valid = i + 1 < n && units[i + 1] & 0xfc00 == 0xdc00
+			if valid {
+				c = 0x10000 + (c & 0x3ff) << 10 + u32(units[i + 1]) & 0x3ff
+				i += 1
+			}
+		} else if c & 0xfc00 == 0xdc00 || c == 0 {
+			valid = false
+		}
+		w[at] = rune(c)
+		at += 1
+	}
+	if !valid {
+		destroy[.STRING](&out)
+		return {}, false
+	}
+	w[at] = 0
+	if at < n { string_storage_trim(&out, at + 1) }
+	return out, true
+}
+
+// The bytes of `self` read as characters of four bytes, up to three last bytes left out: the
+// engine's `get_string_from_utf32`, and its `get_string_from_wchar` where a wide character is 32
+// bits. False where the engine prints an error, and the caller then asks the engine: a character
+// that is 0, half of a surrogate pair or above 0x10FFFF.
+@(private)
+bytes_utf32_text :: #force_inline proc "contextless" (self: ^PackedByteArray) -> (out: String, ok: bool) {
+	bytes := packed_read_byte(self)
+	n := len(bytes) / size_of(rune)
+	if n == 0 { return {}, true }
+	// The storage of a packed array is aligned for any type.
+	chars := ([^]rune)(raw_data(bytes))[:n]
+	for c in chars {
+		if u := u32(c); u == 0 || u > 0x10ffff || u & 0xfffff800 == 0xd800 { return {}, false }
+	}
+	w := string_storage(&out, n + 1)
+	copy(w[:n], chars)
+	w[n] = 0
+	return out, true
+}
+
+// Each byte of `self` as two hexadecimal digits, the letters in lower case: the engine's
+// `hex_encode`.
+@(private)
+bytes_hex_text :: #force_inline proc "contextless" (self: ^PackedByteArray) -> (out: String, ok: bool) {
+	bytes := packed_read_byte(self)
+	if len(bytes) == 0 { return {}, true }
+	w := string_storage(&out, 2 * len(bytes) + 1)
+	digits := "0123456789abcdef"
+	#no_bounds_check for b, i in bytes {
+		w[2 * i], w[2 * i + 1] = rune(digits[b >> 4]), rune(digits[b & 0xf])
+	}
+	w[2 * len(bytes)] = 0
+	return out, true
+}
+
 // The element count of packed array `a`, read from its storage's header. Only when
 // `packed_layout_known`; the generated `size` and `is_empty` use it then, and ask the engine
 // otherwise.
