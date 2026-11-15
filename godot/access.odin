@@ -636,11 +636,26 @@ runes_trim_gaps :: proc "contextless" (chars: []rune) -> []rune {
 	return chars[beg:end]
 }
 
-// A String of `self` in the case convention `KIND`, in storage of its own.
+// The longest text `string_recased` writes in one pass, into a buffer on the stack.
+@(private)
+RECASE_SHORT :: 128
+
+// A String of `self` in the case convention `KIND`, in storage of its own. A text of up to
+// RECASE_SHORT characters is written once into a buffer of twice that, which holds a join before
+// every character, and copied; a longer one is counted first and then written into the storage.
 @(private)
 string_recased :: #force_inline proc "contextless" (self: ^String, $KIND: Recase) -> (out: String) {
 	text := string_read(self)
 	when KIND != .SNAKE && KIND != .KEBAB { text = runes_trim_gaps(text) }
+	if len(text) <= RECASE_SHORT {
+		buf: [RECASE_SHORT * 2]rune = ---
+		n := runes_recase(text, buf[:], KIND)
+		if n == 0 { return }
+		w := string_storage(&out, n + 1)
+		copy(w[:n], buf[:n])
+		w[n] = 0
+		return
+	}
 	n := runes_recase(text, nil, KIND)
 	if n == 0 { return }
 	w := string_storage(&out, n + 1)

@@ -841,6 +841,11 @@ func _check_replaced_recases(b2: Bag) -> int:
 			"x\u00A0y\u2010z\u3000w", "level_01.tscn", "\u0001 a\u0001", "a \u0001 b", "\u0001_\u0001", "ß ẞ ı İ",
 			"\t\n", "res://Scenes/Level_01.tscn", "the quick brown fox jumps over the lazy dog"]:
 		failures += _check_replaced_recase(b2, s)
+	# Either side of the 128 characters up to which the result is written in one pass, with a join
+	# before every character but the first.
+	for length: int in [127, 128, 129, 300]:
+		failures += _check_replaced_recase(b2, "aB".repeat(length).left(length))
+		failures += _check_replaced_recase(b2, " " + "aB".repeat(length).left(length) + " ")
 	for block: int in 0x20000 / 32:
 		var first := block * 32
 		if first >= 0xD800 and first < 0xE000:
