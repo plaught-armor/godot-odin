@@ -429,3 +429,32 @@ packed_color_array_find :: proc "contextless" (self: ^PackedColorArray, value: C
 packed_color_array_rfind :: proc "contextless" (self: ^PackedColorArray, value: Color, from: i64) -> i64 { v := value; return packed_rfind(packed_read(self), &v, from) }
 packed_color_array_count :: proc "contextless" (self: ^PackedColorArray, value: Color) -> i64 { v := value; return packed_count(packed_read(self), &v) }
 packed_color_array_bsearch :: proc "contextless" (self: ^PackedColorArray, value: Color, before: bool) -> i64 { v := value; return packed_bsearch(packed_read(self), &v, before) }
+
+// The `decode_*` reads take the bytes as stored, least significant first, which is the engine's
+// order on every target.
+#assert(ODIN_ENDIAN == .Little)
+
+// The `T` at byte `offset` of `a`, as the generated `decode_*` of PackedByteArray read it, or false
+// when the layout is unknown or the value does not fit inside the array: the engine is called then
+// and prints its error.
+packed_decode :: #force_inline proc "contextless" ($T: typeid, a: ^PackedByteArray, offset: i64) -> (T, bool) {
+	if !packed_layout_known { return {}, false }
+	xs := packed_stored(u8, a)
+	if offset < 0 || offset > i64(len(xs)) - size_of(T) { return {}, false }
+	return intrinsics.unaligned_load((^T)(&xs[offset])), true
+}
+
+// The float a 16-bit half float `h` stands for, as Math::half_to_float of the engine gives it: a
+// NaN keeps its ten significand bits at the top of the float's.
+half_to_float :: proc "contextless" (h: u16) -> f32 {
+	sign := u32(h & 0x8000) << 16
+	sig := u32(h & 0x03ff)
+	switch h & 0x7c00 {
+	case 0x0000:
+		// Zero or subnormal: the significand counts units of 2^-24, exactly.
+		return transmute(f32)(sign | transmute(u32)(f32(sig) * 0h33800000))
+	case 0x7c00:
+		return transmute(f32)(sign | 0x7f800000 | sig << 13)
+	}
+	return transmute(f32)(sign | (u32(h & 0x7fff) + 0x1c000) << 13)
+}

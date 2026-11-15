@@ -5,7 +5,8 @@ import gde "../gdextension"
 // Array reads answered from the engine's storage, with no call, once `check_array_layout` proved it
 // at load: the generated `size`, `is_empty`, `get`, `front`, `back`, `find`, `rfind`, `count` and
 // `has` try these first (tools/odin_bindgen.py IN_PLACE) and make the engine call only when they
-// return false. Each answers as Array does in Godot 4.7-stable (core/variant/array.cpp,
+// return false. `is_typed`, `get_typed_builtin` and `is_read_only` read the same data. Each answers
+// as Array does in Godot 4.7-stable (core/variant/array.cpp,
 // variant_call.cpp): elements compare with StringLikeVariantComparator, which is
 // Variant::hash_compare (the same type, then the value, a float NaN equal to a NaN and -0 to 0) with
 // a String equal to a StringName of the same text. The in-place search handles a value of the types
@@ -50,6 +51,17 @@ array_stored_size :: #force_inline proc "contextless" (a: ^Array) -> i64 {
 	return (^i64)(uintptr(d) - PACKED_SIZE_OFFSET)^
 }
 
+// Where ArrayPrivate keeps its read-only pointer, nil until `make_read_only`: between the pointer
+// to the elements and the element type.
+@(private)
+ARRAY_READ_ONLY_OFFSET :: 24
+
+// Whether `a` was made read-only. Only when `array_layout_known`.
+@(private)
+array_stored_read_only :: #force_inline proc "contextless" (a: ^Array) -> bool {
+	return (^rawptr)(uintptr((^rawptr)(a)^) + ARRAY_READ_ONLY_OFFSET)^ != nil
+}
+
 // The element type `a` is typed with, NIL when untyped. Only when `array_layout_known`.
 @(private)
 array_stored_type :: #force_inline proc "contextless" (a: ^Array) -> gde.VariantType {
@@ -58,7 +70,7 @@ array_stored_type :: #force_inline proc "contextless" (a: ^Array) -> gde.Variant
 
 // Sets `array_layout_known` from Arrays of known contents: one of three ints shared by two
 // references, one grown by pushes so its capacity differs from its size, one emptied by a resize,
-// and two typed ones.
+// two typed ones and a read-only one.
 check_array_layout :: proc "contextless" () {
 	// The elements where the engine indexes them, after the header of reference count 1 (the
 	// Vector is not shared, the ArrayPrivate is), capacity and size `n`.
@@ -83,11 +95,14 @@ check_array_layout :: proc "contextless" () {
 	gde.array_set_typed(&ti, .INT, &no_class, &no_script)
 	tn := array_new()
 	gde.array_set_typed(&tn, .STRING_NAME, &no_class, &no_script)
+	ro := array_new()
+	array_make_read_only(&ro)
 	array_layout_known =
 		holds(&a, 3) && holds(&b, 3) && holds(&c, 37) &&
 		(^rawptr)(uintptr((^rawptr)(&e)^) + ARRAY_DATA_OFFSET)^ == nil && array_size(&e) == 0 &&
-		array_stored_type(&ti) == .INT && array_stored_type(&tn) == .STRING_NAME
-	for x in ([?]^Array{&tn, &ti, &e, &c, &b, &a}) { destroy[.ARRAY](x) }
+		array_stored_type(&ti) == .INT && array_stored_type(&tn) == .STRING_NAME &&
+		array_stored_read_only(&ro) && !array_stored_read_only(&a) && !array_stored_read_only(&ti)
+	for x in ([?]^Array{&ro, &tn, &ti, &e, &c, &b, &a}) { destroy[.ARRAY](x) }
 }
 
 // How the in-place reads compare and copy a Variant of each type: by its value at byte 8 (as

@@ -615,6 +615,20 @@ Ident :: enum i64 {
 	STRING_VARIANT,    // variant() of the same String, its reference taken in place
 	TEXT_VARIANT_CALL, // an Odin string made a String and then a STRING Variant, as variant() did before
 	TEXT_VARIANT,      // variant() of the same Odin string, its new String moved into the Variant
+	DECODE_U32_CALL,   // the engine's PackedByteArray.decode_u32(4) of 16 bytes, called as the bindings did before
+	DECODE_U32,        // the generated packed_byte_array_decode_u32 of the same, read from its storage
+	DECODE_HALF_CALL,  // the engine's PackedByteArray.decode_half(4) of the same, the same way
+	DECODE_HALF,       // the generated packed_byte_array_decode_half of the same
+	UNICODE_AT_CALL,   // the engine's String.unicode_at(3) of "7fffABCD1234", the same way
+	UNICODE_AT,        // the generated string_unicode_at of the same
+	HEX_INT_CALL,      // the engine's String.hex_to_int of the same, the same way
+	HEX_INT,           // the generated string_hex_to_int of the same, parsed in place
+	STRING_HASH_CALL,  // the engine's String.hash of the same, the same way
+	STRING_HASH,       // the generated string_hash of the same
+	FILENAME_CALL,     // the engine's String.is_valid_filename of the same, the same way
+	FILENAME,          // the generated string_is_valid_filename of the same
+	ARRAY_TYPED_CALL,  // the engine's Array.is_typed of an empty Array, the same way
+	ARRAY_TYPED,       // the generated array_is_typed of the same, read from its data
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1173,6 +1187,101 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			sum += i64(uintptr((^rawptr)(&v)^) & 1)
 			godot.destroy[.STRING](&v)
 		}
+	case .DECODE_U32_CALL, .DECODE_HALF_CALL:
+		bytes := godot.packed_byte_array_new()
+		defer godot.destroy[.PACKED_BYTE_ARRAY](&bytes)
+		for k in 0 ..< 16 { godot.packed_byte_array_append(&bytes, i64(k * 17)) }
+		p := &bytes
+		at := i64(4)
+		args := [1]gde.ConstTypePtr{&at}
+		if kind == .DECODE_U32_CALL {
+			fn := godot.builtin_method(.PACKED_BYTE_ARRAY, "decode_u32", 4103005248)
+			for _ in 0 ..< n {
+				v: i64
+				fn(intrinsics.volatile_load(&p), &args[0], &v, 1)
+				sum += v
+			}
+		} else {
+			fn := godot.builtin_method(.PACKED_BYTE_ARRAY, "decode_half", 1401583798)
+			for _ in 0 ..< n {
+				v: f64
+				fn(intrinsics.volatile_load(&p), &args[0], &v, 1)
+				sum += i64(v)
+			}
+		}
+	case .DECODE_U32, .DECODE_HALF:
+		bytes := godot.packed_byte_array_new()
+		defer godot.destroy[.PACKED_BYTE_ARRAY](&bytes)
+		for k in 0 ..< 16 { godot.packed_byte_array_append(&bytes, i64(k * 17)) }
+		p := &bytes
+		if kind == .DECODE_U32 {
+			for _ in 0 ..< n { sum += godot.packed_byte_array_decode_u32(intrinsics.volatile_load(&p), 4) }
+		} else {
+			for _ in 0 ..< n { sum += i64(godot.packed_byte_array_decode_half(intrinsics.volatile_load(&p), 4)) }
+		}
+	case .UNICODE_AT_CALL, .HEX_INT_CALL, .STRING_HASH_CALL:
+		text := godot.string_of("7fffABCD1234")
+		defer godot.destroy[.STRING](&text)
+		p := &text
+		at := i64(3)
+		args := [1]gde.ConstTypePtr{&at}
+		if kind == .UNICODE_AT_CALL {
+			fn := godot.builtin_method(.STRING, "unicode_at", 4103005248)
+			for _ in 0 ..< n {
+				v: i64
+				fn(intrinsics.volatile_load(&p), &args[0], &v, 1)
+				sum += v
+			}
+		} else {
+			fn := godot.builtin_method(.STRING, "hex_to_int" if kind == .HEX_INT_CALL else "hash", 3173160232)
+			for _ in 0 ..< n {
+				v: i64
+				fn(intrinsics.volatile_load(&p), nil, &v, 0)
+				sum += v
+			}
+		}
+	case .UNICODE_AT, .HEX_INT, .STRING_HASH:
+		text := godot.string_of("7fffABCD1234")
+		defer godot.destroy[.STRING](&text)
+		p := &text
+		#partial switch kind {
+		case .UNICODE_AT:
+			for _ in 0 ..< n { sum += godot.string_unicode_at(intrinsics.volatile_load(&p), 3) }
+		case .HEX_INT:
+			for _ in 0 ..< n { sum += godot.string_hex_to_int(intrinsics.volatile_load(&p)) }
+		case:
+			for _ in 0 ..< n { sum += godot.string_hash(intrinsics.volatile_load(&p)) }
+		}
+	case .FILENAME_CALL:
+		text := godot.string_of("7fffABCD1234")
+		defer godot.destroy[.STRING](&text)
+		p := &text
+		fn := godot.builtin_method(.STRING, "is_valid_filename", 3918633141)
+		for _ in 0 ..< n {
+			v: u8
+			fn(intrinsics.volatile_load(&p), nil, &v, 0)
+			sum += i64(v)
+		}
+	case .FILENAME:
+		text := godot.string_of("7fffABCD1234")
+		defer godot.destroy[.STRING](&text)
+		p := &text
+		for _ in 0 ..< n { sum += i64(godot.string_is_valid_filename(intrinsics.volatile_load(&p))) }
+	case .ARRAY_TYPED_CALL:
+		a := godot.array_new()
+		defer godot.destroy[.ARRAY](&a)
+		p := &a
+		fn := godot.builtin_method(.ARRAY, "is_typed", 3918633141)
+		for _ in 0 ..< n {
+			v: u8
+			fn(intrinsics.volatile_load(&p), nil, &v, 0)
+			sum += i64(v)
+		}
+	case .ARRAY_TYPED:
+		a := godot.array_new()
+		defer godot.destroy[.ARRAY](&a)
+		p := &a
+		for _ in 0 ..< n { sum += i64(godot.array_is_typed(intrinsics.volatile_load(&p))) }
 	case .VALID_FLOAT_CALL:
 		num := godot.string_of("-123.456e-2")
 		defer godot.destroy[.STRING](&num)

@@ -414,6 +414,7 @@ string_path_join :: proc "contextless" (self: ^String, path: String) -> String {
 	return __ret
 }
 string_unicode_at :: proc "contextless" (self: ^String, at: i64) -> i64 {
+	if string_layout_known { if c := string_read(self); at >= 0 && at < i64(len(c)) { return i64(c[at]) } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "unicode_at", 4103005248) }
 	__a_at := at
@@ -439,6 +440,7 @@ string_dedent :: proc "contextless" (self: ^String) -> String {
 	return __ret
 }
 string_hash :: proc "contextless" (self: ^String) -> i64 {
+	if string_layout_known { return i64(string_djb2(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "hash", 3173160232) }
 	__ret: i64
@@ -496,6 +498,7 @@ string_is_empty :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_is_absolute_path :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_absolute_path(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_absolute_path", 3918633141) }
 	__ret: u8
@@ -503,6 +506,7 @@ string_is_absolute_path :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_is_relative_path :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return !runes_is_absolute_path(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_relative_path", 3918633141) }
 	__ret: u8
@@ -603,6 +607,7 @@ string_validate_filename :: proc "contextless" (self: ^String) -> String {
 	return __ret
 }
 string_is_valid_ascii_identifier :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_valid_ascii_identifier(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_ascii_identifier", 3918633141) }
 	__ret: u8
@@ -617,6 +622,7 @@ string_is_valid_unicode_identifier :: proc "contextless" (self: ^String) -> bool
 	return __ret != 0
 }
 string_is_valid_identifier :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_valid_ascii_identifier(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_identifier", 3918633141) }
 	__ret: u8
@@ -640,6 +646,7 @@ string_is_valid_float :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_is_valid_hex_number :: proc "contextless" (self: ^String, with_prefix: bool) -> bool {
+	if string_layout_known { return runes_is_valid_hex_number(string_read(self), with_prefix) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_hex_number", 593672999) }
 	__a_with_prefix := u8(with_prefix)
@@ -663,6 +670,7 @@ string_is_valid_ip_address :: proc "contextless" (self: ^String) -> bool {
 	return __ret != 0
 }
 string_is_valid_filename :: proc "contextless" (self: ^String) -> bool {
+	if string_layout_known { return runes_is_valid_filename(string_read(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "is_valid_filename", 3918633141) }
 	__ret: u8
@@ -686,6 +694,7 @@ string_to_float :: proc "contextless" (self: ^String) -> f64 {
 	return __ret
 }
 string_hex_to_int :: proc "contextless" (self: ^String) -> i64 {
+	if string_layout_known { if v, ok := runes_parse_radix(string_read(self), 4); ok { return v } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "hex_to_int", 3173160232) }
 	__ret: i64
@@ -693,6 +702,7 @@ string_hex_to_int :: proc "contextless" (self: ^String) -> i64 {
 	return __ret
 }
 string_bin_to_int :: proc "contextless" (self: ^String) -> i64 {
+	if string_layout_known { if v, ok := runes_parse_radix(string_read(self), 1); ok { return v } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "bin_to_int", 3173160232) }
 	__ret: i64
@@ -1409,6 +1419,7 @@ string_name_path_join :: proc "contextless" (self: ^StringName, path: String) ->
 	return __ret
 }
 string_name_unicode_at :: proc "contextless" (self: ^StringName, at: i64) -> i64 {
+	if dict_layout_known { if c := string_read(name_text(self)); at >= 0 && at < i64(len(c)) { return i64(c[at]) } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "unicode_at", 4103005248) }
 	__a_at := at
@@ -1504,6 +1515,7 @@ string_name_containsn :: proc "contextless" (self: ^StringName, what: String) ->
 	return __ret != 0
 }
 string_name_is_absolute_path :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_absolute_path(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_absolute_path", 3918633141) }
 	__ret: u8
@@ -1511,6 +1523,7 @@ string_name_is_absolute_path :: proc "contextless" (self: ^StringName) -> bool {
 	return __ret != 0
 }
 string_name_is_relative_path :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return !runes_is_absolute_path(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_relative_path", 3918633141) }
 	__ret: u8
@@ -1611,6 +1624,7 @@ string_name_validate_filename :: proc "contextless" (self: ^StringName) -> Strin
 	return __ret
 }
 string_name_is_valid_ascii_identifier :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_valid_ascii_identifier(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_ascii_identifier", 3918633141) }
 	__ret: u8
@@ -1625,6 +1639,7 @@ string_name_is_valid_unicode_identifier :: proc "contextless" (self: ^StringName
 	return __ret != 0
 }
 string_name_is_valid_identifier :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_valid_ascii_identifier(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_identifier", 3918633141) }
 	__ret: u8
@@ -1648,6 +1663,7 @@ string_name_is_valid_float :: proc "contextless" (self: ^StringName) -> bool {
 	return __ret != 0
 }
 string_name_is_valid_hex_number :: proc "contextless" (self: ^StringName, with_prefix: bool) -> bool {
+	if dict_layout_known { return runes_is_valid_hex_number(string_read(name_text(self)), with_prefix) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_hex_number", 593672999) }
 	__a_with_prefix := u8(with_prefix)
@@ -1671,6 +1687,7 @@ string_name_is_valid_ip_address :: proc "contextless" (self: ^StringName) -> boo
 	return __ret != 0
 }
 string_name_is_valid_filename :: proc "contextless" (self: ^StringName) -> bool {
+	if dict_layout_known { return runes_is_valid_filename(string_read(name_text(self))) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_valid_filename", 3918633141) }
 	__ret: u8
@@ -1694,6 +1711,7 @@ string_name_to_float :: proc "contextless" (self: ^StringName) -> f64 {
 	return __ret
 }
 string_name_hex_to_int :: proc "contextless" (self: ^StringName) -> i64 {
+	if dict_layout_known { if v, ok := runes_parse_radix(string_read(name_text(self)), 4); ok { return v } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "hex_to_int", 3173160232) }
 	__ret: i64
@@ -1701,6 +1719,7 @@ string_name_hex_to_int :: proc "contextless" (self: ^StringName) -> i64 {
 	return __ret
 }
 string_name_bin_to_int :: proc "contextless" (self: ^StringName) -> i64 {
+	if dict_layout_known { if v, ok := runes_parse_radix(string_read(name_text(self)), 1); ok { return v } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "bin_to_int", 3173160232) }
 	__ret: i64
@@ -2463,6 +2482,7 @@ dictionary_set :: proc "contextless" (self: ^Dictionary, key: Variant, value: Va
 	return __ret != 0
 }
 dictionary_is_typed :: proc "contextless" (self: ^Dictionary) -> bool {
+	if dict_layout_known { return dict_key_type(self) != .NIL || dict_value_type(self) != .NIL }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_typed", 3918633141) }
 	__ret: u8
@@ -2470,6 +2490,7 @@ dictionary_is_typed :: proc "contextless" (self: ^Dictionary) -> bool {
 	return __ret != 0
 }
 dictionary_is_typed_key :: proc "contextless" (self: ^Dictionary) -> bool {
+	if dict_layout_known { return dict_key_type(self) != .NIL }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_typed_key", 3918633141) }
 	__ret: u8
@@ -2477,6 +2498,7 @@ dictionary_is_typed_key :: proc "contextless" (self: ^Dictionary) -> bool {
 	return __ret != 0
 }
 dictionary_is_typed_value :: proc "contextless" (self: ^Dictionary) -> bool {
+	if dict_layout_known { return dict_value_type(self) != .NIL }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_typed_value", 3918633141) }
 	__ret: u8
@@ -2511,6 +2533,7 @@ dictionary_is_same_typed_value :: proc "contextless" (self: ^Dictionary, diction
 	return __ret != 0
 }
 dictionary_get_typed_key_builtin :: proc "contextless" (self: ^Dictionary) -> i64 {
+	if dict_layout_known { return i64(dict_key_type(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "get_typed_key_builtin", 3173160232) }
 	__ret: i64
@@ -2518,6 +2541,7 @@ dictionary_get_typed_key_builtin :: proc "contextless" (self: ^Dictionary) -> i6
 	return __ret
 }
 dictionary_get_typed_value_builtin :: proc "contextless" (self: ^Dictionary) -> i64 {
+	if dict_layout_known { return i64(dict_value_type(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "get_typed_value_builtin", 3173160232) }
 	__ret: i64
@@ -2558,6 +2582,7 @@ dictionary_make_read_only :: proc "contextless" (self: ^Dictionary) {
 	__fn(self, nil, nil, 0)
 }
 dictionary_is_read_only :: proc "contextless" (self: ^Dictionary) -> bool {
+	if dict_layout_known { return dict_read_only(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.DICTIONARY, "is_read_only", 3918633141) }
 	__ret: u8
@@ -3047,6 +3072,7 @@ array_min :: proc "contextless" (self: ^Array) -> Variant {
 	return __ret
 }
 array_is_typed :: proc "contextless" (self: ^Array) -> bool {
+	if array_layout_known { return array_stored_type(self) != .NIL }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "is_typed", 3918633141) }
 	__ret: u8
@@ -3063,6 +3089,7 @@ array_is_same_typed :: proc "contextless" (self: ^Array, array: Array) -> bool {
 	return __ret != 0
 }
 array_get_typed_builtin :: proc "contextless" (self: ^Array) -> i64 {
+	if array_layout_known { return i64(array_stored_type(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "get_typed_builtin", 3173160232) }
 	__ret: i64
@@ -3089,6 +3116,7 @@ array_make_read_only :: proc "contextless" (self: ^Array) {
 	__fn(self, nil, nil, 0)
 }
 array_is_read_only :: proc "contextless" (self: ^Array) -> bool {
+	if array_layout_known { return array_stored_read_only(self) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.ARRAY, "is_read_only", 3918633141) }
 	__ret: u8
@@ -3326,6 +3354,7 @@ packed_byte_array_decompress_dynamic :: proc "contextless" (self: ^PackedByteArr
 	return __ret
 }
 packed_byte_array_decode_u8 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> i64 {
+	if v, ok := packed_decode(u8, self, byte_offset); ok { return i64(v) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_u8", 4103005248) }
 	__a_byte_offset := byte_offset
@@ -3335,6 +3364,7 @@ packed_byte_array_decode_u8 :: proc "contextless" (self: ^PackedByteArray, byte_
 	return __ret
 }
 packed_byte_array_decode_s8 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> i64 {
+	if v, ok := packed_decode(i8, self, byte_offset); ok { return i64(v) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_s8", 4103005248) }
 	__a_byte_offset := byte_offset
@@ -3344,6 +3374,7 @@ packed_byte_array_decode_s8 :: proc "contextless" (self: ^PackedByteArray, byte_
 	return __ret
 }
 packed_byte_array_decode_u16 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> i64 {
+	if v, ok := packed_decode(u16, self, byte_offset); ok { return i64(v) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_u16", 4103005248) }
 	__a_byte_offset := byte_offset
@@ -3353,6 +3384,7 @@ packed_byte_array_decode_u16 :: proc "contextless" (self: ^PackedByteArray, byte
 	return __ret
 }
 packed_byte_array_decode_s16 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> i64 {
+	if v, ok := packed_decode(i16, self, byte_offset); ok { return i64(v) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_s16", 4103005248) }
 	__a_byte_offset := byte_offset
@@ -3362,6 +3394,7 @@ packed_byte_array_decode_s16 :: proc "contextless" (self: ^PackedByteArray, byte
 	return __ret
 }
 packed_byte_array_decode_u32 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> i64 {
+	if v, ok := packed_decode(u32, self, byte_offset); ok { return i64(v) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_u32", 4103005248) }
 	__a_byte_offset := byte_offset
@@ -3371,6 +3404,7 @@ packed_byte_array_decode_u32 :: proc "contextless" (self: ^PackedByteArray, byte
 	return __ret
 }
 packed_byte_array_decode_s32 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> i64 {
+	if v, ok := packed_decode(i32, self, byte_offset); ok { return i64(v) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_s32", 4103005248) }
 	__a_byte_offset := byte_offset
@@ -3380,6 +3414,7 @@ packed_byte_array_decode_s32 :: proc "contextless" (self: ^PackedByteArray, byte
 	return __ret
 }
 packed_byte_array_decode_u64 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> i64 {
+	if v, ok := packed_decode(i64, self, byte_offset); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_u64", 4103005248) }
 	__a_byte_offset := byte_offset
@@ -3389,6 +3424,7 @@ packed_byte_array_decode_u64 :: proc "contextless" (self: ^PackedByteArray, byte
 	return __ret
 }
 packed_byte_array_decode_s64 :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> i64 {
+	if v, ok := packed_decode(i64, self, byte_offset); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_s64", 4103005248) }
 	__a_byte_offset := byte_offset
@@ -3398,6 +3434,7 @@ packed_byte_array_decode_s64 :: proc "contextless" (self: ^PackedByteArray, byte
 	return __ret
 }
 packed_byte_array_decode_half :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> f64 {
+	if v, ok := packed_decode(u16, self, byte_offset); ok { return f64(half_to_float(v)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_half", 1401583798) }
 	__a_byte_offset := byte_offset
@@ -3407,6 +3444,7 @@ packed_byte_array_decode_half :: proc "contextless" (self: ^PackedByteArray, byt
 	return __ret
 }
 packed_byte_array_decode_float :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> f64 {
+	if v, ok := packed_decode(f32, self, byte_offset); ok { return f64(v) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_float", 1401583798) }
 	__a_byte_offset := byte_offset
@@ -3416,6 +3454,7 @@ packed_byte_array_decode_float :: proc "contextless" (self: ^PackedByteArray, by
 	return __ret
 }
 packed_byte_array_decode_double :: proc "contextless" (self: ^PackedByteArray, byte_offset: i64) -> f64 {
+	if v, ok := packed_decode(f64, self, byte_offset); ok { return v }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "decode_double", 1401583798) }
 	__a_byte_offset := byte_offset

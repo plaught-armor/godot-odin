@@ -4,7 +4,9 @@ import gde "../gdextension"
 
 // Dictionary reads answered from the engine's storage, with no call, once `check_dict_layout`
 // proved it at load: the generated `size`, `is_empty`, `has`, `has_all` and `get` try these first
-// (tools/odin_bindgen.py IN_PLACE) and make the engine call only when they return false. Each answers
+// (tools/odin_bindgen.py IN_PLACE) and make the engine call only when they return false. `is_typed`,
+// `is_typed_key`, `is_typed_value`, `get_typed_key_builtin`, `get_typed_value_builtin` and
+// `is_read_only` read the same data. Each answers
 // as Dictionary does in Godot 4.7-stable (core/variant/dictionary.cpp): a key is found by the
 // engine's own HashMap probe, under the hash Variant::recursive_hash gives it, and compares with
 // StringLikeVariantComparator as Array's search does (array.odin). The in-place lookup handles a key
@@ -98,6 +100,17 @@ dict_map :: #force_inline proc "contextless" (d: ^Dictionary) -> ^Dict_Map {
 	return (^Dict_Map)(uintptr((^rawptr)(d)^) + DICT_MAP_OFFSET)
 }
 
+// Where DictionaryPrivate keeps its read-only pointer, nil until `make_read_only`: after its
+// reference count, before the HashMap.
+@(private)
+DICT_READ_ONLY_OFFSET :: 8
+
+// Whether `d` was made read-only. Only when `dict_layout_known`.
+@(private)
+dict_read_only :: #force_inline proc "contextless" (d: ^Dictionary) -> bool {
+	return (^rawptr)(uintptr((^rawptr)(d)^) + DICT_READ_ONLY_OFFSET)^ != nil
+}
+
 // The key type `d` is typed with, NIL when untyped. Only when `dict_layout_known`.
 @(private)
 dict_key_type :: #force_inline proc "contextless" (d: ^Dictionary) -> gde.VariantType {
@@ -154,7 +167,16 @@ string_djb2 :: #force_inline proc "contextless" (s: ^String) -> u32 {
 	h := u32(5381)
 	p := ([^]u32)((^rawptr)(s)^)
 	if p == nil { return h }
-	for i in 0 ..< string_stored_length(s) {
+	n := string_stored_length(s)
+	i := i64(0)
+	// Two characters a step, (h * 33 + a) * 33 + b multiplied out, so each step waits on one
+	// multiply of `h` where two single steps wait on two.
+	for ; i + 1 < n; i += 2 {
+		a, b := p[i], p[i + 1]
+		if a == 0 || b == 0 { break }
+		h = h * (33 * 33) + (a * 33 + b)
+	}
+	for ; i < n; i += 1 {
 		if p[i] == 0 { break }
 		h = h * 33 + p[i]
 	}
@@ -402,7 +424,12 @@ check_dict_layout :: proc "contextless" () {
 	defer destroy[.DICTIONARY](&t)
 	gde.dictionary_set_typed(&t, .INT, &no_class, &no_script, .FLOAT, &no_class, &no_script)
 
+	ro := dictionary_new()
+	defer destroy[.DICTIONARY](&ro)
+	dictionary_make_read_only(&ro)
+
 	dict_layout_known = name_text_ok && dict_holds(&d) &&
+		dict_read_only(&ro) && !dict_read_only(&d) && !dict_read_only(&t) &&
 		dict_map(&e).size == 0 && dictionary_size(&e) == 0 &&
 		dict_key_type(&t) == .INT && dict_key_type(&d) == .NIL &&
 		dict_value_type(&t) == .FLOAT && dict_value_type(&d) == .NIL

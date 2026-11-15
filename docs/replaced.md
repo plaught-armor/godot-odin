@@ -713,6 +713,51 @@ methods called from GDScript, comparing `to_float` by its bits.
 Timings are from `bench/build.sh` on a cached String: `to_int` of "-12345", the others of
 "-123.456e-2".
 
+## Scalar reads
+
+More generated methods answer from storage a load-time check already proved, with the engine call
+kept as the fallback when the check fails and wherever the engine prints an error:
+
+- `PackedByteArray.decode_u8`, `decode_s8`, `decode_u16`, `decode_s16`, `decode_u32`, `decode_s32`,
+  `decode_u64`, `decode_s64`, `decode_half`, `decode_float` and `decode_double` load the value at
+  the offset (`packed_decode` in `godot/packed.odin`). An offset out of range goes to the engine.
+  `half_to_float` gives the bits of the engine's `Math::half_to_float` for all 65,536 halves.
+- String and StringName `unicode_at`, `is_absolute_path`, `is_relative_path`,
+  `is_valid_ascii_identifier`, `is_valid_identifier`, `is_valid_hex_number`, `is_valid_filename`,
+  `hex_to_int` and `bin_to_int`, and `String.hash`, read the text in place (`godot/access.odin`).
+  The engine is called for `unicode_at` out of range, and for `hex_to_int` and `bin_to_int` where
+  it prints: a hexadecimal character that is no digit, and a value past the 64-bit range.
+- `Array.is_typed`, `get_typed_builtin` and `is_read_only`, and `Dictionary.is_typed`,
+  `is_typed_key`, `is_typed_value`, `get_typed_key_builtin`, `get_typed_value_builtin` and
+  `is_read_only`, read the element types and the read-only pointer. `check_array_layout` and
+  `check_dict_layout` prove the read-only pointer on a container made read-only.
+
+`String.hash` is djb2 up to the first 0 character, as the engine's. `string_djb2` takes two
+characters a step, which is the same sum with half the multiplies in a row; hashing a String key
+of a Dictionary uses it too.
+
+Left to the engine: `is_valid_unicode_identifier` (Unicode tables), `is_valid_html_color`,
+`is_valid_ip_address`, and `is_same_typed` and its Dictionary kin (they compare class names and
+scripts).
+
+Checked against Godot 4.7-stable and 4.8 by `_check_replaced_scalars`,
+`_check_replaced_decodes` (every offset from one before the first byte to one past the last, and
+every 16-bit pattern) and `_check_replaced_container_flags`, each against the engine's methods
+called from GDScript.
+
+| Method | Engine call | Replacement |
+|---|---|---|
+| `PackedByteArray.decode_u32` | 2.68 ns | 0.47 ns |
+| `PackedByteArray.decode_half` | 1.91 ns | 1.14 ns |
+| `String.unicode_at` | 2.46 ns | 1.14 ns |
+| `String.hex_to_int` | 9.50 ns | 6.84 ns |
+| `String.hash` | 4.57 ns | 3.55 ns |
+| `String.is_valid_filename` | 88.5 ns | 5.74 ns |
+| `Array.is_typed` | 2.25 ns | 0.94 ns |
+
+Timings are from `bench/build.sh` on 4.7-stable: the decodes at offset 4 of 16 bytes, the String
+reads of "7fffABCD1234", `is_typed` of an empty Array.
+
 ## NodePath
 
 The generated NodePath reads `is_empty`, `is_absolute`, `get_name_count`, `get_subname_count`,

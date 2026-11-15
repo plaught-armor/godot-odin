@@ -66,8 +66,30 @@ IN_PLACE = {
            ("to_float", f"if v, clipped := runes_parse_float({chars}); !clipped {{ return v }}"),
            ("is_valid_int", f"return runes_is_valid_int({chars})"),
            ("is_valid_float", f"return runes_is_valid_float({chars})"))},
+    # godot/access.odin: the text reads that never print, and hex_to_int and bin_to_int with the
+    # engine called where it prints an error.
+    **{(t, m): f"\tif {gate} {{ {body.format(c=chars)} }}\n"
+       for t, gate, chars in (("String", "string_layout_known", "string_read(self)"),
+                              ("StringName", "dict_layout_known", "string_read(name_text(self))"))
+       for m, body in (
+           ("unicode_at", "if c := {c}; at >= 0 && at < i64(len(c)) {{ return i64(c[at]) }}"),
+           ("is_absolute_path", "return runes_is_absolute_path({c})"),
+           ("is_relative_path", "return !runes_is_absolute_path({c})"),
+           ("is_valid_ascii_identifier", "return runes_is_valid_ascii_identifier({c})"),
+           ("is_valid_identifier", "return runes_is_valid_ascii_identifier({c})"),
+           ("is_valid_hex_number", "return runes_is_valid_hex_number({c}, with_prefix)"),
+           ("is_valid_filename", "return runes_is_valid_filename({c})"),
+           ("hex_to_int", "if v, ok := runes_parse_radix({c}, 4); ok {{ return v }}"),
+           ("bin_to_int", "if v, ok := runes_parse_radix({c}, 1); ok {{ return v }}"))},
+    ("String", "hash"): "\tif string_layout_known { return i64(string_djb2(self)) }\n",
     **{(t, "size"): "\tif packed_layout_known { return packed_stored_size(self) }\n" for t in PACKED_TYPES},
     **{(t, "is_empty"): "\tif packed_layout_known { return packed_stored_size(self) == 0 }\n" for t in PACKED_TYPES},
+    # godot/packed.odin: the engine is called for an offset out of range, where it prints an error.
+    **{("PackedByteArray", f"decode_{m}"): f"\tif v, ok := packed_decode({t}, self, byte_offset); ok {{ return {conv} }}\n"
+       for m, t, conv in (
+           ("u8", "u8", "i64(v)"), ("s8", "i8", "i64(v)"), ("u16", "u16", "i64(v)"), ("s16", "i16", "i64(v)"),
+           ("u32", "u32", "i64(v)"), ("s32", "i32", "i64(v)"), ("u64", "i64", "v"), ("s64", "i64", "v"),
+           ("half", "u16", "f64(half_to_float(v))"), ("float", "f32", "f64(v)"), ("double", "f64", "v"))},
     # godot/array.odin: each returns false when the engine answers.
     ("Array", "size"): "\tif array_layout_known { return array_stored_size(self) }\n",
     ("Array", "is_empty"): "\tif array_layout_known { return array_stored_size(self) == 0 }\n",
@@ -78,7 +100,16 @@ IN_PLACE = {
     ("Array", "rfind"): "\tif r, ok := array_stored_rfind(self, what, from); ok { return r }\n",
     ("Array", "count"): "\tif r, ok := array_stored_count(self, value); ok { return r }\n",
     ("Array", "has"): "\tif r, ok := array_stored_has(self, value); ok { return r }\n",
+    ("Array", "is_typed"): "\tif array_layout_known { return array_stored_type(self) != .NIL }\n",
+    ("Array", "get_typed_builtin"): "\tif array_layout_known { return i64(array_stored_type(self)) }\n",
+    ("Array", "is_read_only"): "\tif array_layout_known { return array_stored_read_only(self) }\n",
     # godot/dictionary.odin, the same way.
+    ("Dictionary", "is_typed"): "\tif dict_layout_known { return dict_key_type(self) != .NIL || dict_value_type(self) != .NIL }\n",
+    ("Dictionary", "is_typed_key"): "\tif dict_layout_known { return dict_key_type(self) != .NIL }\n",
+    ("Dictionary", "is_typed_value"): "\tif dict_layout_known { return dict_value_type(self) != .NIL }\n",
+    ("Dictionary", "get_typed_key_builtin"): "\tif dict_layout_known { return i64(dict_key_type(self)) }\n",
+    ("Dictionary", "get_typed_value_builtin"): "\tif dict_layout_known { return i64(dict_value_type(self)) }\n",
+    ("Dictionary", "is_read_only"): "\tif dict_layout_known { return dict_read_only(self) }\n",
     ("Dictionary", "size"): "\tif dict_layout_known { return dict_stored_size(self) }\n",
     ("Dictionary", "is_empty"): "\tif dict_layout_known { return dict_stored_size(self) == 0 }\n",
     ("Dictionary", "has"): "\tif r, ok := dict_stored_has(self, key); ok { return r }\n",

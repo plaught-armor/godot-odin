@@ -645,6 +645,96 @@ runes_is_valid_int :: proc "contextless" (chars: []rune) -> bool {
 	return true
 }
 
+// Whether `chars` are a path the engine's `is_absolute_path` calls absolute: one starting with '/'
+// or '\\', or, when longer than one character, holding ":/" or ":\\" anywhere.
+runes_is_absolute_path :: proc "contextless" (chars: []rune) -> bool {
+	if len(chars) == 0 { return false }
+	if chars[0] == '/' || chars[0] == '\\' { return true }
+	for i in 1 ..< len(chars) {
+		if chars[i - 1] == ':' && (chars[i] == '/' || chars[i] == '\\') { return true }
+	}
+	return false
+}
+
+// Whether `chars` spell an identifier as the engine's `is_valid_ascii_identifier` reads a String:
+// ASCII letters, digits and '_', not starting with a digit, and not empty.
+runes_is_valid_ascii_identifier :: proc "contextless" (chars: []rune) -> bool {
+	if len(chars) == 0 || (chars[0] >= '0' && chars[0] <= '9') { return false }
+	for c in chars {
+		letter := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+		if !letter && (c < '0' || c > '9') && c != '_' { return false }
+	}
+	return true
+}
+
+// The value of hexadecimal digit `c` in either case, or -1.
+@(private)
+hex_digit :: #force_inline proc "contextless" (c: rune) -> i64 {
+	if d := u32(c) - '0'; d <= 9 { return i64(d) }
+	// Setting bit 5 turns an upper-case ASCII letter into its lower-case one.
+	if d := (u32(c) | 0x20) - 'a'; d <= 5 { return i64(d) + 10 }
+	return -1
+}
+
+// Whether `chars` spell a hexadecimal number as the engine's `is_valid_hex_number` reads a String:
+// a '+' or '-' when there is more than it, "0x" when `with_prefix`, then one hexadecimal digit or
+// more.
+runes_is_valid_hex_number :: proc "contextless" (chars: []rune, with_prefix: bool) -> bool {
+	n := len(chars)
+	if n == 0 { return false }
+	from := 1 if n != 1 && (chars[0] == '+' || chars[0] == '-') else 0
+	if with_prefix {
+		if n < 3 || chars[from] != '0' || chars[from + 1] != 'x' { return false }
+		from += 2
+	}
+	if from == n { return false }
+	for c in chars[from:] {
+		if hex_digit(c) < 0 { return false }
+	}
+	return true
+}
+
+// Whether `chars` name a file as the engine's `is_valid_filename` reads a String: not empty, no
+// character of code 32 or less at either end, and none of : / \ ? * " | % < > anywhere.
+runes_is_valid_filename :: proc "contextless" (chars: []rune) -> bool {
+	n := len(chars)
+	if n == 0 || u32(chars[0]) <= 32 || u32(chars[n - 1]) <= 32 { return false }
+	for c in chars {
+		switch c {
+		case ':', '/', '\\', '?', '*', '"', '|', '%', '<', '>': return false
+		}
+	}
+	return true
+}
+
+// The integer `chars` spell in base 2 (`bits` 1) or 16 (`bits` 4), as the engine's `bin_to_int` and
+// `hex_to_int` read a String: a '-', then "0b" or "0x" in either case when the whole text is longer
+// than two characters, then digits up to the end or the first 0 character. A character that is no
+// digit makes the binary value 0. False where the engine prints an error, on a hexadecimal
+// character that is no digit and on a value past the 64-bit range: the engine is called then.
+runes_parse_radix :: #force_inline proc "contextless" (chars: []rune, bits: uint) -> (value: i64, ok: bool) {
+	s := chars
+	if len(s) == 0 { return 0, true }
+	negative := s[0] == '-'
+	if negative { s = s[1:] }
+	mark: rune = 'b' if bits == 1 else 'x'
+	if len(chars) > 2 && s[0] == '0' && (s[1] | 0x20) == mark { s = s[2:] }
+	top := max(i64) >> bits
+	v: i64
+	for c in s {
+		n := hex_digit(c)
+		if u64(n) >> bits != 0 {
+			if c == 0 { break }
+			return 0, bits == 1
+		}
+		// Past `top` the engine prints an overflow error, except on the way to the most negative
+		// value: a '-', `top + 1` and one more digit 0.
+		if u64(v) > u64(top) && (!negative || v != top + 1 || n != 0) { return 0, false }
+		v = v << bits + n
+	}
+	return -v if negative else v, true
+}
+
 // Whether `chars` spell a float as the engine's `is_valid_float` reads a String: after an optional
 // '+' or '-', digits with at most one '.' before any exponent, then an 'e' or 'E' after a digit
 // with an optional sign and digits. At least one mantissa digit; an exponent may have none.

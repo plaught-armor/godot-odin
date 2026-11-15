@@ -237,6 +237,15 @@
 		<method name="replaced_numbers">
 			<description>The String number reads on each of [code]texts[/code], then the same through the StringName of it: to_int, the bits of to_float, is_valid_int and is_valid_float as 0 or 1, eight per text. test.gd builds the same array from the engine's methods.</description>
 		</method>
+		<method name="replaced_scalars">
+			<description>The String scalar reads on each of [code]texts[/code], then the same through the StringName of it: unicode_at of the first and last character, hash, is_absolute_path, is_relative_path, is_valid_ascii_identifier, is_valid_identifier, is_valid_hex_number without and with the prefix, is_valid_filename, hex_to_int and bin_to_int, twelve per text. test.gd builds the same array from the engine's methods.</description>
+		</method>
+		<method name="replaced_decodes">
+			<description>Every PackedByteArray decode at each offset of [code]bytes[/code] from one before the first to one past the last: u8, s8, u16, s16, u32, s32, u64, s64, then the bits of half, float and double, eleven per offset. test.gd builds the same array from the engine's methods.</description>
+		</method>
+		<method name="replaced_container_flags">
+			<description>What [code]a[/code] and [code]d[/code] say of themselves: Array is_typed, get_typed_builtin and is_read_only, then Dictionary is_typed, is_typed_key, is_typed_value, get_typed_key_builtin, get_typed_value_builtin and is_read_only. test.gd builds the same array from the engine's methods.</description>
+		</method>
 		<method name="replaced_paths">
 			<description></description>
 		</method>

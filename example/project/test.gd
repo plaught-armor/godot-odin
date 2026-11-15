@@ -458,6 +458,23 @@ func _check_extras() -> int:
 	number_texts.append_array(["", "+", "-", "+1", "-1", "1-", "--1", "+-1", "1e5", "1e", "e5", ".e5", "1.e5",
 		"1e+5", "1e+-5", "1e5.0", "1.2.3", " 1", "1 ", "\u0661", "1E5", "-.5", "+.", "5e-", "0x1F", "1,5", "1e5-", "1e5+5", "1e-5+"])
 	failures += _check_replaced_numbers(b2, number_texts)
+	var scalar_texts: PackedStringArray = number_texts.duplicate()
+	scalar_texts.append_array(["/", "\\", "a", ":", ":/", "a:/", "a:\\b", "C:\\dir", "res://x", "user://a/b", "a/b", "/a", "\\\\host",
+		"_", "_a1", "1a", "a b", "a-b", "\u00e9t\u00e9", "Abc_9", "9", "__", "a\u0661",
+		"0x", "0X1f", "0xg", "+0x1F", "-0x1f", "+", "-0x", "0xx1", "ff", "FF", "+ff", "x1", "1x", "0x 1", "-", "+-1", "\u0661",
+		"file.txt", " file", "file ", "\tfile", "file\n", "a:b", "a/b", "a\\b", "a?b", "a*b", "a\"b", "a|b", "a%b", "a<b", "a>b", "\u00e9", ".", " ",
+		"7fffffffffffffff", "8000000000000000", "-8000000000000000", "-8000000000000001", "-80000000000000000", "ffffffffffffffff",
+		"0x7FFFFFFFFFFFFFFF", "-0x8000000000000000", "10000000000000000", "-7fffffffffffffff", "0x-1", "--1", "-0X", "0xZ", "12g",
+		"0b101", "0B101", "-0b101", "101", "102", "-", "0b", "-0b", "b1", "1b", "0b2", "1 0",
+		"111111111111111111111111111111111111111111111111111111111111111",
+		"1000000000000000000000000000000000000000000000000000000000000000",
+		"-1000000000000000000000000000000000000000000000000000000000000000",
+		"-1000000000000000000000000000000000000000000000000000000000000001",
+		"-10000000000000000000000000000000000000000000000000000000000000000",
+		"1111111111111111111111111111111111111111111111111111111111111111"])
+	failures += _check_replaced_scalars(b2, scalar_texts)
+	failures += _check_replaced_decodes(b2)
+	failures += _check_replaced_container_flags(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
 		"/root/a/b:c:d", ":x", ":x:y", "../b", "a/b/c/d/e/f:g", "Body:position:x", "\u00f1/\u00fc:\u00f6",
 		"/root/check_node_path/layout:position:x", "a//b", "a/./b/../c"]))
@@ -709,6 +726,109 @@ func _check_replaced_strs(b2: Bag, s: String, part: String, with: String, allow_
 	if got != want:
 		print("FAIL: Bag.replaced_name_strs(%s, %s, %s, %s, %d) gave %s, not %s" % [n, part, with, allow_empty, maxsplit, got, want])
 		return 1
+	return 0
+
+
+# The String and StringName scalar reads, from Bag.replaced_scalars, against the engine's methods
+# called from GDScript, twelve per text and twelve more through its StringName. Returns 1 on a
+# mismatch.
+func _check_replaced_scalars(b2: Bag, texts: PackedStringArray) -> int:
+	var want: PackedInt64Array = []
+	for t: String in texts:
+		var n := StringName(t)
+		for v: Variant in [t, n]:
+			want.append(v.unicode_at(0))
+			want.append(v.unicode_at(t.length() - 1))
+			want.append(v.hash())
+			want.append(int(v.is_absolute_path()))
+			want.append(int(v.is_relative_path()))
+			want.append(int(v.is_valid_ascii_identifier()))
+			want.append(int(v.is_valid_identifier()))
+			want.append(int(v.is_valid_hex_number(false)))
+			want.append(int(v.is_valid_hex_number(true)))
+			want.append(int(v.is_valid_filename()))
+			want.append(v.hex_to_int())
+			want.append(v.bin_to_int())
+	var got: PackedInt64Array = b2.replaced_scalars(texts)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_scalars gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	for i: int in want.size():
+		if got[i] != want[i]:
+			print("FAIL: Bag.replaced_scalars on %s, read %d, gave %d, not %d" % [texts[i / 24], i % 24, got[i], want[i]])
+			return 1
+	return 0
+
+
+# The PackedByteArray decodes, from Bag.replaced_decodes, against the engine's methods called from
+# GDScript at every offset from one before the first byte to one past the last: of an empty array,
+# of 23 mixed bytes, and of every 16-bit pattern in turn, which covers every half float. Returns 1
+# on a mismatch.
+func _check_replaced_decodes(b2: Bag) -> int:
+	var mixed: PackedByteArray = []
+	for i: int in 23:
+		mixed.append((i * 151 + 77) & 0xff)
+	var halves: PackedByteArray = []
+	halves.resize(2 * 65536)
+	for h: int in 65536:
+		halves.encode_u16(2 * h, h)
+	for bytes: PackedByteArray in [PackedByteArray(), mixed, halves]:
+		var want: PackedInt64Array = []
+		var bits: PackedByteArray = []
+		bits.resize(8)
+		for at: int in range(-1, bytes.size() + 1):
+			want.append(bytes.decode_u8(at))
+			want.append(bytes.decode_s8(at))
+			want.append(bytes.decode_u16(at))
+			want.append(bytes.decode_s16(at))
+			want.append(bytes.decode_u32(at))
+			want.append(bytes.decode_s32(at))
+			want.append(bytes.decode_u64(at))
+			want.append(bytes.decode_s64(at))
+			for f: float in [bytes.decode_half(at), bytes.decode_float(at), bytes.decode_double(at)]:
+				bits.encode_double(0, f)
+				want.append(bits.decode_s64(0))
+		var got: PackedInt64Array = b2.replaced_decodes(bytes)
+		if got.size() != want.size():
+			print("FAIL: Bag.replaced_decodes gave %d values, not %d" % [got.size(), want.size()])
+			return 1
+		for i: int in want.size():
+			if got[i] != want[i]:
+				print("FAIL: Bag.replaced_decodes of %d bytes at offset %d, read %d, gave %d, not %d" % [bytes.size(), i / 11 - 1, i % 11, got[i], want[i]])
+				return 1
+	return 0
+
+
+# What Arrays and Dictionaries say of their typing and read-only state, from
+# Bag.replaced_container_flags, against the engine's methods called from GDScript. Returns 1 on a
+# mismatch.
+func _check_replaced_container_flags(b2: Bag) -> int:
+	var typed_ints: Array[int] = [1, 2]
+	var typed_nodes: Array[Node] = []
+	var typed_names: Array[StringName] = [&"a"]
+	var locked: Array = [1]
+	locked.make_read_only()
+	var locked_typed: Array[float] = [0.5]
+	locked_typed.make_read_only()
+	var by_name: Dictionary[String, int] = {"a": 1}
+	var keyed: Dictionary[int, Variant] = {}
+	var valued: Dictionary[Variant, Node] = {}
+	var locked_dict: Dictionary = {1: 2}
+	locked_dict.make_read_only()
+	var locked_typed_dict: Dictionary[StringName, Vector2] = {}
+	locked_typed_dict.make_read_only()
+	var arrays: Array = [[], [1, "a"], typed_ints, typed_nodes, typed_names, locked, locked_typed]
+	var dicts: Array = [{}, {1: 2}, by_name, keyed, valued, locked_dict, locked_typed_dict]
+	for i: int in arrays.size():
+		var a: Array = arrays[i]
+		var d: Dictionary = dicts[i]
+		var want: PackedInt64Array = [int(a.is_typed()), a.get_typed_builtin(), int(a.is_read_only()),
+			int(d.is_typed()), int(d.is_typed_key()), int(d.is_typed_value()),
+			d.get_typed_key_builtin(), d.get_typed_value_builtin(), int(d.is_read_only())]
+		var got: PackedInt64Array = b2.replaced_container_flags(a, d)
+		if got != want:
+			print("FAIL: Bag.replaced_container_flags of pair %d gave %s, not %s" % [i, got, want])
+			return 1
 	return 0
 
 

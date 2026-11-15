@@ -128,6 +128,9 @@ register_extras :: proc() {
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
+	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
+	godot.method(b, "replaced_decodes", bag_replaced_decodes, {"bytes"})
+	godot.method(b, "replaced_container_flags", bag_replaced_container_flags, {"a", "d"})
 	godot.method(b, "replaced_paths", bag_replaced_paths, {"texts"})
 	godot.method(b, "name_copies_counted", bag_name_copies_counted, {"texts"})
 	godot.method(b, "string_copies_counted", bag_string_copies_counted, {"texts"})
@@ -971,6 +974,95 @@ bag_replaced_numbers :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godo
 		}
 		for v in r { godot.packed_int64_array_append(&out, v) }
 	}
+	return out
+}
+
+// The String scalar reads on each of `texts`, then the same through the StringName of it:
+// unicode_at of the first and last character, hash, is_absolute_path, is_relative_path,
+// is_valid_ascii_identifier, is_valid_identifier, is_valid_hex_number without and with the prefix,
+// is_valid_filename, hex_to_int and bin_to_int, twelve per text. test.gd builds the same array from
+// the engine's methods.
+bag_replaced_scalars :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godot.PackedInt64Array {
+	texts := texts
+	out := godot.packed_int64_array_new()
+	for &t in godot.packed_read_string(&texts) {
+		n := godot.string_name_new_from_string(t)
+		defer godot.destroy[.STRING_NAME](&n)
+		last := godot.string_length(&t) - 1
+		r := [24]i64{
+			godot.string_unicode_at(&t, 0),
+			godot.string_unicode_at(&t, last),
+			godot.string_hash(&t),
+			i64(godot.string_is_absolute_path(&t)),
+			i64(godot.string_is_relative_path(&t)),
+			i64(godot.string_is_valid_ascii_identifier(&t)),
+			i64(godot.string_is_valid_identifier(&t)),
+			i64(godot.string_is_valid_hex_number(&t, false)),
+			i64(godot.string_is_valid_hex_number(&t, true)),
+			i64(godot.string_is_valid_filename(&t)),
+			godot.string_hex_to_int(&t),
+			godot.string_bin_to_int(&t),
+			godot.string_name_unicode_at(&n, 0),
+			godot.string_name_unicode_at(&n, last),
+			godot.string_name_hash(&n),
+			i64(godot.string_name_is_absolute_path(&n)),
+			i64(godot.string_name_is_relative_path(&n)),
+			i64(godot.string_name_is_valid_ascii_identifier(&n)),
+			i64(godot.string_name_is_valid_identifier(&n)),
+			i64(godot.string_name_is_valid_hex_number(&n, false)),
+			i64(godot.string_name_is_valid_hex_number(&n, true)),
+			i64(godot.string_name_is_valid_filename(&n)),
+			godot.string_name_hex_to_int(&n),
+			godot.string_name_bin_to_int(&n),
+		}
+		for v in r { godot.packed_int64_array_append(&out, v) }
+	}
+	return out
+}
+
+// Every PackedByteArray decode at each offset of `bytes` from one before the first to one past the
+// last: u8, s8, u16, s16, u32, s32, u64, s64, then the bits of half, float and double, eleven per
+// offset. test.gd builds the same array from the engine's methods.
+bag_replaced_decodes :: proc(self: ^Bag, bytes: godot.PackedByteArray) -> godot.PackedInt64Array {
+	bytes := bytes
+	out := godot.packed_int64_array_new()
+	for at in -1 ..= godot.packed_byte_array_size(&bytes) {
+		r := [11]i64{
+			godot.packed_byte_array_decode_u8(&bytes, at),
+			godot.packed_byte_array_decode_s8(&bytes, at),
+			godot.packed_byte_array_decode_u16(&bytes, at),
+			godot.packed_byte_array_decode_s16(&bytes, at),
+			godot.packed_byte_array_decode_u32(&bytes, at),
+			godot.packed_byte_array_decode_s32(&bytes, at),
+			godot.packed_byte_array_decode_u64(&bytes, at),
+			godot.packed_byte_array_decode_s64(&bytes, at),
+			transmute(i64)godot.packed_byte_array_decode_half(&bytes, at),
+			transmute(i64)godot.packed_byte_array_decode_float(&bytes, at),
+			transmute(i64)godot.packed_byte_array_decode_double(&bytes, at),
+		}
+		for v in r { godot.packed_int64_array_append(&out, v) }
+	}
+	return out
+}
+
+// What `a` and `d` say of themselves: Array is_typed, get_typed_builtin and is_read_only, then
+// Dictionary is_typed, is_typed_key, is_typed_value, get_typed_key_builtin,
+// get_typed_value_builtin and is_read_only. test.gd builds the same array from the engine's methods.
+bag_replaced_container_flags :: proc(self: ^Bag, a: godot.Array, d: godot.Dictionary) -> godot.PackedInt64Array {
+	a, d := a, d
+	out := godot.packed_int64_array_new()
+	r := [9]i64{
+		i64(godot.array_is_typed(&a)),
+		godot.array_get_typed_builtin(&a),
+		i64(godot.array_is_read_only(&a)),
+		i64(godot.dictionary_is_typed(&d)),
+		i64(godot.dictionary_is_typed_key(&d)),
+		i64(godot.dictionary_is_typed_value(&d)),
+		godot.dictionary_get_typed_key_builtin(&d),
+		godot.dictionary_get_typed_value_builtin(&d),
+		i64(godot.dictionary_is_read_only(&d)),
+	}
+	for v in r { godot.packed_int64_array_append(&out, v) }
 	return out
 }
 
