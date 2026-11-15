@@ -258,6 +258,12 @@
 		<method name="replaced_path_join">
 			<description>path_join of [code]path[/code] to [code]s[/code], then the same through the StringName method on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
+		<method name="replaced_texts">
+			<description>indent, dedent, strip_escapes and get_slicec of [code]s[/code], the same through the StringName methods on [code]n[/code], then the bigrams of [code]s[/code] and of [code]n[/code]. test.gd builds the same array from the engine's.</description>
+		</method>
+		<method name="replaced_similarity">
+			<description>similarity of [code]s[/code] to [code]text[/code], then the same through the StringName method on [code]n[/code].</description>
+		</method>
 		<method name="replaced_pads">
 			<description>lpad, rpad, pad_zeros and pad_decimals of [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>

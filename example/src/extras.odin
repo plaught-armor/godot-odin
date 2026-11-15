@@ -135,6 +135,8 @@ register_extras :: proc() {
 	godot.method(b, "replaced_file_paths", bag_replaced_file_paths, {"s", "n"})
 	godot.method(b, "replaced_naturals", bag_replaced_naturals, {"s", "n", "to"})
 	godot.method(b, "replaced_path_join", bag_replaced_path_join, {"s", "n", "path"})
+	godot.method(b, "replaced_texts", bag_replaced_texts, {"s", "n", "prefix", "delimiter", "slice"})
+	godot.method(b, "replaced_similarity", bag_replaced_similarity, {"s", "n", "text"})
 	godot.method(b, "replaced_pads", bag_replaced_pads, {"s", "n", "min_length", "character", "digits"})
 	godot.method(b, "replaced_char_sets", bag_replaced_char_sets, {"s", "n", "keys", "with"})
 	godot.method(b, "replaced_edits", bag_replaced_edits, {"s", "n", "count", "position", "what", "chars", "key", "with"})
@@ -825,6 +827,42 @@ bag_replaced_path_join :: proc(self: ^Bag, s: godot.String, n: godot.StringName,
 		godot.packed_string_array_append(&out, v)
 		godot.destroy[.STRING](&v)
 	}
+	return out
+}
+
+// indent, dedent, strip_escapes and get_slicec of `s`, the same through the StringName methods on
+// `n`, then the bigrams of `s` and of `n`. test.gd builds the same array from the engine's.
+bag_replaced_texts :: proc(self: ^Bag, s: godot.String, n: godot.StringName, prefix: godot.String, delimiter: i64, slice: i64) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [8]godot.String {
+		godot.string_indent(&s, prefix),
+		godot.string_dedent(&s),
+		godot.string_strip_escapes(&s),
+		godot.string_get_slicec(&s, delimiter, slice),
+		godot.string_name_indent(&n, prefix),
+		godot.string_name_dedent(&n),
+		godot.string_name_strip_escapes(&n),
+		godot.string_name_get_slicec(&n, delimiter, slice),
+	}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
+	pairs := [2]godot.PackedStringArray{godot.string_bigrams(&s), godot.string_name_bigrams(&n)}
+	for &p in pairs {
+		godot.packed_string_array_append_array(&out, p)
+		godot.destroy[.PACKED_STRING_ARRAY](&p)
+	}
+	return out
+}
+
+// similarity of `s` to `text`, then the same through the StringName method on `n`.
+bag_replaced_similarity :: proc(self: ^Bag, s: godot.String, n: godot.StringName, text: godot.String) -> godot.PackedFloat64Array {
+	s, n := s, n
+	out := godot.packed_float64_array_new()
+	godot.packed_float64_array_append(&out, godot.string_similarity(&s, text))
+	godot.packed_float64_array_append(&out, godot.string_name_similarity(&n, text))
 	return out
 }
 

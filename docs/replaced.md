@@ -73,6 +73,12 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.rpad` | `string_rpad` | Godot 4.7-stable | 55 ns | 20 ns |
 | `String.pad_zeros` | `string_pad_zeros` | Godot 4.7-stable | 63 ns | 12 ns |
 | `String.pad_decimals` | `string_pad_decimals` | Godot 4.7-stable | 68 ns | 12 ns |
+| `String.indent` | `string_indent` | Godot 4.7-stable | 231 ns | 51 ns |
+| `String.dedent` | `string_dedent` | Godot 4.7-stable | 198 ns | 37 ns |
+| `String.strip_escapes` | `string_strip_escapes` | Godot 4.7-stable | 263 ns | 20 ns |
+| `String.get_slicec` | `string_get_slicec` | Godot 4.7-stable | 28 ns | 19 ns |
+| `String.bigrams` | `string_bigrams` | Godot 4.7-stable | 287 ns | 197 ns |
+| `String.similarity` | `string_similarity` | Godot 4.7-stable | 82 ns | 79 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -167,6 +173,18 @@ timed on `12.5`: padded to 10 characters with `0`, to 6 digits and to 4 decimals
 `_check_replaced_pads` checks all four, as String and as StringName, on 15 fixed Strings with 9
 lengths and 5 paddings, on a number past 32 bits and on 20000 seeded random rounds. A digit count
 near the 32-bit limits is not checked, since the engine itself overflows and crashes on one.
+
+`string_indent` counts the lines that get the prefix and writes the result once; `string_dedent`
+and `string_strip_escapes` write into storage as long as the String and lower its stored length,
+as `string_remove_char` does. The engine appends to its result a line or a character at a time.
+The three are timed on four lines of code with tabs, and on those 40 times over (160 lines: 6804
+ns to 1455 ns, 5334 ns to 1154 ns and 5387 ns to 470 ns). `string_get_slicec` is timed taking
+part 3 of the scene path split on `/`, `string_bigrams` on `level_01.tscn`, which costs one
+allocation for each pair in either, and `string_similarity` on the path against that file name:
+both walk the same pairs, so that one is a tie.
+`_check_replaced_texts` checks all six, as String and as StringName, on 18 fixed Strings with 4
+prefixes, 4 delimiters and 5 parts, on each pair of them for similarity, on numbers past 32 bits
+and on 20000 seeded random rounds.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

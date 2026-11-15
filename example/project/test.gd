@@ -965,6 +965,55 @@ func _check_replaced_pads(b2: Bag) -> int:
 	return failures
 
 
+# Compares Bag.replaced_texts and Bag.replaced_similarity with the engine's indent, dedent,
+# strip_escapes, get_slicec, bigrams and similarity of `s`, as String and as StringName.
+func _check_replaced_text(b2: Bag, s: String, prefix: String, delimiter: int, slice: int, text: String) -> int:
+	var n := StringName(s)
+	var want := PackedStringArray([s.indent(prefix), s.dedent(), s.strip_escapes(), s.get_slicec(delimiter, slice),
+			n.indent(prefix), n.dedent(), n.strip_escapes(), n.get_slicec(delimiter, slice)])
+	want.append_array(s.bigrams())
+	want.append_array(n.bigrams())
+	var got: PackedStringArray = b2.replaced_texts(s, n, prefix, delimiter, slice)
+	var want_similarity := PackedFloat64Array([s.similarity(text), n.similarity(text)])
+	var got_similarity: PackedFloat64Array = b2.replaced_similarity(s, n, text)
+	if got == want and got_similarity == want_similarity:
+		return 0
+	print("FAIL: Bag.replaced_texts(%s, %s, %d, %d) gave %s, not %s; similarity to %s gave %s, not %s" % [s.c_escape(),
+			prefix.c_escape(), delimiter, slice, got, want, text.c_escape(), got_similarity, want_similarity])
+	return 1
+
+
+# _check_replaced_text on fixed Strings with every fixed prefix, delimiter and part, with each
+# other for similarity and with numbers past 32 bits, then on 20000 seeded random rounds over
+# line ends, blanks, `/` and two letters. The seed is fixed so a failure repeats.
+func _check_replaced_texts(b2: Bag) -> int:
+	var failures := 0
+	var fixed: Array[String] = ["", "a", "ab", "abc", "a\nb", "\n", "\n\n", "\ta\n\tb", "\t\ta\n\tb\n", "  a\n   b\n c",
+			"a\n\n\tb\n", "\t\n\ta", " \r\n\tx", "héllo\twörld", "a/b/c", "/a//b/", "\u0001a\u001fb ", "x\n"]
+	for s: String in fixed:
+		for prefix: String in ["", "\t", "  ", "> "]:
+			# 47 is `/`, 10 the line end, 97 `a`; no String holds a 0.
+			for delimiter: int in [47, 10, 97, 0]:
+				for slice: int in [-1, 0, 1, 2, 5]:
+					failures += _check_replaced_text(b2, s, prefix, delimiter, slice, s)
+		for text: String in fixed:
+			failures += _check_replaced_text(b2, s, "\t", 47, 1, text)
+		# The engine takes the low 32 bits of each number.
+		failures += _check_replaced_text(b2, s, "\t", (1 << 32) + 47, (1 << 32) + 1, "ab")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261126
+	var alphabet: Array[String] = ["\n", "\t", " ", "a", "b", "/"]
+	for round: int in 20000:
+		var parts: Array[String] = ["", "", ""]
+		var most: Array[int] = [12, 2, 6]
+		for p: int in 3:
+			for i: int in rng.randi_range(0, most[p]):
+				parts[p] += alphabet[rng.randi_range(0, 5)]
+		var delimiter := alphabet[rng.randi_range(0, 5)].unicode_at(0)
+		failures += _check_replaced_text(b2, parts[0], parts[1], delimiter, rng.randi_range(-1, 5), parts[2])
+	return failures
+
+
 # Compares Bag.replaced_char_sets with the engine's replace_chars and remove_chars of `s`, as
 # String and as StringName.
 func _check_replaced_char_set(b2: Bag, s: String, keys: String, with: int) -> int:
@@ -1154,6 +1203,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 	failures += _check_replaced_edits(b2)
 	failures += _check_replaced_char_sets(b2)
 	failures += _check_replaced_pads(b2)
+	failures += _check_replaced_texts(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

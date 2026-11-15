@@ -1267,6 +1267,149 @@ string_remove_chars :: proc "contextless" (self: ^String, chars: String) -> (out
 	return
 }
 
+// `self` with `prefix` before each line that is not empty: the engine's `indent`. The caller
+// destroys the result.
+string_indent :: proc "contextless" (self: ^String, prefix: String) -> (out: String) {
+	a, p := string_read(self), string_chars(prefix)
+	// The lines that get the prefix: those with a character before their line end.
+	lines, start := 0, 0
+	for c, i in a {
+		if c != '\n' { continue }
+		lines += int(i != start)
+		start = i + 1
+	}
+	lines += int(start != len(a))
+	if lines == 0 || len(p) == 0 { return string_copy(self) }
+	n := len(a) + lines * len(p)
+	w := string_storage(&out, n + 1)
+	j := 0
+	// Each round copies one line with its line end, so there are at most `len(a)` rounds.
+	for start = 0; start < len(a); {
+		end := runes_index(a, '\n', start)
+		stop := len(a) if end < 0 else end + 1
+		if end != start {
+			copy(w[j:][:len(p)], p)
+			j += len(p)
+		}
+		copy(w[j:][:stop - start], a[start:stop])
+		j += stop - start
+		start = stop
+	}
+	w[n] = 0
+	return
+}
+
+// `self` without the indentation of its first line with text, taken off each line as far as it
+// matches; lines without text keep only their line end: the engine's `dedent`. The caller
+// destroys the result.
+string_dedent :: proc "contextless" (self: ^String) -> (out: String) {
+	a := string_read(self)
+	if len(a) == 0 { return }
+	// The result is never longer than `self`.
+	w := string_storage(&out, len(a) + 1)
+	indent: []rune
+	has_indent, has_text := false, false
+	line_start, indent_stop, j := 0, -1, 0
+	for c, i in a {
+		if c == '\n' {
+			if has_text { j += copy(w[j:][:i - indent_stop], a[indent_stop:i]) }
+			w[j] = '\n'
+			j += 1
+			has_text = false
+			line_start = i + 1
+			indent_stop = -1
+			continue
+		}
+		if has_text { continue }
+		// The first character past a space in the engine's sense starts the text of the line.
+		if u32(c) > 32 {
+			has_text = true
+			if !has_indent {
+				has_indent = true
+				indent = a[line_start:i]
+				indent_stop = i
+			}
+		}
+		if has_indent && indent_stop < 0 {
+			k := i - line_start
+			if k >= len(indent) || c != indent[k] { indent_stop = i }
+		}
+	}
+	if has_text { j += copy(w[j:][:len(a) - indent_stop], a[indent_stop:]) }
+	w[j] = 0
+	string_storage_trim(&out, j + 1)
+	return
+}
+
+// `self` without its characters below 32, the space: the engine's `strip_escapes`. The caller
+// destroys the result.
+string_strip_escapes :: proc "contextless" (self: ^String) -> (out: String) {
+	a := string_read(self)
+	first := -1
+	for c, i in a {
+		if u32(c) < 32 { first = i; break }
+	}
+	if first < 0 { return string_copy(self) }
+	w := string_storage(&out, len(a))
+	copy(w[:first], a[:first])
+	j := first
+	for c in a[first + 1:] {
+		w[j] = c
+		j += int(u32(c) >= 32)
+	}
+	w[j] = 0
+	string_storage_trim(&out, j + 1)
+	return
+}
+
+// Part `slice` of `self` split on the character `delimiter`, counted from 0; empty when `self`
+// is empty, `slice` is negative or there are fewer parts: the engine's `get_slicec`. The caller
+// destroys the result.
+string_get_slicec :: proc "contextless" (self: ^String, delimiter: i64, slice: i64) -> String {
+	a := string_read(self)
+	k, want := rune(u32(delimiter)), i64(i32(slice))
+	if len(a) == 0 || want < 0 { return {} }
+	from := 0
+	// Each round passes one delimiter, so there are at most as many rounds as characters, and
+	// one more for the last part.
+	for count in 0 ..= i64(len(a)) {
+		end := runes_index(a, k, from)
+		if end < 0 { end = len(a) }
+		if count == want { return substr_of(self, i64(from), i64(end - from)) }
+		if end == len(a) { break }
+		from = end + 1
+	}
+	return {}
+}
+
+// Each pair of neighbouring characters of `self`, in order: the engine's `bigrams`. The caller
+// destroys the result.
+string_bigrams :: proc "contextless" (self: ^String) -> (out: PackedStringArray) {
+	a := string_read(self)
+	out = packed_string_array_new()
+	if len(a) < 2 { return }
+	packed_string_array_resize(&out, i64(len(a) - 1))
+	slots := packed_write_string(&out)
+	for i in 0 ..< len(a) - 1 { string_fill(&slots[i], a[i:i + 2]) }
+	return
+}
+
+// How alike `self` and `text` are, from 0 to 1: twice the pairs of neighbouring characters of
+// `self` that are also in `text`, over the pairs of both: the engine's `similarity`, worked out
+// in 32-bit floats as there.
+string_similarity :: proc "contextless" (self: ^String, text: String) -> f64 {
+	text := text
+	if string_equal(self, &text) { return 1 }
+	a, b := string_read(self), string_chars(text)
+	if len(a) < 2 || len(b) < 2 { return 0 }
+	inter := 0
+	// Each pair of `self` is searched for in `text` as `find` searches.
+	for i in 0 ..< len(a) - 1 {
+		inter += int(find_forward(b, 0, len(b) - 2, rune_needle_of(a[i:i + 2], false), false) >= 0)
+	}
+	return f64(2 * f32(inter) / f32(len(a) + len(b) - 2))
+}
+
 // Whether `c` is one of `set`.
 runes_has :: proc "contextless" (set: []rune, c: rune) -> bool {
 	for s in set {

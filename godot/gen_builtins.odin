@@ -47,32 +47,6 @@ string_length :: proc "contextless" (self: ^String) -> i64 {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_get_slicec :: proc "contextless" (self: ^String, delimiter: i64, slice: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "get_slicec", 787537301) }
-	__a_delimiter := delimiter
-	__a_slice := slice
-	__args := [2]gde.ConstTypePtr{&__a_delimiter, &__a_slice}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_bigrams :: proc "contextless" (self: ^String) -> PackedStringArray {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "bigrams", 747180633) }
-	__ret: PackedStringArray
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_similarity :: proc "contextless" (self: ^String, text: String) -> f64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "similarity", 2697460964) }
-	__a_text := transmute([1]uintptr)text
-	__args := [1]gde.ConstTypePtr{&__a_text}
-	__ret: f64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_format :: proc "contextless" (self: ^String, values: Variant, placeholder: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "format", 3212199029) }
@@ -113,13 +87,6 @@ string_join :: proc "contextless" (self: ^String, parts: PackedStringArray) -> S
 	__fn(self, &__args[0], &__ret, 1)
 	return __ret
 }
-string_strip_escapes :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "strip_escapes", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
 string_unicode_at :: proc "contextless" (self: ^String, at: i64) -> i64 {
 	if string_layout_known { if c := string_read(self); at >= 0 && at < i64(len(c)) { return i64(u32(c[at])) } }
 	@(static) __fn: gde.PtrBuiltInMethod
@@ -128,22 +95,6 @@ string_unicode_at :: proc "contextless" (self: ^String, at: i64) -> i64 {
 	__args := [1]gde.ConstTypePtr{&__a_at}
 	__ret: i64
 	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_indent :: proc "contextless" (self: ^String, prefix: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "indent", 3134094431) }
-	__a_prefix := transmute([1]uintptr)prefix
-	__args := [1]gde.ConstTypePtr{&__a_prefix}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_dedent :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "dedent", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
 	return __ret
 }
 string_hash :: proc "contextless" (self: ^String) -> i64 {
@@ -625,6 +576,7 @@ string_name_get_slice :: proc "contextless" (self: ^StringName, delimiter: Strin
 	return __ret
 }
 string_name_get_slicec :: proc "contextless" (self: ^StringName, delimiter: i64, slice: i64) -> String {
+	if dict_layout_known { return string_get_slicec(name_text(self), delimiter, slice) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_slicec", 787537301) }
 	__a_delimiter := delimiter
@@ -773,6 +725,7 @@ string_name_is_subsequence_ofn :: proc "contextless" (self: ^StringName, text: S
 	return __ret != 0
 }
 string_name_bigrams :: proc "contextless" (self: ^StringName) -> PackedStringArray {
+	if dict_layout_known { return string_bigrams(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "bigrams", 747180633) }
 	__ret: PackedStringArray
@@ -780,6 +733,7 @@ string_name_bigrams :: proc "contextless" (self: ^StringName) -> PackedStringArr
 	return __ret
 }
 string_name_similarity :: proc "contextless" (self: ^StringName, text: String) -> f64 {
+	if dict_layout_known { return string_similarity(name_text(self), text) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "similarity", 2697460964) }
 	__a_text := transmute([1]uintptr)text
@@ -1032,6 +986,7 @@ string_name_strip_edges :: proc "contextless" (self: ^StringName, left: bool, ri
 	return __ret
 }
 string_name_strip_escapes :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_strip_escapes(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "strip_escapes", 3942272618) }
 	__ret: String
@@ -1095,6 +1050,7 @@ string_name_unicode_at :: proc "contextless" (self: ^StringName, at: i64) -> i64
 	return __ret
 }
 string_name_indent :: proc "contextless" (self: ^StringName, prefix: String) -> String {
+	if dict_layout_known { return string_indent(name_text(self), prefix) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "indent", 3134094431) }
 	__a_prefix := transmute([1]uintptr)prefix
@@ -1104,6 +1060,7 @@ string_name_indent :: proc "contextless" (self: ^StringName, prefix: String) -> 
 	return __ret
 }
 string_name_dedent :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_dedent(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "dedent", 3942272618) }
 	__ret: String

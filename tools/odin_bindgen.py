@@ -208,13 +208,14 @@ IN_PLACE = {
            ("replace_char", "key, with"), ("remove_char", "what"),
            ("replace_chars", "keys, with"), ("remove_chars", "chars"),
            ("lpad", "min_length, character"), ("rpad", "min_length, character"),
-           ("pad_zeros", "digits"), ("pad_decimals", "digits"))},
+           ("pad_zeros", "digits"), ("pad_decimals", "digits"),
+           ("indent", "prefix"), ("get_slicec", "delimiter, slice"), ("similarity", "text"))},
     ("StringName", "to_upper"): "\tif dict_layout_known { return string_to_upper(name_text(self)) }\n",
     ("StringName", "to_lower"): "\tif dict_layout_known { return string_to_lower(name_text(self)) }\n",
     **{("StringName", m): f"\tif dict_layout_known {{ return string_{m}(name_text(self)) }}\n"
        for m in ("capitalize", "to_camel_case", "to_pascal_case", "to_snake_case", "to_kebab_case",
                  "get_extension", "get_basename", "get_file", "get_base_dir", "simplify_path",
-                 "reverse")},
+                 "reverse", "dedent", "strip_escapes", "bigrams")},
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
@@ -274,6 +275,12 @@ REPLACED = {
     ("String", "rpad"),
     ("String", "pad_zeros"),
     ("String", "pad_decimals"),
+    ("String", "indent"),
+    ("String", "dedent"),
+    ("String", "strip_escapes"),
+    ("String", "get_slicec"),
+    ("String", "bigrams"),
+    ("String", "similarity"),
     ("String", "get_extension"),
     ("String", "get_basename"),
     ("String", "get_file"),

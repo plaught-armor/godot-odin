@@ -2091,6 +2091,24 @@ String_Op :: enum i64 {
 	PAD_ZEROS, // string_pad_zeros of the same
 	PAD_DECIMALS_CALL, // the engine's String.pad_decimals of "12.5" to 4 digits, the result destroyed
 	PAD_DECIMALS, // string_pad_decimals of the same
+	INDENT_CALL, // the engine's String.indent of four lines of code with a tab, the result destroyed
+	INDENT, // string_indent of the same
+	DEDENT_CALL, // the engine's String.dedent of the four lines, the result destroyed
+	DEDENT, // string_dedent of the same
+	STRIP_ESCAPES_CALL, // the engine's String.strip_escapes of the four lines, the result destroyed
+	STRIP_ESCAPES, // string_strip_escapes of the same
+	GET_SLICEC_CALL, // the engine's String.get_slicec of part 3 of the scene path split on `/`, the result destroyed
+	GET_SLICEC, // string_get_slicec of the same
+	INDENT_LONG_CALL, // the engine's String.indent of the four lines 40 times over, the result destroyed
+	INDENT_LONG, // string_indent of the same
+	DEDENT_LONG_CALL, // the engine's String.dedent of the four lines 40 times over, the result destroyed
+	DEDENT_LONG, // string_dedent of the same
+	STRIP_ESCAPES_LONG_CALL, // the engine's String.strip_escapes of the four lines 40 times over, the result destroyed
+	STRIP_ESCAPES_LONG, // string_strip_escapes of the same
+	BIGRAMS_CALL, // the engine's String.bigrams of the file name, the result destroyed
+	BIGRAMS, // string_bigrams of the same
+	SIMILARITY_CALL, // the engine's String.similarity of the scene path to the file name
+	SIMILARITY, // string_similarity of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2127,6 +2145,11 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	number, zero := godot.string_of("12.5"), godot.string_of("0")
 	defer godot.destroy[.STRING](&number)
 	defer godot.destroy[.STRING](&zero)
+	code, tab := godot.string_of("\t\tif ready:\n\t\t\tstart()\n\n\t\treturn total\n"), godot.string_of("\t")
+	code_long := godot.string_repeat(&code, 40)
+	defer godot.destroy[.STRING](&code)
+	defer godot.destroy[.STRING](&tab)
+	defer godot.destroy[.STRING](&code_long)
 	long := godot.string_repeat(sc, 40)
 	defer godot.destroy[.STRING](&long)
 	defer godot.destroy[.STRING](&keys)
@@ -2490,6 +2513,74 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}
+	case .INDENT_CALL, .DEDENT_CALL, .STRIP_ESCAPES_CALL, .GET_SLICEC_CALL, .INDENT_LONG_CALL, .DEDENT_LONG_CALL,
+	     .STRIP_ESCAPES_LONG_CALL:
+		x, y: i64 = '/', 3
+		args := [2]gde.ConstTypePtr{&x, &y}
+		name: cstring = "get_slicec"
+		hash: i64 = 787537301
+		argc: i32 = 2
+		text := sc
+		#partial switch kind {
+		case .INDENT_CALL, .INDENT_LONG_CALL: name, hash, argc, args[0] = "indent", 3134094431, 1, &tab
+		case .DEDENT_CALL, .DEDENT_LONG_CALL: name, hash, argc = "dedent", 3942272618, 0
+		case .STRIP_ESCAPES_CALL, .STRIP_ESCAPES_LONG_CALL: name, hash, argc = "strip_escapes", 3942272618, 0
+		}
+		#partial switch kind {
+		case .INDENT_CALL, .DEDENT_CALL, .STRIP_ESCAPES_CALL: text = &code
+		case .INDENT_LONG_CALL, .DEDENT_LONG_CALL, .STRIP_ESCAPES_LONG_CALL: text = &code_long
+		}
+		fn := godot.builtin_method(.STRING, name, hash)
+		for _ in 0 ..< n {
+			r: godot.String
+			fn(intrinsics.volatile_load(&text), &args[0], &r, argc)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .INDENT, .DEDENT, .STRIP_ESCAPES, .GET_SLICEC, .INDENT_LONG, .DEDENT_LONG, .STRIP_ESCAPES_LONG:
+		text := sc
+		#partial switch kind {
+		case .INDENT, .DEDENT, .STRIP_ESCAPES: text = &code
+		case .INDENT_LONG, .DEDENT_LONG, .STRIP_ESCAPES_LONG: text = &code_long
+		}
+		for _ in 0 ..< n {
+			s := intrinsics.volatile_load(&text)
+			r: godot.String
+			#partial switch kind {
+			case .INDENT, .INDENT_LONG: r = godot.string_indent(s, tab)
+			case .DEDENT, .DEDENT_LONG: r = godot.string_dedent(s)
+			case .STRIP_ESCAPES, .STRIP_ESCAPES_LONG: r = godot.string_strip_escapes(s)
+			case .GET_SLICEC: r = godot.string_get_slicec(s, '/', 3)
+			}
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .BIGRAMS_CALL:
+		fn := godot.builtin_method(.STRING, "bigrams", 747180633)
+		text := &leaf
+		for _ in 0 ..< n {
+			r: godot.PackedStringArray
+			fn(intrinsics.volatile_load(&text), nil, &r, 0)
+			godot.destroy[.PACKED_STRING_ARRAY](&r)
+		}
+	case .BIGRAMS:
+		text := &leaf
+		for _ in 0 ..< n {
+			r := godot.string_bigrams(intrinsics.volatile_load(&text))
+			godot.destroy[.PACKED_STRING_ARRAY](&r)
+		}
+	case .SIMILARITY_CALL:
+		fn := godot.builtin_method(.STRING, "similarity", 2697460964)
+		text := sc
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{&leaf}
+			r: f64
+			fn(intrinsics.volatile_load(&text), &args[0], &r, 1)
+			sum += i64(r * 100)
+		}
+	case .SIMILARITY:
+		text := sc
+		for _ in 0 ..< n { sum += i64(godot.string_similarity(intrinsics.volatile_load(&text), leaf) * 100) }
 	case .LPAD_CALL, .RPAD_CALL, .PAD_ZEROS_CALL, .PAD_DECIMALS_CALL:
 		x: i64 = 10
 		args := [2]gde.ConstTypePtr{&x, &zero}
