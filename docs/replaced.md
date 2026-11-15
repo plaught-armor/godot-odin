@@ -66,7 +66,9 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.insert` | `string_insert` | Godot 4.7-stable | 27 ns | 17 ns |
 | `String.erase` | `string_erase` | Godot 4.7-stable | 67 ns | 14 ns |
 | `String.replace_char` | `string_replace_char` | Godot 4.7-stable | 34 ns | 19 ns |
-| `String.remove_char` | `string_remove_char` | Godot 4.7-stable | 35 ns | 27 ns |
+| `String.remove_char` | `string_remove_char` | Godot 4.7-stable | 28 ns | 16 ns |
+| `String.replace_chars` | `string_replace_chars` | Godot 4.7-stable | 52 ns | 32 ns |
+| `String.remove_chars` | `string_remove_chars` | Godot 4.7-stable | 44 ns | 34 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -133,8 +135,9 @@ above, with fixed paths of `.` and `..` in each place and paths either side of 2
 
 `string_repeat`, `string_reverse`, `string_insert`, `string_erase`, `string_replace_char` and
 `string_remove_char` each write the result once into storage of the final size; the engine's
-`erase` makes two Strings and joins them, and its `remove_char` allocates for the whole length and
-then shrinks, where `string_remove_char` counts the hits first. A result equal to the String comes
+`erase` makes two Strings and joins them. `string_remove_char` filters in one pass into storage
+made for the whole length and then lowers the stored length, so the result keeps the storage of
+the longer String, where the engine shrinks it. A result equal to the String comes
 back as a copy that shares the storage. The numbers are read as the engine reads them, in 32 bits,
 and the errors the engine prints (a negative `repeat` count, a negative `erase` position or count,
 a `replace_char` to the NUL character) are printed by the same methods here with the same results.
@@ -143,6 +146,14 @@ inserted at 6, with 7 characters erased at 6, and with its three `/` replaced or
 `_check_replaced_edits` checks all six, as String and as StringName, on fixed Strings with counts
 and positions at and past each end, on the refused arguments, on numbers past 32 bits and on
 20000 seeded random rounds.
+
+`string_replace_chars` and `string_remove_chars` are the same two with a String of characters to
+look for, searched for each character as the engine does; a set of one character goes to the
+single-character method, as in the engine. They are timed replacing and removing `/` and `_` in
+the same path, and `remove_char` and `remove_chars` are also benched on that path 40 times over
+(1040 characters: 467 ns to 340 ns and 1192 ns to 977 ns). `_check_replaced_char_sets` checks
+both, as String and as StringName, on every pair of 9 fixed Strings and 11 sets, on longer
+Strings, on the refused NUL replacement and on 20000 seeded random rounds.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

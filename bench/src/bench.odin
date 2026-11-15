@@ -2075,6 +2075,14 @@ String_Op :: enum i64 {
 	REPLACE_CHAR, // string_replace_char of the same
 	REMOVE_CHAR_CALL, // the engine's String.remove_char of '/' from "res://scenes/level_01.tscn", the result destroyed
 	REMOVE_CHAR, // string_remove_char of the same
+	REPLACE_CHARS_CALL, // the engine's String.replace_chars of "/_" by '-' in "res://scenes/level_01.tscn", the result destroyed
+	REPLACE_CHARS, // string_replace_chars of the same
+	REMOVE_CHARS_CALL, // the engine's String.remove_chars of "/_" from "res://scenes/level_01.tscn", the result destroyed
+	REMOVE_CHARS, // string_remove_chars of the same
+	REMOVE_CHARS_LONG_CALL, // the engine's String.remove_chars of "/_" from that path 40 times over, 1040 characters
+	REMOVE_CHARS_LONG, // string_remove_chars of the same
+	REMOVE_CHAR_LONG_CALL, // the engine's String.remove_char of '/' from the same 1040 characters
+	REMOVE_CHAR_LONG, // string_remove_char of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2107,6 +2115,10 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	dir, leaf := godot.string_of("res://scenes"), godot.string_of("level_01.tscn")
 	defer godot.destroy[.STRING](&dir)
 	defer godot.destroy[.STRING](&leaf)
+	keys := godot.string_of("/_")
+	long := godot.string_repeat(sc, 40)
+	defer godot.destroy[.STRING](&long)
+	defer godot.destroy[.STRING](&keys)
 	d := &dir
 	dotted := godot.string_of("res://scenes/../levels/./level_01.tscn")
 	defer godot.destroy[.STRING](&dotted)
@@ -2417,7 +2429,8 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}
-	case .REPEAT_CALL, .REVERSE_CALL, .INSERT_CALL, .ERASE_CALL, .REPLACE_CHAR_CALL, .REMOVE_CHAR_CALL:
+	case .REPEAT_CALL, .REVERSE_CALL, .INSERT_CALL, .ERASE_CALL, .REPLACE_CHAR_CALL, .REMOVE_CHAR_CALL, .REPLACE_CHARS_CALL,
+	     .REMOVE_CHARS_CALL, .REMOVE_CHARS_LONG_CALL, .REMOVE_CHAR_LONG_CALL:
 		x, y: i64 = 6, 7
 		args := [2]gde.ConstTypePtr{&x, &y}
 		name: cstring
@@ -2431,18 +2444,27 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			args[1] = &leaf
 		case .ERASE_CALL: name, hash, argc = "erase", 787537301, 2
 		case .REPLACE_CHAR_CALL: name, hash, argc, x, y = "replace_char", 787537301, 2, '/', '\\'
-		case .REMOVE_CHAR_CALL: name, hash, argc, x = "remove_char", 2162347432, 1, '/'
+		case .REMOVE_CHAR_CALL, .REMOVE_CHAR_LONG_CALL: name, hash, argc, x = "remove_char", 2162347432, 1, '/'
+		case .REPLACE_CHARS_CALL:
+			name, hash, argc, y = "replace_chars", 3535100402, 2, '-'
+			args[0] = &keys
+		case .REMOVE_CHARS_CALL, .REMOVE_CHARS_LONG_CALL:
+			name, hash, argc = "remove_chars", 3134094431, 1
+			args[0] = &keys
 		}
 		fn := godot.builtin_method(.STRING, name, hash)
+		text := &long if kind == .REMOVE_CHARS_LONG_CALL || kind == .REMOVE_CHAR_LONG_CALL else sc
 		for _ in 0 ..< n {
 			r: godot.String
-			fn(intrinsics.volatile_load(&sc), &args[0], &r, argc)
+			fn(intrinsics.volatile_load(&text), &args[0], &r, argc)
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}
-	case .REPEAT, .REVERSE, .INSERT, .ERASE, .REPLACE_CHAR, .REMOVE_CHAR:
+	case .REPEAT, .REVERSE, .INSERT, .ERASE, .REPLACE_CHAR, .REMOVE_CHAR, .REPLACE_CHARS, .REMOVE_CHARS, .REMOVE_CHARS_LONG,
+	     .REMOVE_CHAR_LONG:
+		text := &long if kind == .REMOVE_CHARS_LONG || kind == .REMOVE_CHAR_LONG else sc
 		for _ in 0 ..< n {
-			s := intrinsics.volatile_load(&sc)
+			s := intrinsics.volatile_load(&text)
 			r: godot.String
 			#partial switch kind {
 			case .REPEAT: r = godot.string_repeat(s, 4)
@@ -2450,7 +2472,9 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			case .INSERT: r = godot.string_insert(s, 6, leaf)
 			case .ERASE: r = godot.string_erase(s, 6, 7)
 			case .REPLACE_CHAR: r = godot.string_replace_char(s, '/', '\\')
-			case .REMOVE_CHAR: r = godot.string_remove_char(s, '/')
+			case .REMOVE_CHAR, .REMOVE_CHAR_LONG: r = godot.string_remove_char(s, '/')
+			case .REPLACE_CHARS: r = godot.string_replace_chars(s, keys, '-')
+			case .REMOVE_CHARS, .REMOVE_CHARS_LONG: r = godot.string_remove_chars(s, keys)
 			}
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)

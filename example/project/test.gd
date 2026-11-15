@@ -924,6 +924,53 @@ func _check_replaced_edits(b2: Bag) -> int:
 	return failures
 
 
+# Compares Bag.replaced_char_sets with the engine's replace_chars and remove_chars of `s`, as
+# String and as StringName.
+func _check_replaced_char_set(b2: Bag, s: String, keys: String, with: int) -> int:
+	var n := StringName(s)
+	var want := PackedStringArray([s.replace_chars(keys, with), s.remove_chars(keys), n.replace_chars(keys, with),
+			n.remove_chars(keys)])
+	var got: PackedStringArray = b2.replaced_char_sets(s, n, keys, with)
+	if got == want:
+		return 0
+	print("FAIL: Bag.replaced_char_sets(%s, %s, %d) gave %s, not %s" % [s.c_escape(), keys.c_escape(), with, got, want])
+	return 1
+
+
+# _check_replaced_char_set on every pair of fixed Strings and sets, on the NUL replacement the
+# engine refuses, on a replacement past 32 bits, then on 20000 seeded random rounds. The seed is
+# fixed so a failure repeats.
+func _check_replaced_char_sets(b2: Bag) -> int:
+	var failures := 0
+	var x := "x".unicode_at(0)
+	for s: String in ["", "a", "ab", "aaa", "abab", "abcabc", "héllo wörld", "a\u0000b", "res://scenes/level_01.tscn"]:
+		for keys: String in ["", "a", "ab", "ba", "aa", "abc", "/_", "éö", "\u0000", "a\u0000", "xyz"]:
+			failures += _check_replaced_char_set(b2, s, keys, x)
+	# Longer Strings, which lose most or all of their characters.
+	for count: int in [85, 86, 200]:
+		failures += _check_replaced_char_set(b2, "abc".repeat(count), "ab", x)
+		failures += _check_replaced_char_set(b2, "abc".repeat(count) + "d", "abc", x)
+	# Each of these makes the engine print an error, which the replacements print as well.
+	failures += _check_replaced_char_set(b2, "abc", "a", 0)
+	failures += _check_replaced_char_set(b2, "abc", "ab", 0)
+	failures += _check_replaced_char_set(b2, "abc", "ab", 1 << 32)
+	# The engine takes the low 32 bits of the replacement.
+	failures += _check_replaced_char_set(b2, "abcabc", "a", (1 << 32) + x)
+	failures += _check_replaced_char_set(b2, "abcabc", "ab", (1 << 32) + x)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261124
+	var alphabet: Array[String] = ["a", "b", "c", "é"]
+	for round: int in 20000:
+		var s := ""
+		for i: int in rng.randi_range(0, 10):
+			s += alphabet[rng.randi_range(0, 3)]
+		var keys := ""
+		for i: int in rng.randi_range(0, 4):
+			keys += alphabet[rng.randi_range(0, 3)]
+		failures += _check_replaced_char_set(b2, s, keys, alphabet[rng.randi_range(0, 3)].unicode_at(0))
+	return failures
+
+
 # _check_replaced_file_path on fixed paths of each kind of start the engine keeps whole, path_join
 # of every pair of fixed parts against the engine's, then _check_replaced_file_path on 30000
 # seeded random Strings over the characters the methods look for and two letters. The seed is
@@ -1064,6 +1111,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 	failures += _check_replaced_file_paths(b2)
 	failures += _check_replaced_naturals(b2)
 	failures += _check_replaced_edits(b2)
+	failures += _check_replaced_char_sets(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

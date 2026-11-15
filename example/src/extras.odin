@@ -135,6 +135,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_file_paths", bag_replaced_file_paths, {"s", "n"})
 	godot.method(b, "replaced_naturals", bag_replaced_naturals, {"s", "n", "to"})
 	godot.method(b, "replaced_path_join", bag_replaced_path_join, {"s", "n", "path"})
+	godot.method(b, "replaced_char_sets", bag_replaced_char_sets, {"s", "n", "keys", "with"})
 	godot.method(b, "replaced_edits", bag_replaced_edits, {"s", "n", "count", "position", "what", "chars", "key", "with"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
@@ -818,6 +819,24 @@ bag_replaced_naturals :: proc(self: ^Bag, s: godot.String, n: godot.StringName, 
 bag_replaced_path_join :: proc(self: ^Bag, s: godot.String, n: godot.StringName, path: godot.String) -> godot.PackedStringArray {
 	s, n := s, n
 	r := [2]godot.String{godot.string_path_join(&s, path), godot.string_name_path_join(&n, path)}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
+	return out
+}
+
+// replace_chars and remove_chars of `s` with `keys`, then the same through the StringName methods
+// on `n`. test.gd builds the same array from the engine's.
+bag_replaced_char_sets :: proc(self: ^Bag, s: godot.String, n: godot.StringName, keys: godot.String, with: i64) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [4]godot.String {
+		godot.string_replace_chars(&s, keys, with),
+		godot.string_remove_chars(&s, keys),
+		godot.string_name_replace_chars(&n, keys, with),
+		godot.string_name_remove_chars(&n, keys),
+	}
 	out := godot.packed_string_array_new()
 	for &v in r {
 		godot.packed_string_array_append(&out, v)

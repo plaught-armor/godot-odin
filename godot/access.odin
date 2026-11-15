@@ -1130,20 +1130,61 @@ string_remove_char :: proc "contextless" (self: ^String, what: i64) -> (out: Str
 	a := string_read(self)
 	first := -1 if k == 0 else runes_index(a, k, 0)
 	if first < 0 { return string_copy(self) }
-	hits := 0
-	for c in a[first:] { hits += int(c == k) }
-	n := len(a) - hits
-	if n == 0 { return }
-	w := string_storage(&out, n + 1)
+	// The storage is made for the whole length, which leaves room for the terminator, and then
+	// trimmed. Every character is written at `j`, which only moves past the ones kept.
+	w := string_storage(&out, len(a))
 	copy(w[:first], a[:first])
-	// Every character is written at `j`, which only moves past the ones kept; `j` stays within
-	// `n`, where the terminator goes last.
 	j := first
 	for c in a[first + 1:] {
 		w[j] = c
 		j += int(c != k)
 	}
-	w[n] = 0
+	w[j] = 0
+	string_storage_trim(&out, j + 1)
+	return
+}
+
+// `self` with each character that is in `keys` replaced by `with`: the engine's `replace_chars`,
+// which takes the low 32 bits of `with`. A copy of `self` when it has none of them; a `with` of 0
+// prints the engine's error and gives a copy too. The caller destroys the result.
+string_replace_chars :: proc "contextless" (self: ^String, keys: String, with: i64) -> (out: String) {
+	set := string_chars(keys)
+	if len(set) == 1 { return string_replace_char(self, i64(set[0]), with) }
+	v := rune(u32(with))
+	if v == 0 {
+		math_error("`with` must not be the NUL character.")
+		return string_copy(self)
+	}
+	a := string_read(self)
+	first := 0
+	for first < len(a) && !runes_has(set, a[first]) { first += 1 }
+	if first == len(a) { return string_copy(self) }
+	w := string_storage(&out, len(a) + 1)
+	copy(w[:first], a[:first])
+	for i in first ..< len(a) { w[i] = v if runes_has(set, a[i]) else a[i] }
+	w[len(a)] = 0
+	return
+}
+
+// `self` without the characters that are in `chars`: the engine's `remove_chars`. A copy of
+// `self` when it has none of them. The caller destroys the result.
+string_remove_chars :: proc "contextless" (self: ^String, chars: String) -> (out: String) {
+	set := string_chars(chars)
+	if len(set) == 1 { return string_remove_char(self, i64(set[0])) }
+	a := string_read(self)
+	first := 0
+	for first < len(a) && !runes_has(set, a[first]) { first += 1 }
+	if first == len(a) { return string_copy(self) }
+	// Written as `string_remove_char` writes: into storage for the whole length, trimmed after.
+	w := string_storage(&out, len(a))
+	copy(w[:first], a[:first])
+	j := first
+	for c in a[first + 1:] {
+		w[j] = c
+		j += int(!runes_has(set, c))
+	}
+	w[j] = 0
+	string_storage_trim(&out, j + 1)
 	return
 }
 
@@ -2008,6 +2049,18 @@ string_storage :: #force_inline proc "contextless" (s: ^String, n: int) -> [^]ru
 	data := rawptr(&base[STRING_DATA_OFFSET / size_of(i64)])
 	(^rawptr)(s)^ = data
 	return ([^]rune)(data)
+}
+
+// Lowers the stored length of `s`, which `string_storage` just made, to `n`, which counts the
+// terminator. The storage keeps its size.
+@(private)
+string_storage_trim :: #force_inline proc "contextless" (s: ^String, n: int) {
+	if !string_layout_known {
+		gde.string_resize(s, gde.Int(n))
+		return
+	}
+	base := ([^]i64)(rawptr(uintptr((^rawptr)(s)^) - STRING_DATA_OFFSET))
+	base[2] = i64(n)
 }
 
 // Writes the characters of `text` to the front of `dst`, decoded as `text_rune_count` counts them,

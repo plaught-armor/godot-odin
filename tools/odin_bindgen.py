@@ -205,7 +205,8 @@ IN_PLACE = {
            ("trim_suffix", "suffix"), ("strip_edges", "left, right"),
            ("lstrip", "chars"), ("rstrip", "chars"), ("path_join", "path"),
            ("repeat", "count"), ("insert", "position, what"), ("erase", "position, chars"),
-           ("replace_char", "key, with"), ("remove_char", "what"))},
+           ("replace_char", "key, with"), ("remove_char", "what"),
+           ("replace_chars", "keys, with"), ("remove_chars", "chars"))},
     ("StringName", "to_upper"): "\tif dict_layout_known { return string_to_upper(name_text(self)) }\n",
     ("StringName", "to_lower"): "\tif dict_layout_known { return string_to_lower(name_text(self)) }\n",
     **{("StringName", m): f"\tif dict_layout_known {{ return string_{m}(name_text(self)) }}\n"
@@ -265,6 +266,8 @@ REPLACED = {
     ("String", "erase"),
     ("String", "replace_char"),
     ("String", "remove_char"),
+    ("String", "replace_chars"),
+    ("String", "remove_chars"),
     ("String", "get_extension"),
     ("String", "get_basename"),
     ("String", "get_file"),

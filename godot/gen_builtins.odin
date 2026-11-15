@@ -83,25 +83,6 @@ string_format :: proc "contextless" (self: ^String, values: Variant, placeholder
 	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
-string_replace_chars :: proc "contextless" (self: ^String, keys: String, with: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "replace_chars", 3535100402) }
-	__a_keys := transmute([1]uintptr)keys
-	__a_with := with
-	__args := [2]gde.ConstTypePtr{&__a_keys, &__a_with}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_remove_chars :: proc "contextless" (self: ^String, chars: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "remove_chars", 3134094431) }
-	__a_chars := transmute([1]uintptr)chars
-	__args := [1]gde.ConstTypePtr{&__a_chars}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_rsplit :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "rsplit", 1252735785) }
@@ -889,6 +870,7 @@ string_name_replace_char :: proc "contextless" (self: ^StringName, key: i64, wit
 	return __ret
 }
 string_name_replace_chars :: proc "contextless" (self: ^StringName, keys: String, with: i64) -> String {
+	if dict_layout_known { return string_replace_chars(name_text(self), keys, with) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "replace_chars", 3535100402) }
 	__a_keys := transmute([1]uintptr)keys
@@ -909,6 +891,7 @@ string_name_remove_char :: proc "contextless" (self: ^StringName, what: i64) -> 
 	return __ret
 }
 string_name_remove_chars :: proc "contextless" (self: ^StringName, chars: String) -> String {
+	if dict_layout_known { return string_remove_chars(name_text(self), chars) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "remove_chars", 3134094431) }
 	__a_chars := transmute([1]uintptr)chars
