@@ -2041,6 +2041,14 @@ String_Op :: enum i64 {
 	SNAKE, // string_to_snake_case of the same
 	KEBAB_CALL, // the engine's String.to_kebab_case of the sentence, the result destroyed
 	KEBAB, // string_to_kebab_case of the same
+	EXTENSION_CALL, // the engine's String.get_extension of "res://scenes/level_01.tscn", the result destroyed
+	EXTENSION, // string_get_extension of the same
+	BASENAME_CALL, // the engine's String.get_basename of "res://scenes/level_01.tscn", the result destroyed
+	BASENAME, // string_get_basename of the same
+	FILE_CALL, // the engine's String.get_file of "res://scenes/level_01.tscn", the result destroyed
+	FILE, // string_get_file of the same
+	BASE_DIR_CALL, // the engine's String.get_base_dir of "res://scenes/level_01.tscn", the result destroyed
+	BASE_DIR, // string_get_base_dir of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2063,6 +2071,9 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	part := i64(3)
 	both := true
 	the_set, dog_set := godot.intern_text("the "), godot.intern_text("dog ")
+	scene := godot.string_of("res://scenes/level_01.tscn")
+	defer godot.destroy[.STRING](&scene)
+	sc := &scene
 	sum: i64
 	start := time.tick_now()
 	switch kind {
@@ -2312,6 +2323,45 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .KEBAB:
 		for _ in 0 ..< n {
 			r := godot.string_to_kebab_case(intrinsics.volatile_load(&h))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .EXTENSION_CALL, .BASENAME_CALL, .FILE_CALL, .BASE_DIR_CALL:
+		name: cstring
+		#partial switch kind {
+		case .EXTENSION_CALL: name = "get_extension"
+		case .BASENAME_CALL: name = "get_basename"
+		case .FILE_CALL: name = "get_file"
+		case .BASE_DIR_CALL: name = "get_base_dir"
+		}
+		fn := godot.builtin_method(.STRING, name, 3942272618)
+		for _ in 0 ..< n {
+			r: godot.String
+			fn(intrinsics.volatile_load(&sc), nil, &r, 0)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .EXTENSION:
+		for _ in 0 ..< n {
+			r := godot.string_get_extension(intrinsics.volatile_load(&sc))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .BASENAME:
+		for _ in 0 ..< n {
+			r := godot.string_get_basename(intrinsics.volatile_load(&sc))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .FILE:
+		for _ in 0 ..< n {
+			r := godot.string_get_file(intrinsics.volatile_load(&sc))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .BASE_DIR:
+		for _ in 0 ..< n {
+			r := godot.string_get_base_dir(intrinsics.volatile_load(&sc))
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}

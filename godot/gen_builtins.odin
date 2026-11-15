@@ -230,20 +230,6 @@ string_strip_escapes :: proc "contextless" (self: ^String) -> String {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_get_extension :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "get_extension", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_get_basename :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "get_basename", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
 string_path_join :: proc "contextless" (self: ^String, path: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "path_join", 3134094431) }
@@ -356,20 +342,6 @@ string_is_relative_path :: proc "contextless" (self: ^String) -> bool {
 string_simplify_path :: proc "contextless" (self: ^String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "simplify_path", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_get_base_dir :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "get_base_dir", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_get_file :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "get_file", 3942272618) }
 	__ret: String
 	__fn(self, nil, &__ret, 0)
 	return __ret
@@ -1239,6 +1211,7 @@ string_name_rstrip :: proc "contextless" (self: ^StringName, chars: String) -> S
 	return __ret
 }
 string_name_get_extension :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_get_extension(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_extension", 3942272618) }
 	__ret: String
@@ -1246,6 +1219,7 @@ string_name_get_extension :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_get_basename :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_get_basename(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_basename", 3942272618) }
 	__ret: String
@@ -1381,6 +1355,7 @@ string_name_simplify_path :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_get_base_dir :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_get_base_dir(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_base_dir", 3942272618) }
 	__ret: String
@@ -1388,6 +1363,7 @@ string_name_get_base_dir :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_get_file :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_get_file(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_file", 3942272618) }
 	__ret: String

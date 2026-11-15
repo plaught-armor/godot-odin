@@ -680,6 +680,102 @@ string_to_snake_case :: proc "contextless" (self: ^String) -> String { return st
 // `self` as kebab-case: the engine's `to_kebab_case`. The caller destroys the result.
 string_to_kebab_case :: proc "contextless" (self: ^String) -> String { return string_recased(self, .KEBAB) }
 
+// Where `c` first is in `chars` at or after `from`, or -1: the engine's `find_char` for a `from`
+// that is not negative.
+@(private)
+runes_index :: proc "contextless" (chars: []rune, c: rune, from: int) -> int {
+	for i in from ..< len(chars) {
+		if chars[i] == c { return i }
+	}
+	return -1
+}
+
+// Where the last `/` or `\` is in `chars`, or -1.
+@(private)
+runes_last_separator :: proc "contextless" (chars: []rune) -> int {
+	#reverse for c, i in chars {
+		if c == '/' || c == '\\' { return i }
+	}
+	return -1
+}
+
+// Where the full stop that starts the extension is in `chars`: the last one, when no `/` or `\`
+// follows it. -1 when there is none.
+@(private)
+runes_extension_dot :: proc "contextless" (chars: []rune) -> int {
+	#reverse for c, i in chars {
+		if c == '.' { return i }
+		if c == '/' || c == '\\' { break }
+	}
+	return -1
+}
+
+// The first `n` characters of `self`, which has them: empty for none, a copy that shares the
+// storage for all.
+@(private)
+head_of :: #force_inline proc "contextless" (self: ^String, chars: []rune, n: int) -> String {
+	if n == 0 { return {} }
+	return slice_of(self, chars, 0, i64(n))
+}
+
+// The characters of `self` from `from`, which is at most its length: empty for none, a copy that
+// shares the storage for all.
+@(private)
+tail_of :: #force_inline proc "contextless" (self: ^String, chars: []rune, from: int) -> String {
+	if from == len(chars) { return {} }
+	return slice_of(self, chars, i64(from), i64(len(chars) - from))
+}
+
+// What follows the last full stop of the file name in path `self`, or empty when it has none:
+// the engine's `get_extension`. The caller destroys the result.
+string_get_extension :: proc "contextless" (self: ^String) -> String {
+	chars := string_read(self)
+	dot := runes_extension_dot(chars)
+	if dot == -1 { return {} }
+	return tail_of(self, chars, dot + 1)
+}
+
+// Path `self` without its extension and the full stop before it, or a copy when it has none: the
+// engine's `get_basename`. The caller destroys the result.
+string_get_basename :: proc "contextless" (self: ^String) -> String {
+	chars := string_read(self)
+	dot := runes_extension_dot(chars)
+	if dot == -1 { return string_copy(self) }
+	return head_of(self, chars, dot)
+}
+
+// What follows the last `/` or `\` of path `self`, or a copy when it has neither: the engine's
+// `get_file`. The caller destroys the result.
+string_get_file :: proc "contextless" (self: ^String) -> String {
+	chars := string_read(self)
+	return tail_of(self, chars, runes_last_separator(chars) + 1)
+}
+
+// Path `self` up to its last `/` or `\`: the engine's `get_base_dir`. The start that is a URL
+// scheme (`res://`), a drive (`C:/`), a network share (`//server/share/`) or the root `/` is
+// kept whole, and the last separator is looked for after it. The caller destroys the result.
+string_get_base_dir :: proc "contextless" (self: ^String) -> String {
+	chars := string_read(self)
+	base := 0
+	colon, width := string_find_text(self, "://"), 3
+	if colon == -1 { colon, width = string_find_text(self, ":/"), 2 }
+	if colon == -1 { colon = string_find_text(self, ":\\") }
+	if colon != -1 {
+		base = int(colon) + width
+	} else if len(chars) >= 2 && chars[0] == chars[1] && (chars[0] == '/' || chars[0] == '\\') {
+		// A network share. The engine looks for the separator after the server's name from
+		// character 2, and for the one after the share's name from the character after that
+		// separator, which is character 0 when there is none.
+		server := runes_index(chars, '/', 2)
+		if server == -1 { server = runes_index(chars, '\\', 2) }
+		share := runes_index(chars, '/', server + 1)
+		if share == -1 { share = runes_index(chars, '\\', server + 1) }
+		if share != -1 { base = share + 1 }
+	}
+	if base == 0 && len(chars) > 0 && chars[0] == '/' { base = 1 }
+	return head_of(self, chars, base + max(runes_last_separator(chars[base:]), 0))
+}
+
 // Whether `c` is one of `set`.
 runes_has :: proc "contextless" (set: []rune, c: rune) -> bool {
 	for s in set {

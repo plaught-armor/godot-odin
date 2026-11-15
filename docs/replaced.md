@@ -51,6 +51,10 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.to_pascal_case` | `string_to_pascal_case` | Godot 4.7-stable | 1976 ns | 153 ns |
 | `String.to_snake_case` | `string_to_snake_case` | Godot 4.7-stable | 1154 ns | 152 ns |
 | `String.to_kebab_case` | `string_to_kebab_case` | Godot 4.7-stable | 1156 ns | 153 ns |
+| `String.get_extension` | `string_get_extension` | Godot 4.7-stable | 32 ns | 12 ns |
+| `String.get_basename` | `string_get_basename` | Godot 4.7-stable | 32 ns | 12 ns |
+| `String.get_file` | `string_get_file` | Godot 4.7-stable | 31 ns | 14 ns |
+| `String.get_base_dir` | `string_get_base_dir` | Godot 4.7-stable | 88 ns | 19 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -94,6 +98,15 @@ cases and on 2000 seeded random Strings, for every part either side of the first
 `string_lstrip` and `string_rstrip` cut the run of characters that are in the given set from one
 end the same way, timed cutting four characters of the sentence with a set of four, and the same
 check covers them.
+
+`string_get_extension`, `string_get_basename` and `string_get_file` search back once from the end
+for the full stop or the separator and return the slice, where the engine searches the whole
+String up to three times. `string_get_base_dir` finds the start the engine keeps whole, which is
+a URL scheme, a drive, a network share or the root, by the engine's own order of searches, and
+returns one slice up to the last separator after it. The timings are of
+`res://scenes/level_01.tscn`. `_check_replaced_file_paths` checks all four, as String and as
+StringName, on fixed paths of each kind of start and on 6000 seeded random Strings over
+`.`, `/`, `\`, `:` and two letters.
 
 `string_capitalize`, `string_to_camel_case`, `string_to_pascal_case`, `string_to_snake_case` and
 `string_to_kebab_case` share `runes_recase`, which splits words where the engine's

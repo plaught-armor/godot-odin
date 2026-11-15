@@ -814,6 +814,41 @@ func _check_replaced_trims(b2: Bag) -> int:
 	return failures
 
 
+# get_extension, get_basename, get_file and get_base_dir of `s`, as String and as StringName, from
+# Bag.replaced_file_paths against the engine's. Returns the number of mismatches.
+func _check_replaced_file_path(b2: Bag, s: String) -> int:
+	var n := StringName(s)
+	var want := PackedStringArray([s.get_extension(), s.get_basename(), s.get_file(), s.get_base_dir(),
+			n.get_extension(), n.get_basename(), n.get_file(), n.get_base_dir()])
+	var got: PackedStringArray = b2.replaced_file_paths(s, n)
+	if got != want:
+		print("FAIL: Bag.replaced_file_paths(%s) gave %s, not %s" % [s.c_escape(), got, want])
+		return 1
+	return 0
+
+
+# _check_replaced_file_path on fixed paths of each kind of start the engine keeps whole, then on 6000
+# seeded random Strings over the characters the methods look for and two letters. The seed is
+# fixed so a failure repeats.
+func _check_replaced_file_paths(b2: Bag) -> int:
+	var failures := 0
+	for s: String in ["", "a", ".", "/", "\\", ":", "a.b", ".a", "a.", "a.b.c", "a/b.c", "a.b/c", "a.b\\c", "/a", "/a/b",
+			"a/", "a/b/", "res://", "res://a", "res://a/b.c", "res://scenes/level_01.tscn", "user://save.dat",
+			"a://b://c/d", "C:/", "C:/a", "C:/a/b.txt", "C:\\", "C:\\a\\b.txt", "a:\\b:/c/d", "//", "//server",
+			"//server/", "//server/share", "//server/share/", "//server/share/a/b.c", "\\\\server\\share\\a",
+			"\\\\server/share", "//a\\b/c", "\\\\", "\\\\a", "/a.b/c.d.e", "héllo/wörld.é"]:
+		failures += _check_replaced_file_path(b2, s)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261121
+	var alphabet: Array[String] = [".", "/", "\\", ":", "a", "b"]
+	for round: int in 6000:
+		var s := ""
+		for i: int in rng.randi_range(0, 10):
+			s += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		failures += _check_replaced_file_path(b2, s)
+	return failures
+
+
 # capitalize, to_camel_case, to_pascal_case, to_snake_case and to_kebab_case of `s`, as String and
 # as StringName, from Bag.replaced_recase against the engine's. Returns the number of mismatches.
 func _check_replaced_recase(b2: Bag, s: String) -> int:
@@ -910,6 +945,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 	failures += _check_replaced_cases(b2)
 	failures += _check_replaced_trims(b2)
 	failures += _check_replaced_recases(b2)
+	failures += _check_replaced_file_paths(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

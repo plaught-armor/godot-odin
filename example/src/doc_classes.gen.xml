@@ -249,6 +249,9 @@
 		<method name="replaced_recase">
 			<description>capitalize, to_camel_case, to_pascal_case, to_snake_case and to_kebab_case of [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
+		<method name="replaced_file_paths">
+			<description>get_extension, get_basename, get_file and get_base_dir of [code]s[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
+		</method>
 		<method name="replaced_name_ops">
 			<description>bag_replaced_ops through the StringName methods on [code]n[/code], then its length, is_empty as 0 or 1 and hash. test.gd builds the same array from the engine's StringName methods.</description>
 		</method>

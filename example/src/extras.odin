@@ -132,6 +132,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_trims", bag_replaced_trims, {"s", "n", "other", "slice", "left", "right"})
 	godot.method(b, "replaced_strips", bag_replaced_strips, {"s", "n", "chars"})
 	godot.method(b, "replaced_recase", bag_replaced_recase, {"s", "n"})
+	godot.method(b, "replaced_file_paths", bag_replaced_file_paths, {"s", "n"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -781,6 +782,28 @@ bag_replaced_recase :: proc(self: ^Bag, s: godot.String, n: godot.StringName) ->
 		godot.string_name_to_pascal_case(&n),
 		godot.string_name_to_snake_case(&n),
 		godot.string_name_to_kebab_case(&n),
+	}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
+	return out
+}
+
+// get_extension, get_basename, get_file and get_base_dir of `s`, then the same through the
+// StringName methods on `n`. test.gd builds the same array from the engine's.
+bag_replaced_file_paths :: proc(self: ^Bag, s: godot.String, n: godot.StringName) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [8]godot.String{
+		godot.string_get_extension(&s),
+		godot.string_get_basename(&s),
+		godot.string_get_file(&s),
+		godot.string_get_base_dir(&s),
+		godot.string_name_get_extension(&n),
+		godot.string_name_get_basename(&n),
+		godot.string_name_get_file(&n),
+		godot.string_name_get_base_dir(&n),
 	}
 	out := godot.packed_string_array_new()
 	for &v in r {
