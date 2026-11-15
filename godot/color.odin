@@ -390,7 +390,7 @@ color_to_html :: proc "contextless" (self: ^Color, with_alpha: bool) -> (out: St
 @(private) ok_find_cusp :: proc "contextless" (a, b: f32) -> [2]f32 {
 	S_cusp := ok_max_saturation(a, b)
 	rgb := oklab_to_linear_srgb(1, S_cusp * a, S_cusp * b)
-	// The C library's cbrtf, correctly rounded in glibc since 2.41. The 4.7-stable binary carries its
+	// The C library's cbrtf, correctly rounded in current glibc. The 4.7-stable binary carries its
 	// own (FreeBSD's), which is within one unit in the last place and takes about 20 cycles longer.
 	L_cusp := libc.cbrtf(1 / ok_fmax(ok_fmax(rgb.r, rgb.g), rgb.b))
 	return {L_cusp, L_cusp * S_cusp}

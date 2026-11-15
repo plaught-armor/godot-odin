@@ -143,7 +143,7 @@ that every message is printed as often by the replacements as by the engine. The
 `from_ok_hsl` follows `thirdparty/misc/ok_color.h` operation for operation, with glibc's `powf`
 as the engine imports it; the sine and cosine of the hue come from `godot/trig.odin` (see
 [Sine and cosine](#sine-and-cosine)). The cube root is the C library's `cbrtf`, correctly rounded in
-glibc since 2.41, which an engine built on the host calls too. The 4.7-stable binary links its
+current glibc (checked on 2.44), which an engine built on the host calls too. The 4.7-stable binary links its
 own, FreeBSD's as musl carries it (two Newton steps in double): within one unit in the last
 place of the correct root, and about 20 cycles longer on a call that is one chain of dependent
 operations. `fmin` and `fmax` follow the engine's inlined form, which returns the second argument when the

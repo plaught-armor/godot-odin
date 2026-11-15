@@ -69,7 +69,7 @@ import "base:intrinsics"
 	return f32(intrinsics.simd_extract(r, 0)), f32(intrinsics.simd_extract(r, 1))
 }
 
-m_sincos :: #force_inline proc "contextless" (x: f32) -> (sine, cosine: f32) {
+@(private) m_sincos :: #force_inline proc "contextless" (x: f32) -> (sine, cosine: f32) {
 	ax := transmute(u32)x << 1
 	// 2^-12 <= |x| < pi/4.
 	if ax - 0x73000000 < 0x7e921fb6 - 0x73000000 { return m_sincos_small(x) }
@@ -81,7 +81,7 @@ m_sincos :: #force_inline proc "contextless" (x: f32) -> (sine, cosine: f32) {
 	return m_sincos_kernel(u32(transmute(u64)sum), z)
 }
 
-m_sin :: #force_inline proc "contextless" (x: f32) -> f32 { sine, _ := m_sincos(x); return sine }
+@(private) m_sin :: #force_inline proc "contextless" (x: f32) -> f32 { sine, _ := m_sincos(x); return sine }
 @(private) m_cos :: #force_inline proc "contextless" (x: f32) -> f32 { _, cosine := m_sincos(x); return cosine }
 
 // |x| = 0x1.33333p+13, the one input in the common range whose sine lies too close to the midpoint
@@ -104,7 +104,7 @@ m_sin :: #force_inline proc "contextless" (x: f32) -> f32 { sine, _ := m_sincos(
 	p2 := m * 0xfc2757d1f534ddc0 + p1 >> 64
 	p3 := m * 0xa2f9836e4e441529 + p2 >> 64
 	p3h, p3l, p2l, p1l := u64(p3 >> 64), u64(p3), u64(p2), u64(p1)
-	// The binary point sits `s` bits into p3h:p3l, 5 <= s <= 104: integer part above, fraction below.
+	// The binary point sits `s` bits into p3h:p3l, 6 <= s <= 107: integer part above, fraction below.
 	s := (u >> 23 & 0xff) - 147
 	q: u32
 	frac: i64
