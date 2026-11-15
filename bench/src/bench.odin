@@ -2063,6 +2063,18 @@ String_Op :: enum i64 {
 	SIMPLIFY, // string_simplify_path of the same
 	SIMPLIFY_SAME_CALL, // the engine's String.simplify_path of "res://scenes/level_01.tscn", which is simple already
 	SIMPLIFY_SAME, // string_simplify_path of the same
+	REPEAT_CALL, // the engine's String.repeat of "res://scenes/level_01.tscn" 4 times, the result destroyed
+	REPEAT, // string_repeat of the same
+	REVERSE_CALL, // the engine's String.reverse of "res://scenes/level_01.tscn", the result destroyed
+	REVERSE, // string_reverse of the same
+	INSERT_CALL, // the engine's String.insert of "level_01.tscn" at 6 of "res://scenes/level_01.tscn", the result destroyed
+	INSERT, // string_insert of the same
+	ERASE_CALL, // the engine's String.erase of 7 characters at 6 of "res://scenes/level_01.tscn", the result destroyed
+	ERASE, // string_erase of the same
+	REPLACE_CHAR_CALL, // the engine's String.replace_char of '/' by '\' in "res://scenes/level_01.tscn", the result destroyed
+	REPLACE_CHAR, // string_replace_char of the same
+	REMOVE_CHAR_CALL, // the engine's String.remove_char of '/' from "res://scenes/level_01.tscn", the result destroyed
+	REMOVE_CHAR, // string_remove_char of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2402,6 +2414,44 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .PATH_JOIN:
 		for _ in 0 ..< n {
 			r := godot.string_path_join(intrinsics.volatile_load(&d), leaf)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .REPEAT_CALL, .REVERSE_CALL, .INSERT_CALL, .ERASE_CALL, .REPLACE_CHAR_CALL, .REMOVE_CHAR_CALL:
+		x, y: i64 = 6, 7
+		args := [2]gde.ConstTypePtr{&x, &y}
+		name: cstring
+		hash: i64
+		argc: i32
+		#partial switch kind {
+		case .REPEAT_CALL: name, hash, argc, x = "repeat", 2162347432, 1, 4
+		case .REVERSE_CALL: name, hash, argc = "reverse", 3942272618, 0
+		case .INSERT_CALL:
+			name, hash, argc = "insert", 248737229, 2
+			args[1] = &leaf
+		case .ERASE_CALL: name, hash, argc = "erase", 787537301, 2
+		case .REPLACE_CHAR_CALL: name, hash, argc, x, y = "replace_char", 787537301, 2, '/', '\\'
+		case .REMOVE_CHAR_CALL: name, hash, argc, x = "remove_char", 2162347432, 1, '/'
+		}
+		fn := godot.builtin_method(.STRING, name, hash)
+		for _ in 0 ..< n {
+			r: godot.String
+			fn(intrinsics.volatile_load(&sc), &args[0], &r, argc)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .REPEAT, .REVERSE, .INSERT, .ERASE, .REPLACE_CHAR, .REMOVE_CHAR:
+		for _ in 0 ..< n {
+			s := intrinsics.volatile_load(&sc)
+			r: godot.String
+			#partial switch kind {
+			case .REPEAT: r = godot.string_repeat(s, 4)
+			case .REVERSE: r = godot.string_reverse(s)
+			case .INSERT: r = godot.string_insert(s, 6, leaf)
+			case .ERASE: r = godot.string_erase(s, 6, 7)
+			case .REPLACE_CHAR: r = godot.string_replace_char(s, '/', '\\')
+			case .REMOVE_CHAR: r = godot.string_remove_char(s, '/')
+			}
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}

@@ -61,6 +61,12 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.filenocasecmp_to` | `string_filenocasecmp_to` | Godot 4.7-stable | 666 ns | 14 ns |
 | `String.path_join` | `string_path_join` | Godot 4.7-stable | 49 ns | 12 ns |
 | `String.simplify_path` | `string_simplify_path` | Godot 4.7-stable | 477 ns | 58 ns |
+| `String.repeat` | `string_repeat` | Godot 4.7-stable | 34 ns | 21 ns |
+| `String.reverse` | `string_reverse` | Godot 4.7-stable | 26 ns | 14 ns |
+| `String.insert` | `string_insert` | Godot 4.7-stable | 27 ns | 17 ns |
+| `String.erase` | `string_erase` | Godot 4.7-stable | 67 ns | 14 ns |
+| `String.replace_char` | `string_replace_char` | Godot 4.7-stable | 34 ns | 19 ns |
+| `String.remove_char` | `string_remove_char` | Godot 4.7-stable | 35 ns | 27 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -124,6 +130,19 @@ comes back as a copy that shares the storage, which takes 39 ns against 295 ns f
 `res://scenes/level_01.tscn`. The timing in the table is of
 `res://scenes/../levels/./level_01.tscn`. `_check_replaced_file_paths` checks it with the four
 above, with fixed paths of `.` and `..` in each place and paths either side of 256 characters.
+
+`string_repeat`, `string_reverse`, `string_insert`, `string_erase`, `string_replace_char` and
+`string_remove_char` each write the result once into storage of the final size; the engine's
+`erase` makes two Strings and joins them, and its `remove_char` allocates for the whole length and
+then shrinks, where `string_remove_char` counts the hits first. A result equal to the String comes
+back as a copy that shares the storage. The numbers are read as the engine reads them, in 32 bits,
+and the errors the engine prints (a negative `repeat` count, a negative `erase` position or count,
+a `replace_char` to the NUL character) are printed by the same methods here with the same results.
+The timings are of `res://scenes/level_01.tscn`: repeated 4 times, reversed, with `level_01.tscn`
+inserted at 6, with 7 characters erased at 6, and with its three `/` replaced or removed.
+`_check_replaced_edits` checks all six, as String and as StringName, on fixed Strings with counts
+and positions at and past each end, on the refused arguments, on numbers past 32 bits and on
+20000 seeded random rounds.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

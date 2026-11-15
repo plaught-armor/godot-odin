@@ -83,16 +83,6 @@ string_format :: proc "contextless" (self: ^String, values: Variant, placeholder
 	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
-string_replace_char :: proc "contextless" (self: ^String, key: i64, with: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "replace_char", 787537301) }
-	__a_key := key
-	__a_with := with
-	__args := [2]gde.ConstTypePtr{&__a_key, &__a_with}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
 string_replace_chars :: proc "contextless" (self: ^String, keys: String, with: i64) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "replace_chars", 3535100402) }
@@ -103,15 +93,6 @@ string_replace_chars :: proc "contextless" (self: ^String, keys: String, with: i
 	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
-string_remove_char :: proc "contextless" (self: ^String, what: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "remove_char", 2162347432) }
-	__a_what := what
-	__args := [1]gde.ConstTypePtr{&__a_what}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_remove_chars :: proc "contextless" (self: ^String, chars: String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "remove_chars", 3134094431) }
@@ -119,42 +100,6 @@ string_remove_chars :: proc "contextless" (self: ^String, chars: String) -> Stri
 	__args := [1]gde.ConstTypePtr{&__a_chars}
 	__ret: String
 	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_repeat :: proc "contextless" (self: ^String, count: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "repeat", 2162347432) }
-	__a_count := count
-	__args := [1]gde.ConstTypePtr{&__a_count}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_reverse :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "reverse", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_insert :: proc "contextless" (self: ^String, position: i64, what: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "insert", 248737229) }
-	__a_position := position
-	__a_what := transmute([1]uintptr)what
-	__args := [2]gde.ConstTypePtr{&__a_position, &__a_what}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
-	return __ret
-}
-string_erase :: proc "contextless" (self: ^String, position: i64, chars: i64) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "erase", 787537301) }
-	__a_position := position
-	__a_chars := chars
-	__args := [2]gde.ConstTypePtr{&__a_position, &__a_chars}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
 string_rsplit :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
@@ -933,6 +878,7 @@ string_name_replacen :: proc "contextless" (self: ^StringName, what: String, for
 	return __ret
 }
 string_name_replace_char :: proc "contextless" (self: ^StringName, key: i64, with: i64) -> String {
+	if dict_layout_known { return string_replace_char(name_text(self), key, with) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "replace_char", 787537301) }
 	__a_key := key
@@ -953,6 +899,7 @@ string_name_replace_chars :: proc "contextless" (self: ^StringName, keys: String
 	return __ret
 }
 string_name_remove_char :: proc "contextless" (self: ^StringName, what: i64) -> String {
+	if dict_layout_known { return string_remove_char(name_text(self), what) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "remove_char", 2162347432) }
 	__a_what := what
@@ -971,6 +918,7 @@ string_name_remove_chars :: proc "contextless" (self: ^StringName, chars: String
 	return __ret
 }
 string_name_repeat :: proc "contextless" (self: ^StringName, count: i64) -> String {
+	if dict_layout_known { return string_repeat(name_text(self), count) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "repeat", 2162347432) }
 	__a_count := count
@@ -980,6 +928,7 @@ string_name_repeat :: proc "contextless" (self: ^StringName, count: i64) -> Stri
 	return __ret
 }
 string_name_reverse :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_reverse(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "reverse", 3942272618) }
 	__ret: String
@@ -987,6 +936,7 @@ string_name_reverse :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_insert :: proc "contextless" (self: ^StringName, position: i64, what: String) -> String {
+	if dict_layout_known { return string_insert(name_text(self), position, what) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "insert", 248737229) }
 	__a_position := position
@@ -997,6 +947,7 @@ string_name_insert :: proc "contextless" (self: ^StringName, position: i64, what
 	return __ret
 }
 string_name_erase :: proc "contextless" (self: ^StringName, position: i64, chars: i64) -> String {
+	if dict_layout_known { return string_erase(name_text(self), position, chars) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "erase", 787537301) }
 	__a_position := position

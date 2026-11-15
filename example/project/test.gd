@@ -875,6 +875,55 @@ func _check_replaced_file_path(b2: Bag, s: String) -> int:
 	return 0
 
 
+# Compares Bag.replaced_edits with the engine's repeat, reverse, insert, erase, replace_char and
+# remove_char of `s`, as String and as StringName.
+func _check_replaced_edit(b2: Bag, s: String, count: int, position: int, what: String, chars: int, key: int, with: int) -> int:
+	var n := StringName(s)
+	var want := PackedStringArray([s.repeat(count), s.reverse(), s.insert(position, what), s.erase(position, chars),
+			s.replace_char(key, with), s.remove_char(key), n.repeat(count), n.reverse(), n.insert(position, what),
+			n.erase(position, chars), n.replace_char(key, with), n.remove_char(key)])
+	var got: PackedStringArray = b2.replaced_edits(s, n, count, position, what, chars, key, with)
+	if got == want:
+		return 0
+	print("FAIL: Bag.replaced_edits(%s, %d, %d, %s, %d, %d, %d) gave %s, not %s" % [s.c_escape(), count, position,
+			what.c_escape(), chars, key, with, got, want])
+	return 1
+
+
+# _check_replaced_edit on fixed Strings with counts and positions at and past each end, on the
+# arguments the engine refuses, on arguments past 32 bits, then on 20000 seeded random rounds.
+# The seed is fixed so a failure repeats.
+func _check_replaced_edits(b2: Bag) -> int:
+	var failures := 0
+	var a := "a".unicode_at(0)
+	for s: String in ["", "a", "ab", "aaa", "abcabc", "héllo wörld", "a\u0000b", "res://scenes/level_01.tscn"]:
+		for count: int in [0, 1, 2, 3, 7]:
+			for position: int in [0, 1, 2, 5, 6, 7, 100]:
+				failures += _check_replaced_edit(b2, s, count, position, "xyz", count, a, 0x1F600)
+		failures += _check_replaced_edit(b2, s, 2, 1, "", 1, 0, a)
+		failures += _check_replaced_edit(b2, s, 2, -1, "x", 0, "/".unicode_at(0), a)
+	# Each of these makes the engine print an error, which the replacements print as well.
+	failures += _check_replaced_edit(b2, "abc", -1, -1, "x", 1, a, 0)
+	failures += _check_replaced_edit(b2, "abc", 1, 1, "x", -2, a, a)
+	# The engine takes the low 32 bits of each number, and adds erase's two as 32-bit integers.
+	failures += _check_replaced_edit(b2, "abcabc", (1 << 32) + 2, (1 << 32) + 1, "x", (1 << 32) + 1, (1 << 32) + a, (1 << 32) + a + 1)
+	failures += _check_replaced_edit(b2, "abcabc", 1, 2, "x", 0x7FFFFFFF, a, a)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261123
+	var alphabet: Array[String] = ["a", "b", "c", "é"]
+	for round: int in 20000:
+		var s := ""
+		for i: int in rng.randi_range(0, 10):
+			s += alphabet[rng.randi_range(0, 3)]
+		var what := ""
+		for i: int in rng.randi_range(0, 3):
+			what += alphabet[rng.randi_range(0, 3)]
+		var key := alphabet[rng.randi_range(0, 3)].unicode_at(0)
+		var with := alphabet[rng.randi_range(0, 3)].unicode_at(0)
+		failures += _check_replaced_edit(b2, s, rng.randi_range(0, 5), rng.randi_range(0, 12), what, rng.randi_range(0, 12), key, with)
+	return failures
+
+
 # _check_replaced_file_path on fixed paths of each kind of start the engine keeps whole, path_join
 # of every pair of fixed parts against the engine's, then _check_replaced_file_path on 30000
 # seeded random Strings over the characters the methods look for and two letters. The seed is
@@ -1014,6 +1063,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 	failures += _check_replaced_recases(b2)
 	failures += _check_replaced_file_paths(b2)
 	failures += _check_replaced_naturals(b2)
+	failures += _check_replaced_edits(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

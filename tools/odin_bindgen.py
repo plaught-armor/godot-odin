@@ -203,12 +203,15 @@ IN_PLACE = {
            ("substr", "from, len"), ("left", "length"), ("right", "length"),
            ("get_slice", "delimiter, slice"), ("trim_prefix", "prefix"),
            ("trim_suffix", "suffix"), ("strip_edges", "left, right"),
-           ("lstrip", "chars"), ("rstrip", "chars"), ("path_join", "path"))},
+           ("lstrip", "chars"), ("rstrip", "chars"), ("path_join", "path"),
+           ("repeat", "count"), ("insert", "position, what"), ("erase", "position, chars"),
+           ("replace_char", "key, with"), ("remove_char", "what"))},
     ("StringName", "to_upper"): "\tif dict_layout_known { return string_to_upper(name_text(self)) }\n",
     ("StringName", "to_lower"): "\tif dict_layout_known { return string_to_lower(name_text(self)) }\n",
     **{("StringName", m): f"\tif dict_layout_known {{ return string_{m}(name_text(self)) }}\n"
        for m in ("capitalize", "to_camel_case", "to_pascal_case", "to_snake_case", "to_kebab_case",
-                 "get_extension", "get_basename", "get_file", "get_base_dir", "simplify_path")},
+                 "get_extension", "get_basename", "get_file", "get_base_dir", "simplify_path",
+                 "reverse")},
 }
 
 # Builtin methods left out of the bindings: godot/access.odin defines each String one under the
@@ -256,6 +259,12 @@ REPLACED = {
     ("String", "to_kebab_case"),
     ("String", "path_join"),
     ("String", "simplify_path"),
+    ("String", "repeat"),
+    ("String", "reverse"),
+    ("String", "insert"),
+    ("String", "erase"),
+    ("String", "replace_char"),
+    ("String", "remove_char"),
     ("String", "get_extension"),
     ("String", "get_basename"),
     ("String", "get_file"),

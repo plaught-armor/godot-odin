@@ -1011,6 +1011,142 @@ string_path_join :: proc "contextless" (self: ^String, path: String) -> (out: St
 	return
 }
 
+// `self` `count` times over: the engine's `repeat`. A negative `count` prints the engine's error
+// and gives an empty String. The caller destroys the result.
+string_repeat :: proc "contextless" (self: ^String, count: i64) -> (out: String) {
+	count := i64(i32(count))
+	if count < 0 {
+		math_error("Parameter count should be a positive number.")
+		return
+	}
+	a := string_read(self)
+	if count == 0 { return }
+	if count == 1 || len(a) == 0 { return string_copy(self) }
+	n := len(a) * int(count)
+	w := string_storage(&out, n + 1)
+	copy(w[:len(a)], a)
+	// Each round copies what is written so far, so the written part doubles.
+	for done := len(a); done < n; {
+		step := min(done, n - done)
+		copy(w[done:][:step], w[:step])
+		done += step
+	}
+	w[n] = 0
+	return
+}
+
+// `self` with its characters in the opposite order: the engine's `reverse`. The caller destroys
+// the result.
+string_reverse :: proc "contextless" (self: ^String) -> (out: String) {
+	a := string_read(self)
+	n := len(a)
+	if n <= 1 { return string_copy(self) }
+	w := string_storage(&out, n + 1)
+	for i in 0 ..< n { w[i] = a[n - 1 - i] }
+	w[n] = 0
+	return
+}
+
+// `self` with `what` put in before character `position`, or at the end when `position` is past
+// it; a copy of `self` when `what` is empty or `position` is negative: the engine's `insert`. The
+// caller destroys the result.
+string_insert :: proc "contextless" (self: ^String, position: i64, what: String) -> (out: String) {
+	a, b := string_read(self), string_chars(what)
+	position := i64(i32(position))
+	if len(b) == 0 || position < 0 { return string_copy(self) }
+	at := int(min(position, i64(len(a))))
+	n := len(a) + len(b)
+	w := string_storage(&out, n + 1)
+	copy(w[:at], a[:at])
+	copy(w[at:][:len(b)], b)
+	copy(w[at + len(b):n], a[at:])
+	w[n] = 0
+	return
+}
+
+// `self` without the `chars` characters from `position` on: the engine's `erase`. A negative
+// `position` or `chars` prints the engine's error and gives an empty String. The caller destroys
+// the result.
+string_erase :: proc "contextless" (self: ^String, position: i64, chars: i64) -> (out: String) {
+	position, chars := i64(i32(position)), i64(i32(chars))
+	if position < 0 {
+		erase_error("Invalid starting position for `String.erase()`: ", position, ". Starting position must be positive or zero.")
+		return
+	}
+	if chars < 0 {
+		erase_error("Invalid character count for `String.erase()`: ", chars, ". Character count must be positive or zero.")
+		return
+	}
+	a := string_read(self)
+	head := int(min(position, i64(len(a))))
+	// The engine adds the two as 32-bit integers, and keeps nothing after a sum that is negative
+	// or past the end.
+	from := i64(i32(position + chars))
+	tail := int(from) if from >= 0 && from < i64(len(a)) else len(a)
+	n := head + len(a) - tail
+	if n == len(a) { return string_copy(self) }
+	if n == 0 { return }
+	w := string_storage(&out, n + 1)
+	copy(w[:head], a[:head])
+	copy(w[head:n], a[tail:])
+	w[n] = 0
+	return
+}
+
+// Logs the engine's error for a negative `value` given to `erase`.
+@(private)
+erase_error :: proc "contextless" (before: string, value: i64, after: string) {
+	buf: [128]u8
+	k := copy(buf[:], before)
+	k += decimal_into(buf[k:], value)
+	k += copy(buf[k:len(buf) - 1], after)
+	buf[k] = 0
+	gde.print_error(cstring(&buf[0]), "", #file, #line, 1)
+}
+
+// `self` with each `key` character replaced by `with`: the engine's `replace_char`, which takes
+// the low 32 bits of each. A copy of `self` when it has no `key`; a `with` of 0 prints the
+// engine's error and gives a copy too. The caller destroys the result.
+string_replace_char :: proc "contextless" (self: ^String, key: i64, with: i64) -> (out: String) {
+	k, v := rune(u32(key)), rune(u32(with))
+	if v == 0 {
+		math_error("`with` must not be the NUL character.")
+		return string_copy(self)
+	}
+	a := string_read(self)
+	first := -1 if k == 0 else runes_index(a, k, 0)
+	if first < 0 { return string_copy(self) }
+	w := string_storage(&out, len(a) + 1)
+	copy(w[:first], a[:first])
+	for i in first ..< len(a) { w[i] = v if a[i] == k else a[i] }
+	w[len(a)] = 0
+	return
+}
+
+// `self` without its `what` characters: the engine's `remove_char`, which takes the low 32 bits
+// of `what`. A copy of `self` when it has none. The caller destroys the result.
+string_remove_char :: proc "contextless" (self: ^String, what: i64) -> (out: String) {
+	k := rune(u32(what))
+	a := string_read(self)
+	first := -1 if k == 0 else runes_index(a, k, 0)
+	if first < 0 { return string_copy(self) }
+	hits := 0
+	for c in a[first:] { hits += int(c == k) }
+	n := len(a) - hits
+	if n == 0 { return }
+	w := string_storage(&out, n + 1)
+	copy(w[:first], a[:first])
+	// Every character is written at `j`, which only moves past the ones kept; `j` stays within
+	// `n`, where the terminator goes last.
+	j := first
+	for c in a[first + 1:] {
+		w[j] = c
+		j += int(c != k)
+	}
+	w[n] = 0
+	return
+}
+
 // Whether `c` is one of `set`.
 runes_has :: proc "contextless" (set: []rune, c: rune) -> bool {
 	for s in set {
