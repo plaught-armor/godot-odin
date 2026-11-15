@@ -98,6 +98,12 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.uri_encode` | `string_uri_encode` | Godot 4.7-stable | 234 ns | 40 ns |
 | `String.uri_decode` | `string_uri_decode` | Godot 4.7-stable | 251 ns | 41 ns |
 | `String.uri_file_decode` | `string_uri_file_decode` | Godot 4.7-stable | 247 ns | 43 ns |
+| `String.hex_decode` | `string_hex_decode` | Godot 4.7-stable | 25 ns | 23 ns |
+| `String.to_ascii_buffer` | `string_to_ascii_buffer` | Godot 4.7-stable | 44 ns | 17 ns |
+| `String.to_utf8_buffer` | `string_to_utf8_buffer` | Godot 4.7-stable | 48 ns | 33 ns |
+| `String.to_utf16_buffer` | `string_to_utf16_buffer` | Godot 4.7-stable | 43 ns | 27 ns |
+| `String.to_utf32_buffer` | `string_to_utf32_buffer` | Godot 4.7-stable | 18 ns | 16 ns |
+| `String.to_wchar_buffer` | `string_to_wchar_buffer` | Godot 4.7-stable | 18 ns | 16 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -261,8 +267,7 @@ tag with 8, on the escaped forms of both, and on a 21-character file name with 7
 encode. `_check_replaced_escapes` checks
 them, as String and as StringName, on fixed Strings, on every character up to 0x3000 alone and
 between letters, on every 97th character above, and on 30000 seeded random texts built from
-pieces of escapes. `String.hex_decode` stays with the engine: a fast path measured 35 ns against
-the engine's 25 ns, because making and sizing the byte array costs two engine calls more.
+pieces of escapes.
 
 `string_uri_decode` and `string_uri_file_decode` read each `%` and two digits as a byte and decode
 the bytes as UTF-8 straight into the result, where the engine builds a UTF-8 copy, a byte buffer
@@ -275,6 +280,25 @@ one, and on 4.7 a letter from G to Z after `%`. They are timed on a 38-character
 escapes. `_check_replaced_uri_decodes` checks them, as String and as StringName, on fixed Strings,
 on every character up to 0x3000 alone and after an escape, on every 97th character above, and on
 10000 seeded random texts built from pieces of escapes.
+
+`string_hex_decode`, `string_to_ascii_buffer`, `string_to_utf8_buffer`, `string_to_utf16_buffer`,
+`string_to_utf32_buffer` and `string_to_wchar_buffer` write their bytes into storage that
+`packed_byte_storage` allocates with the engine's allocator and heads as the engine's `resize`
+would, when `packed_layout_known`; the engine grows and frees it as its own. Making and sizing the
+array through the engine costs two calls, and `hex_decode` built that way measured 35 ns against
+the engine's 25 ns. Each reads the String once before it allocates, and calls the engine where it
+prints an error: an odd length or a character that is no hexadecimal digit for `hex_decode`, a
+character above 0x7F for the ASCII buffer, one above 0x1FFFFF for UTF-8, and half of a surrogate
+pair or a character above 0x10FFFF for UTF-16. The UTF-32 buffer is a copy of the characters, and
+the wide character buffer is the same where a wide character is 32 bits. They are timed on 24
+hexadecimal digits, a 24-character ASCII line, and a 24-character line with 3 characters that are
+not ASCII. `_check_replaced_buffers` checks them, as String and as StringName, on fixed Strings,
+on every character up to 0x300 alone and after a letter, on every 97th character above, and on
+4000 seeded random texts, and has the engine append a byte to each buffer so it grows storage the
+bindings made. The hashes (`md5_text`, `sha1_text`, `sha256_text` and their buffers), `format`,
+`to_multibyte_char_buffer` and `humanize_size` stay with the engine: hashing takes far longer than
+the call, `format` takes Variants, and the last two depend on the system's encodings and the
+engine's translations.
 
 `string_naturalcasecmp_to`, `string_naturalnocasecmp_to`, `string_filecasecmp_to` and
 `string_filenocasecmp_to` share `compare_natural`, which follows the engine's walk step for step

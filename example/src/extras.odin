@@ -153,6 +153,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_validates", bag_replaced_validates, {"texts"})
 	godot.method(b, "replaced_escapes", bag_replaced_escapes, {"texts"})
 	godot.method(b, "replaced_uri_decodes", bag_replaced_uri_decodes, {"texts"})
+	godot.method(b, "replaced_buffers", bag_replaced_buffers, {"texts"})
 	godot.method(b, "replaced_int_texts", bag_replaced_int_texts, {"numbers", "base", "capitalize_hex"})
 	godot.method(b, "replaced_chrs", bag_replaced_chrs, {"codes"})
 	godot.method(b, "replaced_scientifics", bag_replaced_scientifics, {"numbers"})
@@ -1398,6 +1399,41 @@ bag_replaced_escapes :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godo
 		for &v in r {
 			godot.packed_string_array_append(&out, v)
 			godot.destroy[.STRING](&v)
+		}
+	}
+	return out
+}
+
+// hex_decode and the ascii, utf8, utf16, utf32 and wchar buffers of each text, then the same of
+// its StringName, each as the hexadecimal text of its bytes, twelve per text. test.gd builds the
+// same array from the engine's methods.
+bag_replaced_buffers :: proc(self: ^Bag, texts: godot.PackedStringArray) -> godot.PackedStringArray {
+	texts := texts
+	out := godot.packed_string_array_new()
+	for &t in godot.packed_read_string(&texts) {
+		n := godot.string_name_new_from_string(t)
+		defer godot.destroy[.STRING_NAME](&n)
+		r := [12]godot.PackedByteArray {
+			godot.string_hex_decode(&t),
+			godot.string_to_ascii_buffer(&t),
+			godot.string_to_utf8_buffer(&t),
+			godot.string_to_utf16_buffer(&t),
+			godot.string_to_utf32_buffer(&t),
+			godot.string_to_wchar_buffer(&t),
+			godot.string_name_hex_decode(&n),
+			godot.string_name_to_ascii_buffer(&n),
+			godot.string_name_to_utf8_buffer(&n),
+			godot.string_name_to_utf16_buffer(&n),
+			godot.string_name_to_utf32_buffer(&n),
+			godot.string_name_to_wchar_buffer(&n),
+		}
+		for &v in r {
+			// The engine grows and frees the storage the bindings made, as it would its own.
+			godot.packed_byte_array_append(&v, 0x5a)
+			text := godot.packed_byte_array_hex_encode(&v)
+			godot.packed_string_array_append(&out, text)
+			godot.destroy[.STRING](&text)
+			godot.destroy[.PACKED_BYTE_ARRAY](&v)
 		}
 	}
 	return out

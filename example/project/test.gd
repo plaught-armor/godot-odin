@@ -482,6 +482,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_num_texts(b2)
 	failures += _check_replaced_escapes(b2)
 	failures += _check_replaced_uri_decodes(b2)
+	failures += _check_replaced_buffers(b2)
 	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
@@ -1617,6 +1618,68 @@ func _check_replaced_escapes(b2: Bag) -> int:
 			return 1
 	if changed < 5000:
 		print("FAIL: Bag.replaced_escapes saw only %d texts unescaped, too few to prove anything" % changed)
+		return 1
+	return 0
+
+
+# hex_decode and to_ascii_buffer, to_utf8_buffer, to_utf16_buffer, to_utf32_buffer and
+# to_wchar_buffer of String and StringName, from Bag.replaced_buffers, against the engine's methods
+# called from GDScript: fixed cases, every character up to 0x300 alone and after a letter, a sample
+# of the higher ones, then 4000 seeded random texts, half of hexadecimal digits and half of mixed
+# characters. Bag appends a byte of 0x5A to each buffer before it spells it, so the engine grows
+# storage the bindings made. The engine prints an error for a text that is no hexadecimal number
+# and for a character that is not ASCII, and the bindings call it for those. The seed is fixed so
+# a failure repeats. Returns 1 on a mismatch.
+func _check_replaced_buffers(b2: Bag) -> int:
+	var texts: PackedStringArray = ["", "a", "ab", "0", "00", "ff", "FF", "fF", "0g", "g0", "0123456789abcdefABCDEF", "abc",
+		"é", "日本語", "😀", "a😀b", "hello", "héllo", "\u007f", "\u0080", "\u07ff", "\u0800", "\uffff", "\U010000", "\U10ffff",
+		"００", "-1", " 00", "00 ", "0x00", "deadbeef", "DEADBEEF00"]
+	for code: int in range(1, 0x300):
+		texts.append(String.chr(code))
+		texts.append("a" + String.chr(code))
+	for code: int in range(0x300, 0x110000, 97):
+		# No String holds half of a surrogate pair.
+		if code < 0xd800 or code > 0xdfff:
+			texts.append(String.chr(code))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261132
+	var digits := "0123456789abcdefABCDEF"
+	var mixed: Array[String] = ["a", "b", "Z", " ", "0", "é", "日", "😀", "\u07ff", "~", "\n"]
+	for round: int in 2000:
+		var s := ""
+		for i: int in 2 * rng.randi_range(0, 12):
+			s += digits[rng.randi_range(0, digits.length() - 1)]
+		# One in sixteen gets a character that is no digit.
+		if rng.randi_range(0, 15) == 0:
+			s += "g"
+		texts.append(s)
+		s = ""
+		for i: int in rng.randi_range(0, 12):
+			# Half of them hold ASCII only.
+			s += mixed[rng.randi_range(0, 4 if round % 2 == 0 else mixed.size() - 1)]
+		texts.append(s)
+	var want := PackedStringArray()
+	var decoded := 0
+	var plain := 0
+	for s: String in texts:
+		for v: Variant in [s, StringName(s)]:
+			var buffers: Array[PackedByteArray] = [v.hex_decode(), v.to_ascii_buffer(), v.to_utf8_buffer(), v.to_utf16_buffer(),
+				v.to_utf32_buffer(), v.to_wchar_buffer()]
+			decoded += int(buffers[0].size() > 0)
+			plain += int(buffers[1].size() > 0 and buffers[1].size() == buffers[2].size())
+			for bytes: PackedByteArray in buffers:
+				bytes.append(0x5a)
+				want.append(bytes.hex_encode())
+	var got: PackedStringArray = b2.replaced_buffers(texts)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_buffers gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	for i: int in want.size():
+		if got[i] != want[i]:
+			print("FAIL: Bag.replaced_buffers on %s, read %d, gave %s, not %s" % [texts[i / 12].c_escape(), i % 12, got[i], want[i]])
+			return 1
+	if decoded < 3000 or plain < 2000:
+		print("FAIL: Bag.replaced_buffers saw only %d texts decoded and %d of ASCII, too few to prove anything" % [decoded, plain])
 		return 1
 	return 0
 

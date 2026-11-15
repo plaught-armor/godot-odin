@@ -280,6 +280,7 @@ string_bin_to_int :: proc "contextless" (self: ^String) -> i64 {
 	return __ret
 }
 string_to_ascii_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
+	if out, ok := ascii_buffered(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_ascii_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -287,6 +288,7 @@ string_to_ascii_buffer :: proc "contextless" (self: ^String) -> PackedByteArray 
 	return __ret
 }
 string_to_utf8_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
+	if out, ok := utf8_buffered(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_utf8_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -294,6 +296,7 @@ string_to_utf8_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
 	return __ret
 }
 string_to_utf16_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
+	if out, ok := utf16_buffered(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_utf16_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -301,6 +304,7 @@ string_to_utf16_buffer :: proc "contextless" (self: ^String) -> PackedByteArray 
 	return __ret
 }
 string_to_utf32_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
+	if out, ok := utf32_buffered(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_utf32_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -308,6 +312,7 @@ string_to_utf32_buffer :: proc "contextless" (self: ^String) -> PackedByteArray 
 	return __ret
 }
 string_to_wchar_buffer :: proc "contextless" (self: ^String) -> PackedByteArray {
+	when ODIN_OS != .Windows { if out, ok := utf32_buffered(self); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "to_wchar_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -324,6 +329,7 @@ string_to_multibyte_char_buffer :: proc "contextless" (self: ^String, encoding: 
 	return __ret
 }
 string_hex_decode :: proc "contextless" (self: ^String) -> PackedByteArray {
+	if out, ok := hex_decoded(self); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "hex_decode", 247621236) }
 	__ret: PackedByteArray
@@ -1346,6 +1352,7 @@ string_name_trim_suffix :: proc "contextless" (self: ^StringName, suffix: String
 	return __ret
 }
 string_name_to_ascii_buffer :: proc "contextless" (self: ^StringName) -> PackedByteArray {
+	if dict_layout_known { if out, ok := ascii_buffered(name_text(self)); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_ascii_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -1353,6 +1360,7 @@ string_name_to_ascii_buffer :: proc "contextless" (self: ^StringName) -> PackedB
 	return __ret
 }
 string_name_to_utf8_buffer :: proc "contextless" (self: ^StringName) -> PackedByteArray {
+	if dict_layout_known { if out, ok := utf8_buffered(name_text(self)); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_utf8_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -1360,6 +1368,7 @@ string_name_to_utf8_buffer :: proc "contextless" (self: ^StringName) -> PackedBy
 	return __ret
 }
 string_name_to_utf16_buffer :: proc "contextless" (self: ^StringName) -> PackedByteArray {
+	if dict_layout_known { if out, ok := utf16_buffered(name_text(self)); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_utf16_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -1367,6 +1376,7 @@ string_name_to_utf16_buffer :: proc "contextless" (self: ^StringName) -> PackedB
 	return __ret
 }
 string_name_to_utf32_buffer :: proc "contextless" (self: ^StringName) -> PackedByteArray {
+	if dict_layout_known { if out, ok := utf32_buffered(name_text(self)); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_utf32_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -1374,6 +1384,7 @@ string_name_to_utf32_buffer :: proc "contextless" (self: ^StringName) -> PackedB
 	return __ret
 }
 string_name_to_wchar_buffer :: proc "contextless" (self: ^StringName) -> PackedByteArray {
+	when ODIN_OS != .Windows { if dict_layout_known { if out, ok := utf32_buffered(name_text(self)); ok { return out } } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_wchar_buffer", 247621236) }
 	__ret: PackedByteArray
@@ -1390,6 +1401,7 @@ string_name_to_multibyte_char_buffer :: proc "contextless" (self: ^StringName, e
 	return __ret
 }
 string_name_hex_decode :: proc "contextless" (self: ^StringName) -> PackedByteArray {
+	if dict_layout_known { if out, ok := hex_decoded(name_text(self)); ok { return out } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "hex_decode", 247621236) }
 	__ret: PackedByteArray

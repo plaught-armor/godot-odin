@@ -2155,6 +2155,18 @@ String_Op :: enum i64 {
 	URI_DECODE, // string_uri_decode of the same
 	URI_FILE_DECODE_CALL, // the engine's String.uri_file_decode of the same file name
 	URI_FILE_DECODE, // string_uri_file_decode of the same
+	HEX_DECODE_CALL, // the engine's String.hex_decode of 24 digits
+	HEX_DECODE, // string_hex_decode of the same
+	ASCII_BUFFER_CALL, // the engine's String.to_ascii_buffer of a 24-character ASCII line
+	ASCII_BUFFER, // string_to_ascii_buffer of the same
+	UTF8_BUFFER_CALL, // the engine's String.to_utf8_buffer of a 24-character line, 3 of them not ASCII
+	UTF8_BUFFER, // string_to_utf8_buffer of the same
+	UTF16_BUFFER_CALL, // the engine's String.to_utf16_buffer of the same line
+	UTF16_BUFFER, // string_to_utf16_buffer of the same
+	UTF32_BUFFER_CALL, // the engine's String.to_utf32_buffer of the same line
+	UTF32_BUFFER, // string_to_utf32_buffer of the same
+	WCHAR_BUFFER_CALL, // the engine's String.to_wchar_buffer of the same line
+	WCHAR_BUFFER, // string_to_wchar_buffer of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2722,6 +2734,36 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 			}
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
+		}
+	case .HEX_DECODE_CALL, .HEX_DECODE, .ASCII_BUFFER_CALL, .ASCII_BUFFER, .UTF8_BUFFER_CALL, .UTF8_BUFFER, .UTF16_BUFFER_CALL,
+	     .UTF16_BUFFER, .UTF32_BUFFER_CALL, .UTF32_BUFFER, .WCHAR_BUFFER_CALL, .WCHAR_BUFFER:
+		source := "a line of text, na\u00efve \u65e5\u672c"
+		name: cstring = "to_utf8_buffer"
+		#partial switch kind {
+		case .HEX_DECODE_CALL, .HEX_DECODE: source, name = "00112233445566778899aAbB", "hex_decode"
+		case .ASCII_BUFFER_CALL, .ASCII_BUFFER: source, name = "a line of text, as ASCII", "to_ascii_buffer"
+		case .UTF16_BUFFER_CALL, .UTF16_BUFFER: name = "to_utf16_buffer"
+		case .UTF32_BUFFER_CALL, .UTF32_BUFFER: name = "to_utf32_buffer"
+		case .WCHAR_BUFFER_CALL, .WCHAR_BUFFER: name = "to_wchar_buffer"
+		}
+		subject := godot.string_of(source)
+		defer godot.destroy[.STRING](&subject)
+		text := &subject
+		fn := godot.builtin_method(.STRING, name, 247621236)
+		for _ in 0 ..< n {
+			s := intrinsics.volatile_load(&text)
+			r: godot.PackedByteArray
+			#partial switch kind {
+			case .HEX_DECODE: r = godot.string_hex_decode(s)
+			case .ASCII_BUFFER: r = godot.string_to_ascii_buffer(s)
+			case .UTF8_BUFFER: r = godot.string_to_utf8_buffer(s)
+			case .UTF16_BUFFER: r = godot.string_to_utf16_buffer(s)
+			case .UTF32_BUFFER: r = godot.string_to_utf32_buffer(s)
+			case .WCHAR_BUFFER: r = godot.string_to_wchar_buffer(s)
+			case: fn(s, nil, &r, 0)
+			}
+			sum += godot.packed_stored_size(&r)
+			godot.destroy[.PACKED_BYTE_ARRAY](&r)
 		}
 	case .NUM_SCI_CALL, .NUM_SCI:
 		v := -123.456

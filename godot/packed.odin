@@ -50,6 +50,25 @@ packed_stored :: #force_inline proc "contextless" ($E: typeid, a: rawptr) -> []E
 	return ([^]E)(p)[:(^i64)(uintptr(p) - PACKED_SIZE_OFFSET)^]
 }
 
+// Gives the byte array `a`, which must be all zero bits, storage for `n` bytes, `n` above 0, and
+// returns it with nothing written. With `packed_layout_known` it allocates and fills the header
+// itself, the reference count 1 and the capacity and size the engine's `resize` from empty would
+// set, sparing two engine calls; the engine frees such storage as its own. Otherwise it asks the
+// engine for an array of that size.
+@(private)
+packed_byte_storage :: #force_inline proc "contextless" (a: ^PackedByteArray, n: int) -> [^]u8 {
+	if !packed_layout_known {
+		a^ = packed_byte_array_new()
+		packed_byte_array_resize(a, i64(n))
+		return ([^]u8)(gde.packed_byte_array_operator_index(a, 0))
+	}
+	base := ([^]i64)(gde.mem_alloc2(uint(PACKED_DATA_OFFSET + n), gde.Bool(0)))
+	base[0], base[1], base[2] = 1, i64(n), i64(n)
+	data := rawptr(uintptr(base) + PACKED_DATA_OFFSET)
+	([^]rawptr)(a)[PACKED_DATA_WORD] = data
+	return ([^]u8)(data)
+}
+
 // The element count of packed array `a`, read from its storage's header. Only when
 // `packed_layout_known`; the generated `size` and `is_empty` use it then, and ask the engine
 // otherwise.

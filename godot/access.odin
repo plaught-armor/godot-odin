@@ -1769,6 +1769,117 @@ uri_keeps :: #force_inline proc "contextless" (u: u32) -> bool {
 	return (u | 0x20) - 'a' < 26 || u - '0' < 10 || u == '-' || u == '.' || u == '_' || u == '~'
 }
 
+// The bytes `self` spells as pairs of hexadecimal digits: the engine's `hex_decode`. False where
+// the engine prints an error, an odd length or a character that is no digit, and the caller then
+// asks the engine.
+@(private)
+hex_decoded :: #force_inline proc "contextless" (self: ^String) -> (out: PackedByteArray, ok: bool) {
+	chars := string_read(self)
+	if len(chars) & 1 != 0 { return {}, false }
+	// One pass that only reads: no storage is made for a text the engine must answer.
+	bad := i64(0)
+	for c in chars { bad |= hex_digit(c) }
+	if bad < 0 { return {}, false }
+	if len(chars) == 0 { return {}, true }
+	w := packed_byte_storage(&out, len(chars) / 2)
+	for i in 0 ..< len(chars) / 2 {
+		w[i] = u8(hex_digit(chars[2 * i]) << 4 | hex_digit(chars[2 * i + 1]))
+	}
+	return out, true
+}
+
+// The characters of `self` as one byte each: the engine's `to_ascii_buffer`. False for a character
+// above 0x7F, where the engine prints an error, and the caller then asks the engine.
+@(private)
+ascii_buffered :: #force_inline proc "contextless" (self: ^String) -> (out: PackedByteArray, ok: bool) {
+	chars := string_read(self)
+	high := u32(0)
+	for c in chars { high |= u32(c) }
+	if high > 0x7f { return {}, false }
+	if len(chars) == 0 { return {}, true }
+	w := packed_byte_storage(&out, len(chars))
+	for c, i in chars { w[i] = u8(c) }
+	return out, true
+}
+
+// The characters of `self` as UTF-8: the engine's `to_utf8_buffer`. False for a character above
+// 0x1FFFFF, where the engine prints an error, and the caller then asks the engine. A character up
+// to there takes four bytes and half of a surrogate pair three, as the engine writes them.
+@(private)
+utf8_buffered :: #force_inline proc "contextless" (self: ^String) -> (out: PackedByteArray, ok: bool) {
+	chars := string_read(self)
+	n := 0
+	for c in chars {
+		u := u32(c)
+		if u > 0x1fffff { return {}, false }
+		n += 1 + int(u > 0x7f) + int(u > 0x7ff) + int(u > 0xffff)
+	}
+	if n == 0 { return {}, true }
+	w := packed_byte_storage(&out, n)
+	at := 0
+	for c in chars {
+		u := u32(c)
+		switch {
+		case u <= 0x7f:
+			w[at] = u8(u)
+			at += 1
+		case u <= 0x7ff:
+			w[at], w[at + 1] = u8(0xc0 | u >> 6), u8(0x80 | u & 0x3f)
+			at += 2
+		case u <= 0xffff:
+			w[at], w[at + 1], w[at + 2] = u8(0xe0 | u >> 12), u8(0x80 | u >> 6 & 0x3f), u8(0x80 | u & 0x3f)
+			at += 3
+		case:
+			w[at], w[at + 1] = u8(0xf0 | u >> 18), u8(0x80 | u >> 12 & 0x3f)
+			w[at + 2], w[at + 3] = u8(0x80 | u >> 6 & 0x3f), u8(0x80 | u & 0x3f)
+			at += 4
+		}
+	}
+	return out, true
+}
+
+// The characters of `self` as UTF-16, low byte first: the engine's `to_utf16_buffer`. False for
+// half of a surrogate pair and a character above 0x10FFFF, where the engine prints an error, and
+// the caller then asks the engine.
+@(private)
+utf16_buffered :: #force_inline proc "contextless" (self: ^String) -> (out: PackedByteArray, ok: bool) {
+	chars := string_read(self)
+	n := 0
+	for c in chars {
+		u := u32(c)
+		if u > 0x10ffff || u & 0xfffff800 == 0xd800 { return {}, false }
+		n += 1 + int(u > 0xffff)
+	}
+	if n == 0 { return {}, true }
+	// The storage is aligned for any type.
+	w := ([^]u16)(packed_byte_storage(&out, 2 * n))
+	at := 0
+	for c in chars {
+		u := u32(c)
+		if u <= 0xffff {
+			w[at] = u16(u)
+			at += 1
+		} else {
+			w[at], w[at + 1] = u16((u >> 10) + 0xd7c0), u16(u & 0x3ff | 0xdc00)
+			at += 2
+		}
+	}
+	return out, true
+}
+
+// The characters of `self` as they are stored, four bytes each: the engine's `to_utf32_buffer`,
+// and its `to_wchar_buffer` where a wide character is 32 bits. Always true: it answers as the
+// other buffers do so the generated procedures read alike.
+@(private)
+utf32_buffered :: #force_inline proc "contextless" (self: ^String) -> (out: PackedByteArray, ok: bool) {
+	chars := string_read(self)
+	if len(chars) == 0 { return {}, true }
+	// The storage is aligned for any type.
+	w := ([^]rune)(packed_byte_storage(&out, size_of(rune) * len(chars)))
+	copy(w[:len(chars)], chars)
+	return out, true
+}
+
 // Whether the engine's `uri_decode` takes a lower-case hexadecimal digit after '%'. 4.8 takes any
 // hexadecimal digit; 4.7 takes a digit or any upper-case ASCII letter. `check_caps_version` sets it.
 @(private)
