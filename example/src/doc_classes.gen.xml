@@ -231,6 +231,9 @@
 		<method name="replaced_strs">
 			<description>The String procs that replace engine methods and make Strings: replace and replacen of [code]part[/code] by [code]with[/code] in [code]s[/code], then the parts of split on [code]part[/code]. test.gd builds the same array from the engine's.</description>
 		</method>
+		<method name="replaced_matches">
+			<description>get_slice_count, match, matchn, is_subsequence_of and is_subsequence_ofn of [code]s[/code] with [code]other[/code], then the same through the StringName methods on [code]n[/code]. test.gd builds the same array from the engine's.</description>
+		</method>
 		<method name="replaced_name_ops">
 			<description>bag_replaced_ops through the StringName methods on [code]n[/code], then its length, is_empty as 0 or 1 and hash. test.gd builds the same array from the engine's StringName methods.</description>
 		</method>

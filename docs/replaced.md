@@ -5,12 +5,13 @@
 signature, reading the String's storage in place, so callers see no change except speed.
 
 Every replacement is checked in `example/project/test.gd` against the engine's own method, called
-from GDScript, which does not go through these bindings: `_check_replaced_ops` and
-`_check_replaced_strs` run every method in the table on fixed edge cases and on 3000 seeded random
-Strings. When upgrading the engine,
-regenerate the bindings, run `example/build.sh`, and update the "Checked against" column once it
-passes. A failure there means the engine changed the method's behaviour, and the replacement must
-follow it or be dropped from `REPLACED`.
+from GDScript, which does not go through these bindings: `_check_replaced_ops`,
+`_check_replaced_strs` and `_check_replaced_matches` run every method in the table on fixed edge
+cases and on 3000 seeded random Strings, and `_check_replaced_wildcards` runs the last five on
+20000 seeded random patterns and texts. When upgrading the engine, regenerate the bindings, run
+`example/build.sh`, and update the "Checked against" column once it passes. A failure there means
+the engine changed the method's behaviour, and the replacement must follow it or be dropped from
+`REPLACED`.
 
 | Method | Replacement | Checked against | Engine call | Replacement |
 |---|---|---|---|---|
@@ -29,12 +30,25 @@ follow it or be dropped from `REPLACED`.
 | `String.replace` | `string_replace` | Godot 4.7-stable | 109 ns | 37 ns |
 | `String.replacen` | `string_replacen` | Godot 4.7-stable | 679 ns | 43 ns |
 | `String.split` | `string_split` | Godot 4.7-stable | 235 ns | 144 ns |
+| `String.get_slice_count` | `string_get_slice_count` | Godot 4.7-stable | 14 ns | 9.9 ns |
+| `String.match` | `string_match` | Godot 4.7-stable | 34 ns | 33 ns |
+| `String.matchn` | `string_matchn` | Godot 4.7-stable | 379 ns | 42 ns |
+| `String.is_subsequence_of` | `string_is_subsequence_of` | Godot 4.7-stable | 12 ns | 11 ns |
+| `String.is_subsequence_ofn` | `string_is_subsequence_ofn` | Godot 4.7-stable | 346 ns | 20 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
 sentence split on spaces into nine Strings, which making those Strings dominates; `begins_with`
 and `ends_with` of a two-word start and end of the sentence; `casecmp_to` of the sentence and an
-equal one in separate storage.
+equal one in separate storage; `get_slice_count` of "/" in "res://scenes/level_01.tscn", that path
+matched with "res://*level_??.tscn", and "lvl01" as a subsequence of it, the argument in upper
+case for `matchn` and `is_subsequence_ofn`.
+
+`string_match` and `string_matchn` do not call themselves as the engine's matcher does. They
+remember the last `*` and how many characters it has taken, and give it one more on a mismatch,
+within a fixed number of rounds. The result is the same for every pattern, including a `?` that
+does not stand for a full stop and a zero character ending either String. `match` alone times
+level with the engine call; it is replaced so that `matchn` and the StringName methods share it.
 
 ## Vector2, Vector3 and Vector4
 

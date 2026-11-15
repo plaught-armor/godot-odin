@@ -113,51 +113,6 @@ string_get_slicec :: proc "contextless" (self: ^String, delimiter: i64, slice: i
 	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
-string_get_slice_count :: proc "contextless" (self: ^String, delimiter: String) -> i64 {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "get_slice_count", 2920860731) }
-	__a_delimiter := transmute([1]uintptr)delimiter
-	__args := [1]gde.ConstTypePtr{&__a_delimiter}
-	__ret: i64
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_match :: proc "contextless" (self: ^String, expr: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "match", 2566493496) }
-	__a_expr := transmute([1]uintptr)expr
-	__args := [1]gde.ConstTypePtr{&__a_expr}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
-string_matchn :: proc "contextless" (self: ^String, expr: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "matchn", 2566493496) }
-	__a_expr := transmute([1]uintptr)expr
-	__args := [1]gde.ConstTypePtr{&__a_expr}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
-string_is_subsequence_of :: proc "contextless" (self: ^String, text: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "is_subsequence_of", 2566493496) }
-	__a_text := transmute([1]uintptr)text
-	__args := [1]gde.ConstTypePtr{&__a_text}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
-string_is_subsequence_ofn :: proc "contextless" (self: ^String, text: String) -> bool {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "is_subsequence_ofn", 2566493496) }
-	__a_text := transmute([1]uintptr)text
-	__args := [1]gde.ConstTypePtr{&__a_text}
-	__ret: u8
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret != 0
-}
 string_bigrams :: proc "contextless" (self: ^String) -> PackedStringArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "bigrams", 747180633) }
@@ -999,6 +954,7 @@ string_name_get_slicec :: proc "contextless" (self: ^StringName, delimiter: i64,
 	return __ret
 }
 string_name_get_slice_count :: proc "contextless" (self: ^StringName, delimiter: String) -> i64 {
+	if dict_layout_known { return string_get_slice_count(name_text(self), delimiter) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "get_slice_count", 2920860731) }
 	__a_delimiter := transmute([1]uintptr)delimiter
@@ -1076,6 +1032,7 @@ string_name_rfindn :: proc "contextless" (self: ^StringName, what: String, from:
 	return __ret
 }
 string_name_match :: proc "contextless" (self: ^StringName, expr: String) -> bool {
+	if dict_layout_known { return string_match(name_text(self), expr) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "match", 2566493496) }
 	__a_expr := transmute([1]uintptr)expr
@@ -1085,6 +1042,7 @@ string_name_match :: proc "contextless" (self: ^StringName, expr: String) -> boo
 	return __ret != 0
 }
 string_name_matchn :: proc "contextless" (self: ^StringName, expr: String) -> bool {
+	if dict_layout_known { return string_matchn(name_text(self), expr) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "matchn", 2566493496) }
 	__a_expr := transmute([1]uintptr)expr
@@ -1114,6 +1072,7 @@ string_name_ends_with :: proc "contextless" (self: ^StringName, text: String) ->
 	return __ret != 0
 }
 string_name_is_subsequence_of :: proc "contextless" (self: ^StringName, text: String) -> bool {
+	if dict_layout_known { return string_is_subsequence_of(name_text(self), text) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_subsequence_of", 2566493496) }
 	__a_text := transmute([1]uintptr)text
@@ -1123,6 +1082,7 @@ string_name_is_subsequence_of :: proc "contextless" (self: ^StringName, text: St
 	return __ret != 0
 }
 string_name_is_subsequence_ofn :: proc "contextless" (self: ^StringName, text: String) -> bool {
+	if dict_layout_known { return string_is_subsequence_ofn(name_text(self), text) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "is_subsequence_ofn", 2566493496) }
 	__a_text := transmute([1]uintptr)text

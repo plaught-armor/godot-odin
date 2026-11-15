@@ -559,10 +559,12 @@ func _check_extras() -> int:
 			for allow_empty: bool in [true, false]:
 				for maxsplit: int in [-1, 0, 1, 2, (1 << 32) + 1]:
 					failures += _check_replaced_strs(b2, s, c[1], with, allow_empty, maxsplit)
+		failures += _check_replaced_matches(b2, s, c[1])
 		if b2.has_text(s, c[1]) != s.contains(c[1]):
 			print("FAIL: Bag.has_text(%s, %s) gave %s" % [s, c[1], b2.has_text(s, c[1])])
 			failures += 1
 	failures += _check_replaced_random(b2)
+	failures += _check_replaced_wildcards(b2)
 	failures += _check_replaced_vectors(b2)
 	failures += _check_sine_cosine(b2)
 	failures += _check_replaced_vectorsi(b2)
@@ -712,6 +714,50 @@ func _check_replaced_ops(b2: Bag, s: String, part: String, from: int, to: int) -
 		print("FAIL: Bag.replaced_name_ops(%s, %s, %d, %d) gave %s, not %s" % [n, part, from, to, got, want])
 		return 1
 	return 0
+
+
+# get_slice_count, match, matchn, is_subsequence_of and is_subsequence_ofn of `s` with `other` and
+# of `other` with `s`, as String and as StringName, from Bag.replaced_matches. Returns 1 on a
+# mismatch.
+func _check_replaced_matches(b2: Bag, s: String, other: String) -> int:
+	for pair: Array in [[s, other], [other, s]]:
+		var a: String = pair[0]
+		var b: String = pair[1]
+		var n := StringName(a)
+		var want := PackedInt64Array([a.get_slice_count(b), int(a.match(b)), int(a.matchn(b)),
+				int(a.is_subsequence_of(b)), int(a.is_subsequence_ofn(b)),
+				n.get_slice_count(b), int(n.match(b)), int(n.matchn(b)),
+				int(n.is_subsequence_of(b)), int(n.is_subsequence_ofn(b))])
+		var got: PackedInt64Array = b2.replaced_matches(a, n, b)
+		if got != want:
+			print("FAIL: Bag.replaced_matches(%s, %s) gave %s, not %s" % [a, b, got, want])
+			return 1
+	return 0
+
+
+# _check_replaced_matches on fixed patterns and then on seeded random Strings over a small alphabet
+# with both cases, the two wildcards and the full stop that `?` does not stand for, so patterns
+# with several `*` meet texts they fit and texts they nearly fit. The seed is fixed so a failure
+# repeats.
+func _check_replaced_wildcards(b2: Bag) -> int:
+	var failures := 0
+	for c: Array in [["*", ""], ["*", "a"], ["**", "a"], ["?", "."], ["?", "a"], ["a?", "a"], ["*.*", "a.b"],
+			["*.?", "a.."], ["a*b*c", "aXbXbXc"], ["a*b*c", "aXbXbX"], ["*a", "ba"], ["a*", "ab"], ["*?*", "."],
+			["res://*level_??.tscn", "res://scenes/level_01.tscn"], ["RES://*", "res://x"], ["É*", "éa"],
+			["*a*a*a*a*a*b", "a".repeat(24)], ["ace", "abcde"], ["aec", "abcde"], ["ÉA", "xéxa"], ["", "abc"]]:
+		failures += _check_replaced_matches(b2, c[0], c[1])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261115
+	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]
+	for round: int in 20000:
+		var pattern := ""
+		for k: int in rng.randi_range(0, 8):
+			pattern += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		var text := ""
+		for k: int in rng.randi_range(0, 12):
+			text += alphabet[rng.randi_range(0, 2) if round % 2 == 0 else rng.randi_range(0, alphabet.size() - 1)]
+		failures += _check_replaced_matches(b2, pattern, text)
+	return failures
 
 
 # The String procs that replace engine methods and make Strings, from Bag.replaced_strs: replace and
@@ -1180,6 +1226,7 @@ func _check_replaced_random(b2: Bag) -> int:
 		failures += _check_replaced_ops(b2, hay, needle, from, to)
 		var with: String = ["", "x", "日é", "AbA"][rng.randi_range(0, 3)]
 		failures += _check_replaced_strs(b2, hay, needle, with, rng.randi() % 2 == 0, rng.randi_range(-1, 3))
+		failures += _check_replaced_matches(b2, hay, needle)
 	return failures
 
 

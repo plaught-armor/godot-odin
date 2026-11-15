@@ -126,6 +126,7 @@ register_extras :: proc() {
 	godot.method(b, "which_name", bag_which_name, {"name"})
 	godot.method(b, "replaced_ops", bag_replaced_ops, {"s", "part", "from", "to"})
 	godot.method(b, "replaced_strs", bag_replaced_strs, {"s", "part", "with", "allow_empty", "maxsplit"})
+	godot.method(b, "replaced_matches", bag_replaced_matches, {"s", "n", "other"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -670,6 +671,28 @@ bag_replaced_strs :: proc(self: ^Bag, s: godot.String, part: godot.String, with:
 	parts := godot.string_split(&s, part, allow_empty, maxsplit)
 	godot.packed_string_array_append_array(&out, parts)
 	godot.destroy[.PACKED_STRING_ARRAY](&parts)
+	return out
+}
+
+// get_slice_count, match, matchn, is_subsequence_of and is_subsequence_ofn of `s` with `other`,
+// then the same through the StringName methods on `n`. test.gd builds the same array from the
+// engine's.
+bag_replaced_matches :: proc(self: ^Bag, s: godot.String, n: godot.StringName, other: godot.String) -> godot.PackedInt64Array {
+	s, n := s, n
+	r := [10]i64{
+		godot.string_get_slice_count(&s, other),
+		i64(godot.string_match(&s, other)),
+		i64(godot.string_matchn(&s, other)),
+		i64(godot.string_is_subsequence_of(&s, other)),
+		i64(godot.string_is_subsequence_ofn(&s, other)),
+		godot.string_name_get_slice_count(&n, other),
+		i64(godot.string_name_match(&n, other)),
+		i64(godot.string_name_matchn(&n, other)),
+		i64(godot.string_name_is_subsequence_of(&n, other)),
+		i64(godot.string_name_is_subsequence_ofn(&n, other)),
+	}
+	out := godot.packed_int64_array_new()
+	for v in r { godot.packed_int64_array_append(&out, v) }
 	return out
 }
 

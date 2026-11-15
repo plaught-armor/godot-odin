@@ -279,6 +279,99 @@ string_countn :: proc "contextless" (self: ^String, what: String, from: i64, to:
 	return count_in(string_read(self), rune_needle_of(string_chars(what), true), from, to, true)
 }
 
+// How many parts `delimiter` cuts `self` into: the engine's `get_slice_count`. One more than the
+// places `delimiter` is found, not overlapping, and 0 when either String is empty.
+string_get_slice_count :: proc "contextless" (self: ^String, delimiter: String) -> i64 {
+	chars, d := string_read(self), string_chars(delimiter)
+	if len(chars) == 0 || len(d) == 0 { return 0 }
+	return count_in(chars, rune_needle_of(d, false), 0, 0, false) + 1
+}
+
+// Whether the characters of `self` appear in `text` in the same order, with any others between
+// them: the engine's `is_subsequence_of`. An empty `self` gives true.
+string_is_subsequence_of :: proc "contextless" (self: ^String, text: String) -> bool {
+	return runes_subsequence(string_read(self), string_chars(text), false)
+}
+
+// `string_is_subsequence_of` ignoring case: the engine's `is_subsequence_ofn`.
+string_is_subsequence_ofn :: proc "contextless" (self: ^String, text: String) -> bool {
+	return runes_subsequence(string_read(self), string_chars(text), true)
+}
+
+// Whether `self` fits the pattern `expr`, where `*` stands for any characters and `?` for one
+// character other than a full stop: the engine's `match`. False when either String is empty.
+string_match :: proc "contextless" (self: ^String, expr: String) -> bool {
+	return runes_wildcard(string_chars(expr), string_read(self), false)
+}
+
+// `string_match` ignoring case: the engine's `matchn`.
+string_matchn :: proc "contextless" (self: ^String, expr: String) -> bool {
+	return runes_wildcard(string_chars(expr), string_read(self), true)
+}
+
+// Whether the characters of `part` appear in `whole` in order, compared lowered when `NOCASE`. The
+// engine walks both to their terminator, so a zero character ends either one there: `part` counts
+// as found once the characters before its zero are, unless the zero comes first, and `whole` is
+// searched only up to its zero.
+@(private)
+runes_subsequence :: #force_inline proc "contextless" (part, whole: []rune, $NOCASE: bool) -> bool {
+	if len(part) == 0 { return true }
+	if len(part) > len(whole) { return false }
+	at := 0
+	#no_bounds_check for c in whole {
+		want := part[at]
+		if want == 0 || c == 0 { return false }
+		when NOCASE {
+			if rune_lower(want) != rune_lower(c) { continue }
+		} else {
+			if want != c { continue }
+		}
+		at += 1
+		if at == len(part) || part[at] == 0 { return true }
+	}
+	return false
+}
+
+// Whether `text` fits `pattern`, compared raised when `NOCASE`; false when either is empty. The
+// engine tries every length for each `*` by calling itself. This remembers only the last `*` and
+// how much of `text` it has taken, and on a mismatch gives it one character more: an earlier `*`
+// never needs to take more, since the last one can take any characters at all. A zero character
+// ends `pattern` or `text`, as the engine's terminator does.
+@(private)
+runes_wildcard :: proc "contextless" (pattern, text: []rune, $NOCASE: bool) -> bool {
+	if len(pattern) == 0 || len(text) == 0 { return false }
+	p, t := 0, 0
+	star, taken := -1, 0
+	// `taken` only grows and stays within `text`, and between two growths `p` only grows and stays
+	// within `pattern`, so the rounds below cover every step.
+	#no_bounds_check for _ in 0 ..< (len(pattern) + 2) * (len(text) + 2) {
+		pc := pattern[p] if p < len(pattern) else 0
+		tc := text[t] if t < len(text) else 0
+		if pc == '*' {
+			star, taken = p, t
+			p += 1
+			continue
+		}
+		if pc == 0 && tc == 0 { return true }
+		// A zero `tc` is the end of `text` and fits nothing; a zero `pc` equals no other character.
+		fits: bool
+		when NOCASE {
+			fits = tc != '.' if pc == '?' else rune_upper(tc) == rune_upper(pc)
+		} else {
+			fits = tc != '.' if pc == '?' else tc == pc
+		}
+		if fits && tc != 0 {
+			p += 1
+			t += 1
+			continue
+		}
+		if star < 0 || taken >= len(text) || text[taken] == 0 { return false }
+		taken += 1
+		p, t = star + 1, taken
+	}
+	return false
+}
+
 // Whether `self` starts with `text`: the engine's `begins_with`. Empty `text` gives true.
 string_begins_with :: proc "contextless" (self: ^String, text: String) -> bool {
 	chars, t := string_read(self), string_chars(text)

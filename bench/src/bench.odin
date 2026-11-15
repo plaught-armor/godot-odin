@@ -655,6 +655,16 @@ Ident :: enum i64 {
 	BSWAP32,            // the generated packed_byte_array_bswap32 of the same, swapped in place
 	BSWAP16_LONG_CALL,  // the engine's PackedByteArray.bswap16 of all 4096 bytes, the storage not shared
 	BSWAP16_LONG,       // the generated packed_byte_array_bswap16 of the same
+	SLICE_COUNT_CALL,   // the engine's String.get_slice_count of "/" in "res://scenes/level_01.tscn"
+	SLICE_COUNT,        // string_get_slice_count of the same
+	MATCH_CALL,         // the engine's String.match of that path with "res://*level_??.tscn"
+	MATCH,              // string_match of the same
+	MATCHN_CALL,        // the engine's String.matchn of that path with "RES://*LEVEL_??.TSCN"
+	MATCHN,             // string_matchn of the same
+	SUBSEQ_CALL,        // the engine's String.is_subsequence_of of "lvl01" in that path
+	SUBSEQ,             // string_is_subsequence_of of the same
+	SUBSEQN_CALL,       // the engine's String.is_subsequence_ofn of "LVL01" in that path
+	SUBSEQN,            // string_is_subsequence_ofn of the same
 }
 
 // Action names for the `string_which` rows, the bench's identifier last, others of its length and
@@ -1452,6 +1462,53 @@ ident_ns :: proc(self: ^Bench, kind: Ident, n: i64) -> f64 {
 			for _ in 0 ..< n { fn(intrinsics.volatile_load(&p), &args[0], nil, 2) }
 		}
 		sum += godot.packed_byte_array_decode_u32(&a, 4)
+	case .SLICE_COUNT_CALL, .SLICE_COUNT, .MATCH_CALL, .MATCH, .MATCHN_CALL, .MATCHN, .SUBSEQ_CALL, .SUBSEQ, .SUBSEQN_CALL, .SUBSEQN:
+		path := godot.string_of("res://scenes/level_01.tscn")
+		defer godot.destroy[.STRING](&path)
+		// The Strings each row takes: the one the method is called on, then its argument.
+		other: string
+		name: cstring
+		on_path := true
+		#partial switch kind {
+		case .SLICE_COUNT_CALL, .SLICE_COUNT: other, name = "/", "get_slice_count"
+		case .MATCH_CALL, .MATCH:             other, name = "res://*level_??.tscn", "match"
+		case .MATCHN_CALL, .MATCHN:           other, name = "RES://*LEVEL_??.TSCN", "matchn"
+		case .SUBSEQ_CALL, .SUBSEQ:           other, name, on_path = "lvl01", "is_subsequence_of", false
+		case:                                 other, name, on_path = "LVL01", "is_subsequence_ofn", false
+		}
+		arg := godot.string_of(other)
+		defer godot.destroy[.STRING](&arg)
+		self_text, arg_text := path, arg
+		if !on_path { self_text, arg_text = arg, path }
+		p := &self_text
+		#partial switch kind {
+		case .SLICE_COUNT:
+			for _ in 0 ..< n { sum += godot.string_get_slice_count(intrinsics.volatile_load(&p), arg_text) }
+		case .MATCH:
+			for _ in 0 ..< n { sum += i64(godot.string_match(intrinsics.volatile_load(&p), arg_text)) }
+		case .MATCHN:
+			for _ in 0 ..< n { sum += i64(godot.string_matchn(intrinsics.volatile_load(&p), arg_text)) }
+		case .SUBSEQ:
+			for _ in 0 ..< n { sum += i64(godot.string_is_subsequence_of(intrinsics.volatile_load(&p), arg_text)) }
+		case .SUBSEQN:
+			for _ in 0 ..< n { sum += i64(godot.string_is_subsequence_ofn(intrinsics.volatile_load(&p), arg_text)) }
+		case .SLICE_COUNT_CALL:
+			fn := godot.builtin_method(.STRING, "get_slice_count", 2920860731)
+			args := [1]gde.ConstTypePtr{&arg_text}
+			for _ in 0 ..< n {
+				v: i64
+				fn(intrinsics.volatile_load(&p), &args[0], &v, 1)
+				sum += v
+			}
+		case:
+			fn := godot.builtin_method(.STRING, name, 2566493496)
+			args := [1]gde.ConstTypePtr{&arg_text}
+			for _ in 0 ..< n {
+				v: bool
+				fn(intrinsics.volatile_load(&p), &args[0], &v, 1)
+				sum += i64(v)
+			}
+		}
 	case .DICT_SAME_CALL, .DICT_SAME:
 		a, o := godot.dictionary_new(), godot.dictionary_new()
 		defer godot.destroy[.DICTIONARY](&a)
