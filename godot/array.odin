@@ -19,6 +19,11 @@ import gde "../gdextension"
 @(private)
 array_layout_known: bool
 
+// True when `array_layout_known` and a typed Array's script lies where `same_container_type` reads
+// it. `check_array_layout` decides it at load; without it `is_same_typed` calls the engine.
+@(private)
+array_same_typed_known: bool
+
 // Where ArrayPrivate keeps the pointer to its elements: after its 32-bit reference count, padded to
 // 8 bytes, and the empty write proxy of its Vector<Variant>, padded to 8 bytes too. The elements
 // follow the copy-on-write header that packed.odin reads, so the count sits PACKED_SIZE_OFFSET bytes
@@ -76,25 +81,42 @@ same_container_type :: #force_inline proc "contextless" (x, y: uintptr) -> bool 
 }
 
 // Whether the ContainerType `at` bytes into the storage of the container `c` names class `class`
-// and no script.
+// and script `script`, nil for none.
 @(private)
-container_type_names :: proc "contextless" (c: rawptr, at: uintptr, class: ^StringName) -> bool {
+container_type_names :: proc "contextless" (c: rawptr, at: uintptr, class: ^StringName, script: gde.ObjectPtr) -> bool {
 	t := uintptr((^rawptr)(c)^) + at
-	return (^rawptr)(t + 8)^ == (^rawptr)(class)^ && (^rawptr)(t + 16)^ == nil
+	return (^rawptr)(t + 8)^ == (^rawptr)(class)^ && (^rawptr)(t + 16)^ == rawptr(script)
+}
+
+// A script for the layout checks to type a container with, and the Variant that owns it:
+// destroying the Variant frees the script. A ScriptExtension, the one Script class registered when
+// the checks run. Nil and a NIL Variant when the engine has none: `is_same_typed` then calls the
+// engine.
+@(private)
+layout_script :: proc "contextless" () -> (script: gde.ObjectPtr, owner: Variant) {
+	class := name_of("ScriptExtension")
+	// Asked first: constructing a class the engine does not have prints an error.
+	if gde.classdb_get_class_tag(&class) != nil { script = gde.classdb_construct_object3(&class) }
+	destroy[.STRING_NAME](&class)
+	if script == nil { return }
+	object_notification(Object(script), 0, false)
+	// The script is made holding one reference and the Variant takes its own: drop the first.
+	from_type[.OBJECT](&owner, &script)
+	_ = ref_counted_unreference(RefCounted(script))
+	return
 }
 
 // Whether `a` and `other` are typed alike. `other` is read from its value, not through its
 // address: a container taken by value and then read through a pointer is first stored a byte at a
-// time, and the read waits on those stores. Only when `array_layout_known`.
+// time, and the read waits on those stores. Only when `array_same_typed_known`.
 @(private)
 array_stored_same_typed :: #force_inline proc "contextless" (a: ^Array, other: Array) -> bool {
 	return same_container_type(uintptr((^rawptr)(a)^) + ARRAY_TYPED_OFFSET, uintptr(transmute(rawptr)other) + ARRAY_TYPED_OFFSET)
 }
 
-// Sets `array_layout_known` from Arrays of known contents: one of three ints shared by two
+// Sets `array_layout_known` and `array_same_typed_known` from Arrays of known contents: one of three ints shared by two
 // references, one grown by pushes so its capacity differs from its size, one emptied by a resize,
-// three typed ones, one of them to a class, and a read-only one. A typed Array's script is taken to
-// be the pointer after its class name; no Array here has one.
+// four typed ones, one of them to a class and one to a class and a script, and a read-only one.
 check_array_layout :: proc "contextless" () {
 	// The elements where the engine indexes them, after the header of reference count 1 (the
 	// Vector is not shared, the ArrayPrivate is), capacity and size `n`.
@@ -122,6 +144,9 @@ check_array_layout :: proc "contextless" () {
 	node := name_of("Node")
 	to := array_new()
 	gde.array_set_typed(&to, .OBJECT, &node, &no_script)
+	script, script_owner := layout_script()
+	ts := array_new()
+	gde.array_set_typed(&ts, .OBJECT, &node, &script_owner)
 	ro := array_new()
 	array_make_read_only(&ro)
 	array_layout_known =
@@ -129,9 +154,12 @@ check_array_layout :: proc "contextless" () {
 		(^rawptr)(uintptr((^rawptr)(&e)^) + ARRAY_DATA_OFFSET)^ == nil && array_size(&e) == 0 &&
 		array_stored_type(&ti) == .INT && array_stored_type(&tn) == .STRING_NAME &&
 		array_stored_type(&to) == .OBJECT && (^rawptr)(&node)^ != nil &&
-		container_type_names(&to, ARRAY_TYPED_OFFSET, &node) && container_type_names(&ti, ARRAY_TYPED_OFFSET, &no_class) &&
+		container_type_names(&to, ARRAY_TYPED_OFFSET, &node, nil) && container_type_names(&ti, ARRAY_TYPED_OFFSET, &no_class, nil) &&
 		array_stored_read_only(&ro) && !array_stored_read_only(&a) && !array_stored_read_only(&ti)
-	for x in ([?]^Array{&ro, &to, &tn, &ti, &e, &c, &b, &a}) { destroy[.ARRAY](x) }
+	array_same_typed_known = array_layout_known && script != nil &&
+		array_stored_type(&ts) == .OBJECT && container_type_names(&ts, ARRAY_TYPED_OFFSET, &node, script)
+	for x in ([?]^Array{&ro, &ts, &to, &tn, &ti, &e, &c, &b, &a}) { destroy[.ARRAY](x) }
+	gde.variant_destroy(&script_owner)
 	destroy[.STRING_NAME](&node)
 }
 

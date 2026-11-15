@@ -19,6 +19,12 @@ import gde "../gdextension"
 @(private)
 dict_layout_known: bool
 
+// True when `dict_layout_known` and a typed Dictionary's key and value scripts lie where
+// `same_container_type` reads them. `check_dict_layout` decides it at load; without it
+// `is_same_typed`, `is_same_typed_key` and `is_same_typed_value` call the engine.
+@(private)
+dict_same_typed_known: bool
+
 // Where DictionaryPrivate keeps its HashMap: after its 32-bit reference count, padded to 8 bytes,
 // and its read-only pointer.
 @(private)
@@ -125,7 +131,7 @@ dict_value_type :: #force_inline proc "contextless" (d: ^Dictionary) -> gde.Vari
 
 // Whether `d` and `other` have equal ContainerTypes `at` bytes into their storage, the key type or
 // the value type. `other` is read from its value, as `array_stored_same_typed` reads its Array.
-// Only when `dict_layout_known`.
+// Only when `dict_same_typed_known`.
 @(private)
 dict_same_typed :: #force_inline proc "contextless" (d: ^Dictionary, other: Dictionary, at: uintptr) -> bool {
 	return same_container_type(uintptr((^rawptr)(d)^) + at, uintptr(transmute(rawptr)other) + at)
@@ -391,6 +397,7 @@ dict_stored_list :: proc "contextless" (d: ^Dictionary, $VALUES: bool) -> (Array
 // must be found where the engine's own lookup finds it, in the insertion order its key list gives.
 check_dict_layout :: proc "contextless" () {
 	dict_layout_known = false
+	dict_same_typed_known = false
 	if !array_layout_known || !string_layout_known { return }
 	name := name_of("check_dict_layout")
 	defer destroy[.STRING_NAME](&name)
@@ -431,14 +438,21 @@ check_dict_layout :: proc "contextless" () {
 	t := dictionary_new()
 	defer destroy[.DICTIONARY](&t)
 	gde.dictionary_set_typed(&t, .INT, &no_class, &no_script, .FLOAT, &no_class, &no_script)
-	// Typed to two classes, to prove where each class name lies. A script is taken to be the
-	// pointer after it; no Dictionary here has one.
+	// Typed to two classes, then to the same two with a script each, to prove where each class
+	// name and each script lies.
 	node, resource := name_of("Node"), name_of("Resource")
 	defer destroy[.STRING_NAME](&node)
 	defer destroy[.STRING_NAME](&resource)
 	to := dictionary_new()
 	defer destroy[.DICTIONARY](&to)
 	gde.dictionary_set_typed(&to, .OBJECT, &node, &no_script, .OBJECT, &resource, &no_script)
+	key_script, key_owner := layout_script()
+	defer gde.variant_destroy(&key_owner)
+	value_script, value_owner := layout_script()
+	defer gde.variant_destroy(&value_owner)
+	ts := dictionary_new()
+	defer destroy[.DICTIONARY](&ts)
+	gde.dictionary_set_typed(&ts, .OBJECT, &node, &key_owner, .OBJECT, &resource, &value_owner)
 
 	ro := dictionary_new()
 	defer destroy[.DICTIONARY](&ro)
@@ -451,9 +465,11 @@ check_dict_layout :: proc "contextless" () {
 		dict_value_type(&t) == .FLOAT && dict_value_type(&d) == .NIL &&
 		dict_key_type(&to) == .OBJECT && dict_value_type(&to) == .OBJECT &&
 		(^rawptr)(&node)^ != nil && (^rawptr)(&resource)^ != nil && (^rawptr)(&node)^ != (^rawptr)(&resource)^ &&
-		container_type_names(&to, DICT_KEY_TYPE_OFFSET, &node) && container_type_names(&to, DICT_VALUE_TYPE_OFFSET, &resource) &&
-		container_type_names(&t, DICT_KEY_TYPE_OFFSET, &no_class) && container_type_names(&t, DICT_VALUE_TYPE_OFFSET, &no_class)
+		container_type_names(&to, DICT_KEY_TYPE_OFFSET, &node, nil) && container_type_names(&to, DICT_VALUE_TYPE_OFFSET, &resource, nil) &&
+		container_type_names(&t, DICT_KEY_TYPE_OFFSET, &no_class, nil) && container_type_names(&t, DICT_VALUE_TYPE_OFFSET, &no_class, nil)
 	if !dict_layout_known { return }
+	scripts_known := key_script != nil && value_script != nil && key_script != value_script &&
+		container_type_names(&ts, DICT_KEY_TYPE_OFFSET, &node, key_script) && container_type_names(&ts, DICT_VALUE_TYPE_OFFSET, &resource, value_script)
 	// The lookups themselves, which need the layout known.
 	keys := dictionary_keys(&d)
 	defer destroy[.ARRAY](&keys)
@@ -463,6 +479,7 @@ check_dict_layout :: proc "contextless" () {
 		if !ok || found != el { dict_layout_known = false; break }
 		el = el.next
 	}
+	dict_same_typed_known = dict_layout_known && scripts_known
 }
 
 // Whether `d`'s HashMap holds what the engine says it does: its size, and its elements linked in the

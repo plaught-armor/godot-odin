@@ -736,8 +736,10 @@ kept as the fallback when the check fails and wherever the engine prints an erro
 - `Array.is_same_typed`, and `Dictionary.is_same_typed`, `is_same_typed_key` and
   `is_same_typed_value`, compare the Variant type, the class name and the script of the two
   containers, as the engine's `ContainerType` does. The layout checks prove where the class name
-  lies on containers typed to a class; the script is taken to be the pointer after it. The other
-  container is read from its by-value argument, never through its address (see below).
+  and the script lie on containers typed to a class and to a `ScriptExtension`, the one Script
+  class registered when the checks run; on an engine without that class only these four methods
+  go back to the engine. The other container is read from its by-value argument,
+  never through its address (see below).
 
 `String.hash` is djb2 up to the first 0 character, as the engine's. `string_djb2` takes two
 characters a step, which is the same sum with half the multiplies in a row; hashing a String key
