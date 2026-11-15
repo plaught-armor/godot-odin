@@ -130,6 +130,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_slices", bag_replaced_slices, {"s", "n", "from", "len"})
 	godot.method(b, "replaced_case", bag_replaced_case, {"s", "n"})
 	godot.method(b, "replaced_trims", bag_replaced_trims, {"s", "n", "other", "slice", "left", "right"})
+	godot.method(b, "replaced_strips", bag_replaced_strips, {"s", "n", "chars"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -755,6 +756,24 @@ bag_replaced_trims :: proc(self: ^Bag, s: godot.String, n: godot.StringName, oth
 		godot.string_name_trim_prefix(&n, other),
 		godot.string_name_trim_suffix(&n, other),
 		godot.string_name_strip_edges(&n, left, right),
+	}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
+	return out
+}
+
+// lstrip and rstrip of `chars` from `s`, then the same through the StringName methods on `n`.
+// test.gd builds the same array from the engine's.
+bag_replaced_strips :: proc(self: ^Bag, s: godot.String, n: godot.StringName, chars: godot.String) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [4]godot.String{
+		godot.string_lstrip(&s, chars),
+		godot.string_rstrip(&s, chars),
+		godot.string_name_lstrip(&n, chars),
+		godot.string_name_rstrip(&n, chars),
 	}
 	out := godot.packed_string_array_new()
 	for &v in r {

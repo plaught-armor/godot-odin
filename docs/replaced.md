@@ -44,6 +44,8 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.trim_prefix` | `string_trim_prefix` | Godot 4.7-stable | 26 ns | 12 ns |
 | `String.trim_suffix` | `string_trim_suffix` | Godot 4.7-stable | 26 ns | 14 ns |
 | `String.strip_edges` | `string_strip_edges` | Godot 4.7-stable | 22 ns | 12 ns |
+| `String.lstrip` | `string_lstrip` | Godot 4.7-stable | 33 ns | 16 ns |
+| `String.rstrip` | `string_rstrip` | Godot 4.7-stable | 33 ns | 16 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -84,6 +86,9 @@ timings are part 3 of the sentence split on spaces, the sentence's first and las
 trimmed, and both edges stripped of the sentence with two spaces before it and a tab and a
 newline after. `_check_replaced_trims` checks all four, as String and as StringName, on fixed
 cases and on 2000 seeded random Strings, for every part either side of the first and the last.
+`string_lstrip` and `string_rstrip` cut the run of characters that are in the given set from one
+end the same way, timed cutting four characters of the sentence with a set of four, and the same
+check covers them.
 
 ## Vector2, Vector3 and Vector4
 

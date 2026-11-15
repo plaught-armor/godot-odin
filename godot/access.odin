@@ -523,6 +523,38 @@ string_strip_edges :: proc "contextless" (self: ^String, left: bool, right: bool
 	return string_of_runes(kept)
 }
 
+// Whether `c` is one of `set`.
+runes_has :: proc "contextless" (set: []rune, c: rune) -> bool {
+	for s in set {
+		if s == c { return true }
+	}
+	return false
+}
+
+// `self` without the run of characters of `chars` at its start: the engine's `lstrip`. A copy
+// that shares the storage when nothing is cut. The caller destroys the result.
+string_lstrip :: proc "contextless" (self: ^String, chars: String) -> String {
+	text, set := string_read(self), string_chars(chars)
+	beg := 0
+	for c in text {
+		if !runes_has(set, c) { break }
+		beg += 1
+	}
+	return slice_of(self, text, i64(beg), i64(len(text) - beg))
+}
+
+// `self` without the run of characters of `chars` at its end: the engine's `rstrip`. A copy that
+// shares the storage when nothing is cut. The caller destroys the result.
+string_rstrip :: proc "contextless" (self: ^String, chars: String) -> String {
+	text, set := string_read(self), string_chars(chars)
+	end := len(text)
+	#reverse for c in text {
+		if !runes_has(set, c) { break }
+		end -= 1
+	}
+	return slice_of(self, text, 0, i64(end))
+}
+
 // A String of the `n` characters of `chars` from `from`, which lie inside it, `n` at least 1.
 // All of `chars`, the characters of `self`, is a copy that shares its storage, as the engine
 // returns.

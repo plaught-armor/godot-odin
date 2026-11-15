@@ -265,24 +265,6 @@ string_strip_escapes :: proc "contextless" (self: ^String) -> String {
 	__fn(self, nil, &__ret, 0)
 	return __ret
 }
-string_lstrip :: proc "contextless" (self: ^String, chars: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "lstrip", 3134094431) }
-	__a_chars := transmute([1]uintptr)chars
-	__args := [1]gde.ConstTypePtr{&__a_chars}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
-string_rstrip :: proc "contextless" (self: ^String, chars: String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "rstrip", 3134094431) }
-	__a_chars := transmute([1]uintptr)chars
-	__args := [1]gde.ConstTypePtr{&__a_chars}
-	__ret: String
-	__fn(self, &__args[0], &__ret, 1)
-	return __ret
-}
 string_get_extension :: proc "contextless" (self: ^String) -> String {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "get_extension", 3942272618) }
@@ -1267,6 +1249,7 @@ string_name_strip_escapes :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_lstrip :: proc "contextless" (self: ^StringName, chars: String) -> String {
+	if dict_layout_known { return string_lstrip(name_text(self), chars) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "lstrip", 3134094431) }
 	__a_chars := transmute([1]uintptr)chars
@@ -1276,6 +1259,7 @@ string_name_lstrip :: proc "contextless" (self: ^StringName, chars: String) -> S
 	return __ret
 }
 string_name_rstrip :: proc "contextless" (self: ^StringName, chars: String) -> String {
+	if dict_layout_known { return string_rstrip(name_text(self), chars) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "rstrip", 3134094431) }
 	__a_chars := transmute([1]uintptr)chars

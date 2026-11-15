@@ -2027,6 +2027,10 @@ String_Op :: enum i64 {
 	TRIM_SUFFIX,      // string_trim_suffix of the same
 	STRIP_EDGES_CALL, // the engine's String.strip_edges of the sentence with two spaces before it and a tab and a newline after, the result destroyed
 	STRIP_EDGES,      // string_strip_edges of the same
+	LSTRIP_CALL,      // the engine's String.lstrip of the characters of "the " from the sentence, the result destroyed
+	LSTRIP,           // string_lstrip of the same
+	RSTRIP_CALL,      // the engine's String.rstrip of the characters of "dog " from the sentence, the result destroyed
+	RSTRIP,           // string_rstrip of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2048,6 +2052,7 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	space := godot.intern_text(" ")
 	part := i64(3)
 	both := true
+	the_set, dog_set := godot.intern_text("the "), godot.intern_text("dog ")
 	sum: i64
 	start := time.tick_now()
 	switch kind {
@@ -2229,6 +2234,28 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .STRIP_EDGES:
 		for _ in 0 ..< n {
 			r := godot.string_strip_edges(intrinsics.volatile_load(&p), both, both)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .LSTRIP_CALL, .RSTRIP_CALL:
+		set := &the_set if kind == .LSTRIP_CALL else &dog_set
+		fn := godot.builtin_method(.STRING, "lstrip" if kind == .LSTRIP_CALL else "rstrip", 3134094431)
+		for _ in 0 ..< n {
+			args := [1]gde.ConstTypePtr{set}
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), &args[0], &r, 1)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .LSTRIP:
+		for _ in 0 ..< n {
+			r := godot.string_lstrip(intrinsics.volatile_load(&h), the_set)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .RSTRIP:
+		for _ in 0 ..< n {
+			r := godot.string_rstrip(intrinsics.volatile_load(&h), dog_set)
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}

@@ -762,11 +762,17 @@ func _check_replaced_slices(b2: Bag, s: String) -> int:
 
 # get_slice on `other`, trim_prefix and trim_suffix of `other`, and strip_edges, of `s`, as String
 # and as StringName, from Bag.replaced_trims against the engine's: every part either side of the
-# first and the last, ones that wrap to those as 32-bit ints, and each pair of edges. Returns the
-# number of mismatches.
+# first and the last, ones that wrap to those as 32-bit ints, and each pair of edges. Then lstrip
+# and rstrip of the characters of `other`, from Bag.replaced_strips. Returns the number of
+# mismatches.
 func _check_replaced_trim(b2: Bag, s: String, other: String) -> int:
 	var failures := 0
 	var n := StringName(s)
+	var strips := PackedStringArray([s.lstrip(other), s.rstrip(other), n.lstrip(other), n.rstrip(other)])
+	var stripped: PackedStringArray = b2.replaced_strips(s, n, other)
+	if stripped != strips:
+		print("FAIL: Bag.replaced_strips(%s, %s) gave %s, not %s" % [s, other, stripped, strips])
+		failures += 1
 	var parts := s.get_slice_count(other)
 	var k := 0
 	for slice: int in [-(1 << 32) - 1, -(1 << 32) + 1, -1, 0, 1, 2, parts - 1, parts, parts + 1, 1 << 32, (1 << 32) + 1]:
@@ -791,7 +797,8 @@ func _check_replaced_trims(b2: Bag) -> int:
 	for c: Array in [["", ""], ["", "a"], ["a", ""], ["a", "a"], ["abc", "abc"], ["abc", "abcd"], [" ", " "],
 			["  ", " "], [" \t\n ", "\t"], ["  a b  ", " "], ["\ta\n", "a"], ["res://scenes/level_01.tscn", "/"],
 			["res://scenes/level_01.tscn", "res://"], ["res://scenes/level_01.tscn", ".tscn"], ["a,b,,c,", ","],
-			[",,", ","], ["aXXbXXc", "XX"], ["aaa", "aa"], ["héllo wörld", "ö"], ["abc", "x"]]:
+			[",,", ","], ["aXXbXXc", "XX"], ["aaa", "aa"], ["héllo wörld", "ö"], ["abc", "x"],
+			["abcba", "ab"], ["abcba", "abc"], ["abcba", "cba"], ["  a b  ", " \t"], ["héllo", "hé"]]:
 		failures += _check_replaced_trim(b2, c[0], c[1])
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261119

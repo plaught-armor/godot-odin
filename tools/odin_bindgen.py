@@ -200,7 +200,8 @@ IN_PLACE = {
            ("is_subsequence_of", "text"), ("is_subsequence_ofn", "text"),
            ("substr", "from, len"), ("left", "length"), ("right", "length"),
            ("get_slice", "delimiter, slice"), ("trim_prefix", "prefix"),
-           ("trim_suffix", "suffix"), ("strip_edges", "left, right"))},
+           ("trim_suffix", "suffix"), ("strip_edges", "left, right"),
+           ("lstrip", "chars"), ("rstrip", "chars"))},
     ("StringName", "to_upper"): "\tif dict_layout_known { return string_to_upper(name_text(self)) }\n",
     ("StringName", "to_lower"): "\tif dict_layout_known { return string_to_lower(name_text(self)) }\n",
 }
@@ -239,6 +240,8 @@ REPLACED = {
     ("String", "trim_prefix"),
     ("String", "trim_suffix"),
     ("String", "strip_edges"),
+    ("String", "lstrip"),
+    ("String", "rstrip"),
     ("Basis", "inverse"),
     ("Basis", "transposed"),
     ("Basis", "orthonormalized"),
