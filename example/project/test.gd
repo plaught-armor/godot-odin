@@ -814,6 +814,52 @@ func _check_replaced_trims(b2: Bag) -> int:
 	return failures
 
 
+# capitalize, to_camel_case, to_pascal_case, to_snake_case and to_kebab_case of `s`, as String and
+# as StringName, from Bag.replaced_recase against the engine's. Returns the number of mismatches.
+func _check_replaced_recase(b2: Bag, s: String) -> int:
+	var n := StringName(s)
+	var want := PackedStringArray([s.capitalize(), s.to_camel_case(), s.to_pascal_case(), s.to_snake_case(),
+			s.to_kebab_case(), n.capitalize(), n.to_camel_case(), n.to_pascal_case(), n.to_snake_case(),
+			n.to_kebab_case()])
+	var got: PackedStringArray = b2.replaced_recase(s, n)
+	if got != want:
+		print("FAIL: Bag.replaced_recase(%s) gave %s, not %s" % [s.c_escape(), got, want])
+		return 1
+	return 0
+
+
+# _check_replaced_recase on fixed Strings; then on every character from 1 to 0x1FFFF but the
+# surrogates, each after a lower case letter and after a digit with a lower case letter following,
+# which tells an upper case letter, a lower case one, a gap and the rest apart; then on 3000
+# seeded random Strings over a small alphabet of both cases, digits, gaps and a control character.
+# The seed is fixed so a failure repeats.
+func _check_replaced_recases(b2: Bag) -> int:
+	var failures := 0
+	for s: String in ["", "a", "A", "1", "_", " ", "helloWorld", "HelloWorld", "hello_world", "hello world",
+			"HTTPServer", "HTTP2Server", "2D", "2d", "2Da", "2dd", "node2D", "Node2D", "vector3", "aBC", "ABCdef",
+			"1a2B3cc", "  move_local-x  ", "__private__", "a--b", "a - b", "ÉcoleÉtudiant", "ǅungla ǄUNGLA",
+			"x\u00A0y\u2010z\u3000w", "level_01.tscn", "\u0001 a\u0001", "a \u0001 b", "\u0001_\u0001", "ß ẞ ı İ",
+			"\t\n", "res://Scenes/Level_01.tscn", "the quick brown fox jumps over the lazy dog"]:
+		failures += _check_replaced_recase(b2, s)
+	for block: int in 0x20000 / 32:
+		var first := block * 32
+		if first >= 0xD800 and first < 0xE000:
+			continue
+		var s := ""
+		for c: int in range(maxi(first, 1), first + 32):
+			s += "a" + String.chr(c) + "a 1" + String.chr(c) + "a "
+		failures += _check_replaced_recase(b2, s)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261120
+	var alphabet: Array[String] = ["a", "b", "A", "B", "1", "2", "_", "-", " ", "É", "é", "\u0001", "."]
+	for round: int in 3000:
+		var s := ""
+		for i: int in rng.randi_range(0, 12):
+			s += alphabet[rng.randi_range(0, alphabet.size() - 1)]
+		failures += _check_replaced_recase(b2, s)
+	return failures
+
+
 # to_upper and to_lower of `s`, as String and as StringName, from Bag.replaced_case against the
 # engine's. Returns 1 on a mismatch.
 func _check_replaced_case(b2: Bag, s: String) -> int:
@@ -858,6 +904,7 @@ func _check_replaced_wildcards(b2: Bag) -> int:
 		failures += _check_replaced_slices(b2, s)
 	failures += _check_replaced_cases(b2)
 	failures += _check_replaced_trims(b2)
+	failures += _check_replaced_recases(b2)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261115
 	var alphabet: Array[String] = ["a", "A", "b", "*", "*", "?", ".", "é", "É"]

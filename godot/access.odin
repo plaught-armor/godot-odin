@@ -523,6 +523,148 @@ string_strip_edges :: proc "contextless" (self: ^String, left: bool, right: bool
 	return string_of_runes(kept)
 }
 
+// The case conventions the engine's `capitalize`, `to_camel_case`, `to_pascal_case`,
+// `to_snake_case` and `to_kebab_case` write.
+@(private)
+Recase :: enum {
+	SNAKE,      // lower case words joined by `_`
+	KEBAB,      // lower case words joined by `-`
+	CAPITALIZE, // words with an upper case first character, joined by a space
+	CAMEL,      // the same joined by nothing, the first word all lower case
+	PASCAL,     // the same joined by nothing
+}
+
+// What the engine asks of a character to find where a word ends.
+@(private)
+Letter :: enum u8 { OTHER, UPPER, LOWER, DIGIT }
+
+// The class of `c`: an upper or lower case letter of the engine's tables, or an ASCII digit.
+@(private)
+letter_of :: proc "contextless" (c: rune) -> Letter {
+	switch c {
+	case 'A' ..= 'Z': return .UPPER
+	case 'a' ..= 'z': return .LOWER
+	case '0' ..= '9': return .DIGIT
+	}
+	if u32(c) < 0x80 { return .OTHER }
+	if ranges_has(letter_upper, c) { return .UPPER }
+	if ranges_has(letter_lower, c) { return .LOWER }
+	return .OTHER
+}
+
+// Whether `c` lies between words: the engine's whitespace, underscore and hyphens, which it turns
+// into a space before it splits.
+@(private)
+rune_is_gap :: proc "contextless" (c: rune) -> bool {
+	switch c {
+	case ' ', '_', '-', 0x09 ..= 0x0D, 0x85, 0xA0, 0x1680, 0x2000 ..= 0x200B, 0x2010, 0x2011,
+	     0x2028, 0x2029, 0x202F, 0x205F, 0x3000:
+		return true
+	}
+	return false
+}
+
+// Writes `c` to `out` at `n^` when it fits, and counts it either way.
+@(private)
+put_rune :: #force_inline proc "contextless" (out: []rune, n: ^int, c: rune) {
+	if n^ < len(out) { out[n^] = c }
+	n^ += 1
+}
+
+// Writes `text` in the case convention `KIND` to `out`, as much as fits, and returns how many
+// characters that takes, so a call with an empty `out` only counts. As the engine's
+// `_separate_compound_words`, a word ends before an upper case letter after a lower case one
+// (aA), before an upper case letter after an upper case one or a digit when a lower case one
+// follows (AAa, 2Aa), before a lower case letter after a digit when a lower case one follows
+// (2aa), before a digit after a letter (A2, a2), and at each gap. For the three conventions of
+// words the engine drops empty words, and `text` must have its edges trimmed by `runes_trim_gaps`.
+@(private)
+runes_recase :: proc "contextless" (text: []rune, out: []rune, $KIND: Recase) -> int {
+	n := 0
+	prev := Letter.OTHER
+	curr := letter_of(text[0]) if len(text) > 0 else Letter.OTHER
+	starts := true // The next character written is the first of a word.
+	for c, i in text {
+		next := letter_of(text[i + 1]) if i + 1 < len(text) else Letter.OTHER
+		split := (prev == .LOWER && curr == .UPPER) ||
+			((prev == .UPPER || prev == .DIGIT) && curr == .UPPER && next == .LOWER) ||
+			(prev == .DIGIT && curr == .LOWER && next == .LOWER) ||
+			((prev == .UPPER || prev == .LOWER) && curr == .DIGIT)
+		prev, curr = curr, next
+		when KIND == .SNAKE || KIND == .KEBAB {
+			JOIN :: '_' when KIND == .SNAKE else '-'
+			if split { put_rune(out, &n, JOIN) }
+			put_rune(out, &n, JOIN if rune_is_gap(c) else rune_lower(c))
+		} else {
+			if rune_is_gap(c) {
+				starts = true
+				continue
+			}
+			lowered := rune_lower(c)
+			if split || starts {
+				// The engine changes the case of the first character of a word it has
+				// already lowered.
+				when KIND == .CAMEL {
+					lowered = rune_lower(lowered) if n == 0 else rune_upper(lowered)
+				} else {
+					lowered = rune_upper(lowered)
+				}
+				when KIND == .CAPITALIZE {
+					if n > 0 { put_rune(out, &n, ' ') }
+				}
+				starts = false
+			}
+			put_rune(out, &n, lowered)
+		}
+	}
+	return n
+}
+
+// `chars` without the gaps and the characters up to the space at its ends: what the engine's
+// `strip_edges` cuts from words once their gaps are spaces.
+@(private)
+runes_trim_gaps :: proc "contextless" (chars: []rune) -> []rune {
+	beg, end := 0, len(chars)
+	for _ in 0 ..< len(chars) {
+		if beg == end || (u32(chars[beg]) > 32 && !rune_is_gap(chars[beg])) { break }
+		beg += 1
+	}
+	for _ in 0 ..< len(chars) {
+		if end == beg || (u32(chars[end - 1]) > 32 && !rune_is_gap(chars[end - 1])) { break }
+		end -= 1
+	}
+	return chars[beg:end]
+}
+
+// A String of `self` in the case convention `KIND`, in storage of its own.
+@(private)
+string_recased :: #force_inline proc "contextless" (self: ^String, $KIND: Recase) -> (out: String) {
+	text := string_read(self)
+	when KIND != .SNAKE && KIND != .KEBAB { text = runes_trim_gaps(text) }
+	n := runes_recase(text, nil, KIND)
+	if n == 0 { return }
+	w := string_storage(&out, n + 1)
+	runes_recase(text, w[:n], KIND)
+	w[n] = 0
+	return
+}
+
+// `self` as words with an upper case first character, joined by a space: the engine's
+// `capitalize`. The caller destroys the result.
+string_capitalize :: proc "contextless" (self: ^String) -> String { return string_recased(self, .CAPITALIZE) }
+
+// `self` as camelCase: the engine's `to_camel_case`. The caller destroys the result.
+string_to_camel_case :: proc "contextless" (self: ^String) -> String { return string_recased(self, .CAMEL) }
+
+// `self` as PascalCase: the engine's `to_pascal_case`. The caller destroys the result.
+string_to_pascal_case :: proc "contextless" (self: ^String) -> String { return string_recased(self, .PASCAL) }
+
+// `self` as snake_case: the engine's `to_snake_case`. The caller destroys the result.
+string_to_snake_case :: proc "contextless" (self: ^String) -> String { return string_recased(self, .SNAKE) }
+
+// `self` as kebab-case: the engine's `to_kebab_case`. The caller destroys the result.
+string_to_kebab_case :: proc "contextless" (self: ^String) -> String { return string_recased(self, .KEBAB) }
+
 // Whether `c` is one of `set`.
 runes_has :: proc "contextless" (set: []rune, c: rune) -> bool {
 	for s in set {
@@ -1789,6 +1931,23 @@ rune_lower :: #force_inline proc "contextless" (c: rune) -> rune {
 // sets them at load.
 @(private) caps_upper_from, caps_upper_to, caps_lower_from, caps_lower_to: []u32
 
+// The bounds of the engine's upper and lower case letter ranges from 0x80 up, of the running
+// engine as the case tables are: each range's first character, then the one after its last.
+@(private) letter_upper, letter_lower: []u32
+
+// Whether `c` is in one of the ranges of `bounds`: whether an odd number of bounds are at or
+// below it. Halving 1400 bounds takes 11 steps; 16 bounds the loop.
+@(private)
+ranges_has :: proc "contextless" (bounds: []u32, c: rune) -> bool {
+	lo, hi := 0, len(bounds)
+	for _ in 0 ..< 16 {
+		if lo >= hi { break }
+		mid := (lo + hi) / 2
+		if bounds[mid] <= u32(c) { lo = mid + 1 } else { hi = mid }
+	}
+	return lo & 1 == 1
+}
+
 // Points the case tables at those of the engine's version. Called once at load.
 @(private)
 check_caps_version :: proc "contextless" () {
@@ -1797,9 +1956,11 @@ check_caps_version :: proc "contextless" () {
 	if v.major > 4 || (v.major == 4 && v.minor >= 8) {
 		caps_upper_from, caps_upper_to = CAPS_UPPER_FROM_48[:], CAPS_UPPER_TO_48[:]
 		caps_lower_from, caps_lower_to = CAPS_LOWER_FROM_48[:], CAPS_LOWER_TO_48[:]
+		letter_upper, letter_lower = LETTER_UPPER_48[:], LETTER_LOWER_48[:]
 	} else {
 		caps_upper_from, caps_upper_to = CAPS_UPPER_FROM[:], CAPS_UPPER_TO[:]
 		caps_lower_from, caps_lower_to = CAPS_LOWER_FROM[:], CAPS_LOWER_TO[:]
+		letter_upper, letter_lower = LETTER_UPPER[:], LETTER_LOWER[:]
 	}
 }
 

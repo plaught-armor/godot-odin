@@ -193,41 +193,6 @@ string_erase :: proc "contextless" (self: ^String, position: i64, chars: i64) ->
 	__fn(self, &__args[0], &__ret, 2)
 	return __ret
 }
-string_capitalize :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "capitalize", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_to_camel_case :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "to_camel_case", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_to_pascal_case :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "to_pascal_case", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_to_snake_case :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "to_snake_case", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
-string_to_kebab_case :: proc "contextless" (self: ^String) -> String {
-	@(static) __fn: gde.PtrBuiltInMethod
-	if __fn == nil { __fn = builtin_method(.STRING, "to_kebab_case", 3942272618) }
-	__ret: String
-	__fn(self, nil, &__ret, 0)
-	return __ret
-}
 string_rsplit :: proc "contextless" (self: ^String, delimiter: String, allow_empty: bool, maxsplit: i64) -> PackedStringArray {
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING, "rsplit", 1252735785) }
@@ -1118,6 +1083,7 @@ string_name_erase :: proc "contextless" (self: ^StringName, position: i64, chars
 	return __ret
 }
 string_name_capitalize :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_capitalize(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "capitalize", 3942272618) }
 	__ret: String
@@ -1125,6 +1091,7 @@ string_name_capitalize :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_to_camel_case :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_to_camel_case(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_camel_case", 3942272618) }
 	__ret: String
@@ -1132,6 +1099,7 @@ string_name_to_camel_case :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_to_pascal_case :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_to_pascal_case(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_pascal_case", 3942272618) }
 	__ret: String
@@ -1139,6 +1107,7 @@ string_name_to_pascal_case :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_to_snake_case :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_to_snake_case(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_snake_case", 3942272618) }
 	__ret: String
@@ -1146,6 +1115,7 @@ string_name_to_snake_case :: proc "contextless" (self: ^StringName) -> String {
 	return __ret
 }
 string_name_to_kebab_case :: proc "contextless" (self: ^StringName) -> String {
+	if dict_layout_known { return string_to_kebab_case(name_text(self)) }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.STRING_NAME, "to_kebab_case", 3942272618) }
 	__ret: String

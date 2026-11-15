@@ -131,6 +131,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_case", bag_replaced_case, {"s", "n"})
 	godot.method(b, "replaced_trims", bag_replaced_trims, {"s", "n", "other", "slice", "left", "right"})
 	godot.method(b, "replaced_strips", bag_replaced_strips, {"s", "n", "chars"})
+	godot.method(b, "replaced_recase", bag_replaced_recase, {"s", "n"})
 	godot.method(b, "replaced_name_ops", bag_replaced_name_ops, {"n", "part", "from", "to"})
 	godot.method(b, "replaced_numbers", bag_replaced_numbers, {"texts"})
 	godot.method(b, "replaced_scalars", bag_replaced_scalars, {"texts"})
@@ -756,6 +757,30 @@ bag_replaced_trims :: proc(self: ^Bag, s: godot.String, n: godot.StringName, oth
 		godot.string_name_trim_prefix(&n, other),
 		godot.string_name_trim_suffix(&n, other),
 		godot.string_name_strip_edges(&n, left, right),
+	}
+	out := godot.packed_string_array_new()
+	for &v in r {
+		godot.packed_string_array_append(&out, v)
+		godot.destroy[.STRING](&v)
+	}
+	return out
+}
+
+// capitalize, to_camel_case, to_pascal_case, to_snake_case and to_kebab_case of `s`, then the same
+// through the StringName methods on `n`. test.gd builds the same array from the engine's.
+bag_replaced_recase :: proc(self: ^Bag, s: godot.String, n: godot.StringName) -> godot.PackedStringArray {
+	s, n := s, n
+	r := [10]godot.String{
+		godot.string_capitalize(&s),
+		godot.string_to_camel_case(&s),
+		godot.string_to_pascal_case(&s),
+		godot.string_to_snake_case(&s),
+		godot.string_to_kebab_case(&s),
+		godot.string_name_capitalize(&n),
+		godot.string_name_to_camel_case(&n),
+		godot.string_name_to_pascal_case(&n),
+		godot.string_name_to_snake_case(&n),
+		godot.string_name_to_kebab_case(&n),
 	}
 	out := godot.packed_string_array_new()
 	for &v in r {

@@ -2031,6 +2031,16 @@ String_Op :: enum i64 {
 	LSTRIP,           // string_lstrip of the same
 	RSTRIP_CALL,      // the engine's String.rstrip of the characters of "dog " from the sentence, the result destroyed
 	RSTRIP,           // string_rstrip of the same
+	CAPITALIZE_CALL, // the engine's String.capitalize of the sentence, the result destroyed
+	CAPITALIZE, // string_capitalize of the same
+	CAMEL_CALL, // the engine's String.to_camel_case of the sentence, the result destroyed
+	CAMEL, // string_to_camel_case of the same
+	PASCAL_CALL, // the engine's String.to_pascal_case of the sentence, the result destroyed
+	PASCAL, // string_to_pascal_case of the same
+	SNAKE_CALL, // the engine's String.to_snake_case of the sentence, the result destroyed
+	SNAKE, // string_to_snake_case of the same
+	KEBAB_CALL, // the engine's String.to_kebab_case of the sentence, the result destroyed
+	KEBAB, // string_to_kebab_case of the same
 }
 
 // Nanoseconds per `kind` round on FIND_HAY, reread through a volatile load each round, over `n`
@@ -2256,6 +2266,52 @@ string_ns :: proc(self: ^Bench, kind: String_Op, n: i64) -> f64 {
 	case .RSTRIP:
 		for _ in 0 ..< n {
 			r := godot.string_rstrip(intrinsics.volatile_load(&h), dog_set)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .CAPITALIZE_CALL, .CAMEL_CALL, .PASCAL_CALL, .SNAKE_CALL, .KEBAB_CALL:
+		name: cstring
+		#partial switch kind {
+		case .CAPITALIZE_CALL: name = "capitalize"
+		case .CAMEL_CALL: name = "to_camel_case"
+		case .PASCAL_CALL: name = "to_pascal_case"
+		case .SNAKE_CALL: name = "to_snake_case"
+		case .KEBAB_CALL: name = "to_kebab_case"
+		}
+		fn := godot.builtin_method(.STRING, name, 3942272618)
+		for _ in 0 ..< n {
+			r: godot.String
+			fn(intrinsics.volatile_load(&h), nil, &r, 0)
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .CAPITALIZE:
+		for _ in 0 ..< n {
+			r := godot.string_capitalize(intrinsics.volatile_load(&h))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .CAMEL:
+		for _ in 0 ..< n {
+			r := godot.string_to_camel_case(intrinsics.volatile_load(&h))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .PASCAL:
+		for _ in 0 ..< n {
+			r := godot.string_to_pascal_case(intrinsics.volatile_load(&h))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .SNAKE:
+		for _ in 0 ..< n {
+			r := godot.string_to_snake_case(intrinsics.volatile_load(&h))
+			sum += godot.string_stored_length(&r)
+			godot.destroy[.STRING](&r)
+		}
+	case .KEBAB:
+		for _ in 0 ..< n {
+			r := godot.string_to_kebab_case(intrinsics.volatile_load(&h))
 			sum += godot.string_stored_length(&r)
 			godot.destroy[.STRING](&r)
 		}

@@ -46,6 +46,11 @@ the engine changed the method's behaviour, and the replacement must follow it or
 | `String.strip_edges` | `string_strip_edges` | Godot 4.7-stable | 22 ns | 12 ns |
 | `String.lstrip` | `string_lstrip` | Godot 4.7-stable | 33 ns | 16 ns |
 | `String.rstrip` | `string_rstrip` | Godot 4.7-stable | 33 ns | 16 ns |
+| `String.capitalize` | `string_capitalize` | Godot 4.7-stable | 2006 ns | 252 ns |
+| `String.to_camel_case` | `string_to_camel_case` | Godot 4.7-stable | 1957 ns | 273 ns |
+| `String.to_pascal_case` | `string_to_pascal_case` | Godot 4.7-stable | 1976 ns | 274 ns |
+| `String.to_snake_case` | `string_to_snake_case` | Godot 4.7-stable | 1154 ns | 276 ns |
+| `String.to_kebab_case` | `string_to_kebab_case` | Godot 4.7-stable | 1156 ns | 275 ns |
 
 Timings are from `bench/build.sh`, the argument Strings already made: a short word found in, or
 replaced in, a 43-character sentence; an 11-character name compared in the other case; the
@@ -89,6 +94,17 @@ cases and on 2000 seeded random Strings, for every part either side of the first
 `string_lstrip` and `string_rstrip` cut the run of characters that are in the given set from one
 end the same way, timed cutting four characters of the sentence with a set of four, and the same
 check covers them.
+
+`string_capitalize`, `string_to_camel_case`, `string_to_pascal_case`, `string_to_snake_case` and
+`string_to_kebab_case` share `runes_recase`, which splits words where the engine's
+`_separate_compound_words` does and writes them in one convention. It runs twice, once to count
+the characters and once to write them into storage of that size, where the engine builds a String
+per word. Whether a character is an upper or a lower case letter comes from the engine's range
+tables, which differ between 4.7 and 4.8 as the case tables do and sit in the same generated
+files. The timings are of the sentence. `_check_replaced_recases` checks all five, as String and
+as StringName, on fixed cases, on every character from 1 to 0x1FFFF but the surrogates after a
+lower case letter and after a digit, and on 3000 seeded random Strings. A zero character inside
+a String is outside the check, as for `to_lower`, which the engine's methods end with.
 
 ## Vector2, Vector3 and Vector4
 

@@ -20,11 +20,13 @@ the engine dumps, and writes:
 | `godot/gen_skipped.txt` | Anything the generator could not bind (empty for 4.7). |
 
 `tools/gen_caps.py` writes `godot/gen_caps.odin` from the engine source's
-`core/string/ucaps.h`, which the API dumps do not carry: the engine's case tables, for the
-case-insensitive String compares and `to_upper` and `to_lower` to fold characters as the engine
-does. Each release whose tables differ has its own file, picked at load by `check_caps_version`
-in `godot/access.odin`: `godot/gen_caps.odin` from 4.7-stable, and `godot/gen_caps_48.odin` from
-4.8, written by `tools/gen_caps.py ucaps.h godot/gen_caps_48.odin _48`. When a later release
+`core/string/ucaps.h` and `core/string/char_range.cpp`, which the API dumps do not carry: the
+engine's case tables, for the case-insensitive String compares and `to_upper` and `to_lower` to
+fold characters as the engine does, and its upper and lower case letter ranges, for `capitalize`
+and the `to_*_case` methods to split words as the engine does. Each release whose tables differ
+has its own file, picked at load by `check_caps_version` in `godot/access.odin`:
+`godot/gen_caps.odin` from 4.7-stable, and `godot/gen_caps_48.odin` from 4.8, written by
+`tools/gen_caps.py ucaps.h char_range.cpp godot/gen_caps_48.odin _48`. When a later release
 changes the tables, add a file with its own suffix and a case to `check_caps_version`.
 
 The hand-written core (`core.odin`, `class.odin`, `fields.odin`, `variant.odin`, `callable.odin`,
