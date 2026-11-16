@@ -321,6 +321,9 @@
 		<method name="replaced_packed_copies">
 			<description>For the bytes each of [code]digits[/code] spells in hexadecimal and the pair of [code]ranges[/code] at the same place, what [code]packed_copies[/code] appends for the bytes themselves and for their to_int32_array, to_int64_array, to_float32_array, to_float64_array, to_vector2_array, to_vector3_array, to_vector4_array and to_color_array: 27 texts each. Then the first text of [code]digits[/code] and of a reversed duplicate of it, when there is one. test.gd builds the same from the engine's methods.</description>
 		</method>
+		<method name="replaced_packed_edits">
+			<description>For the bytes each of [code]digits[/code] spells in hexadecimal and the pair of [code]ranges[/code] at the same place, what [code]packed_edits[/code] appends for their to_int32_array, to_int64_array, to_float32_array, to_float64_array, to_vector2_array, to_vector3_array, to_vector4_array and to_color_array and then for the bytes themselves: 63 texts each. test.gd builds the same from the engine's methods.</description>
+		</method>
 		<method name="replaced_int_texts">
 			<description>The generated [code]string_num_int64[/code] and [code]string_num_uint64[/code] of each number, two Strings a number.</description>
 		</method>

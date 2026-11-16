@@ -2766,6 +2766,7 @@ packed_byte_array_is_empty :: proc "contextless" (self: ^PackedByteArray) -> boo
 	return __ret != 0
 }
 packed_byte_array_push_back :: proc "contextless" (self: ^PackedByteArray, value: i64) -> bool {
+	if packed_layout_known && packed_stored_push(self, u8(value)) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "push_back", 694024632) }
 	__a_value := value
@@ -2775,6 +2776,7 @@ packed_byte_array_push_back :: proc "contextless" (self: ^PackedByteArray, value
 	return __ret != 0
 }
 packed_byte_array_append :: proc "contextless" (self: ^PackedByteArray, value: i64) -> bool {
+	if packed_layout_known && packed_stored_push(self, u8(value)) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "append", 694024632) }
 	__a_value := value
@@ -2784,6 +2786,7 @@ packed_byte_array_append :: proc "contextless" (self: ^PackedByteArray, value: i
 	return __ret != 0
 }
 packed_byte_array_append_array :: proc "contextless" (self: ^PackedByteArray, array: PackedByteArray) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(u8, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "append_array", 791097111) }
 	__a_array := transmute([2]uintptr)array
@@ -2816,6 +2819,7 @@ packed_byte_array_fill :: proc "contextless" (self: ^PackedByteArray, value: i64
 	__fn(self, &__args[0], nil, 1)
 }
 packed_byte_array_resize :: proc "contextless" (self: ^PackedByteArray, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, u8(0)) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size
@@ -3339,6 +3343,7 @@ packed_int32_array_is_empty :: proc "contextless" (self: ^PackedInt32Array) -> b
 	return __ret != 0
 }
 packed_int32_array_push_back :: proc "contextless" (self: ^PackedInt32Array, value: i64) -> bool {
+	if packed_layout_known && packed_stored_push(self, i32(value)) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "push_back", 694024632) }
 	__a_value := value
@@ -3348,6 +3353,7 @@ packed_int32_array_push_back :: proc "contextless" (self: ^PackedInt32Array, val
 	return __ret != 0
 }
 packed_int32_array_append :: proc "contextless" (self: ^PackedInt32Array, value: i64) -> bool {
+	if packed_layout_known && packed_stored_push(self, i32(value)) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "append", 694024632) }
 	__a_value := value
@@ -3357,6 +3363,7 @@ packed_int32_array_append :: proc "contextless" (self: ^PackedInt32Array, value:
 	return __ret != 0
 }
 packed_int32_array_append_array :: proc "contextless" (self: ^PackedInt32Array, array: PackedInt32Array) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(i32, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "append_array", 1087733270) }
 	__a_array := transmute([2]uintptr)array
@@ -3389,6 +3396,7 @@ packed_int32_array_fill :: proc "contextless" (self: ^PackedInt32Array, value: i
 	__fn(self, &__args[0], nil, 1)
 }
 packed_int32_array_resize :: proc "contextless" (self: ^PackedInt32Array, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, i32(0)) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size
@@ -3500,6 +3508,7 @@ packed_int64_array_is_empty :: proc "contextless" (self: ^PackedInt64Array) -> b
 	return __ret != 0
 }
 packed_int64_array_push_back :: proc "contextless" (self: ^PackedInt64Array, value: i64) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "push_back", 694024632) }
 	__a_value := value
@@ -3509,6 +3518,7 @@ packed_int64_array_push_back :: proc "contextless" (self: ^PackedInt64Array, val
 	return __ret != 0
 }
 packed_int64_array_append :: proc "contextless" (self: ^PackedInt64Array, value: i64) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "append", 694024632) }
 	__a_value := value
@@ -3518,6 +3528,7 @@ packed_int64_array_append :: proc "contextless" (self: ^PackedInt64Array, value:
 	return __ret != 0
 }
 packed_int64_array_append_array :: proc "contextless" (self: ^PackedInt64Array, array: PackedInt64Array) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(i64, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "append_array", 2090311302) }
 	__a_array := transmute([2]uintptr)array
@@ -3550,6 +3561,7 @@ packed_int64_array_fill :: proc "contextless" (self: ^PackedInt64Array, value: i
 	__fn(self, &__args[0], nil, 1)
 }
 packed_int64_array_resize :: proc "contextless" (self: ^PackedInt64Array, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, i64(0)) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size
@@ -3661,6 +3673,7 @@ packed_float32_array_is_empty :: proc "contextless" (self: ^PackedFloat32Array) 
 	return __ret != 0
 }
 packed_float32_array_push_back :: proc "contextless" (self: ^PackedFloat32Array, value: f64) -> bool {
+	if packed_layout_known && packed_stored_push(self, f32(value)) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "push_back", 4094791666) }
 	__a_value := value
@@ -3670,6 +3683,7 @@ packed_float32_array_push_back :: proc "contextless" (self: ^PackedFloat32Array,
 	return __ret != 0
 }
 packed_float32_array_append :: proc "contextless" (self: ^PackedFloat32Array, value: f64) -> bool {
+	if packed_layout_known && packed_stored_push(self, f32(value)) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "append", 4094791666) }
 	__a_value := value
@@ -3679,6 +3693,7 @@ packed_float32_array_append :: proc "contextless" (self: ^PackedFloat32Array, va
 	return __ret != 0
 }
 packed_float32_array_append_array :: proc "contextless" (self: ^PackedFloat32Array, array: PackedFloat32Array) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(f32, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "append_array", 2981316639) }
 	__a_array := transmute([2]uintptr)array
@@ -3711,6 +3726,7 @@ packed_float32_array_fill :: proc "contextless" (self: ^PackedFloat32Array, valu
 	__fn(self, &__args[0], nil, 1)
 }
 packed_float32_array_resize :: proc "contextless" (self: ^PackedFloat32Array, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, f32(0)) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size
@@ -3822,6 +3838,7 @@ packed_float64_array_is_empty :: proc "contextless" (self: ^PackedFloat64Array) 
 	return __ret != 0
 }
 packed_float64_array_push_back :: proc "contextless" (self: ^PackedFloat64Array, value: f64) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "push_back", 4094791666) }
 	__a_value := value
@@ -3831,6 +3848,7 @@ packed_float64_array_push_back :: proc "contextless" (self: ^PackedFloat64Array,
 	return __ret != 0
 }
 packed_float64_array_append :: proc "contextless" (self: ^PackedFloat64Array, value: f64) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "append", 4094791666) }
 	__a_value := value
@@ -3840,6 +3858,7 @@ packed_float64_array_append :: proc "contextless" (self: ^PackedFloat64Array, va
 	return __ret != 0
 }
 packed_float64_array_append_array :: proc "contextless" (self: ^PackedFloat64Array, array: PackedFloat64Array) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(f64, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "append_array", 792078629) }
 	__a_array := transmute([2]uintptr)array
@@ -3872,6 +3891,7 @@ packed_float64_array_fill :: proc "contextless" (self: ^PackedFloat64Array, valu
 	__fn(self, &__args[0], nil, 1)
 }
 packed_float64_array_resize :: proc "contextless" (self: ^PackedFloat64Array, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, f64(0)) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size
@@ -4141,6 +4161,7 @@ packed_vector2_array_is_empty :: proc "contextless" (self: ^PackedVector2Array) 
 	return __ret != 0
 }
 packed_vector2_array_push_back :: proc "contextless" (self: ^PackedVector2Array, value: Vector2) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "push_back", 4188891560) }
 	__a_value := value
@@ -4150,6 +4171,7 @@ packed_vector2_array_push_back :: proc "contextless" (self: ^PackedVector2Array,
 	return __ret != 0
 }
 packed_vector2_array_append :: proc "contextless" (self: ^PackedVector2Array, value: Vector2) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "append", 4188891560) }
 	__a_value := value
@@ -4159,6 +4181,7 @@ packed_vector2_array_append :: proc "contextless" (self: ^PackedVector2Array, va
 	return __ret != 0
 }
 packed_vector2_array_append_array :: proc "contextless" (self: ^PackedVector2Array, array: PackedVector2Array) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(Vector2, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "append_array", 3887534835) }
 	__a_array := transmute([2]uintptr)array
@@ -4191,6 +4214,7 @@ packed_vector2_array_fill :: proc "contextless" (self: ^PackedVector2Array, valu
 	__fn(self, &__args[0], nil, 1)
 }
 packed_vector2_array_resize :: proc "contextless" (self: ^PackedVector2Array, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, Vector2{}) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size
@@ -4302,6 +4326,7 @@ packed_vector3_array_is_empty :: proc "contextless" (self: ^PackedVector3Array) 
 	return __ret != 0
 }
 packed_vector3_array_push_back :: proc "contextless" (self: ^PackedVector3Array, value: Vector3) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "push_back", 3295363524) }
 	__a_value := value
@@ -4311,6 +4336,7 @@ packed_vector3_array_push_back :: proc "contextless" (self: ^PackedVector3Array,
 	return __ret != 0
 }
 packed_vector3_array_append :: proc "contextless" (self: ^PackedVector3Array, value: Vector3) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "append", 3295363524) }
 	__a_value := value
@@ -4320,6 +4346,7 @@ packed_vector3_array_append :: proc "contextless" (self: ^PackedVector3Array, va
 	return __ret != 0
 }
 packed_vector3_array_append_array :: proc "contextless" (self: ^PackedVector3Array, array: PackedVector3Array) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(Vector3, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "append_array", 203538016) }
 	__a_array := transmute([2]uintptr)array
@@ -4352,6 +4379,7 @@ packed_vector3_array_fill :: proc "contextless" (self: ^PackedVector3Array, valu
 	__fn(self, &__args[0], nil, 1)
 }
 packed_vector3_array_resize :: proc "contextless" (self: ^PackedVector3Array, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, Vector3{}) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size
@@ -4463,6 +4491,7 @@ packed_color_array_is_empty :: proc "contextless" (self: ^PackedColorArray) -> b
 	return __ret != 0
 }
 packed_color_array_push_back :: proc "contextless" (self: ^PackedColorArray, value: Color) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "push_back", 1007858200) }
 	__a_value := value
@@ -4472,6 +4501,7 @@ packed_color_array_push_back :: proc "contextless" (self: ^PackedColorArray, val
 	return __ret != 0
 }
 packed_color_array_append :: proc "contextless" (self: ^PackedColorArray, value: Color) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "append", 1007858200) }
 	__a_value := value
@@ -4481,6 +4511,7 @@ packed_color_array_append :: proc "contextless" (self: ^PackedColorArray, value:
 	return __ret != 0
 }
 packed_color_array_append_array :: proc "contextless" (self: ^PackedColorArray, array: PackedColorArray) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(Color, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "append_array", 798822497) }
 	__a_array := transmute([2]uintptr)array
@@ -4513,6 +4544,7 @@ packed_color_array_fill :: proc "contextless" (self: ^PackedColorArray, value: C
 	__fn(self, &__args[0], nil, 1)
 }
 packed_color_array_resize :: proc "contextless" (self: ^PackedColorArray, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, Color{0, 0, 0, 1}) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size
@@ -4624,6 +4656,7 @@ packed_vector4_array_is_empty :: proc "contextless" (self: ^PackedVector4Array) 
 	return __ret != 0
 }
 packed_vector4_array_push_back :: proc "contextless" (self: ^PackedVector4Array, value: Vector4) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "push_back", 3289167688) }
 	__a_value := value
@@ -4633,6 +4666,7 @@ packed_vector4_array_push_back :: proc "contextless" (self: ^PackedVector4Array,
 	return __ret != 0
 }
 packed_vector4_array_append :: proc "contextless" (self: ^PackedVector4Array, value: Vector4) -> bool {
+	if packed_layout_known && packed_stored_push(self, value) { return false }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "append", 3289167688) }
 	__a_value := value
@@ -4642,6 +4676,7 @@ packed_vector4_array_append :: proc "contextless" (self: ^PackedVector4Array, va
 	return __ret != 0
 }
 packed_vector4_array_append_array :: proc "contextless" (self: ^PackedVector4Array, array: PackedVector4Array) {
+	if packed_layout_known { other := transmute([2]rawptr)array; if packed_stored_append(Vector4, self, other[PACKED_DATA_WORD]) { return } }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "append_array", 537428395) }
 	__a_array := transmute([2]uintptr)array
@@ -4674,6 +4709,7 @@ packed_vector4_array_fill :: proc "contextless" (self: ^PackedVector4Array, valu
 	__fn(self, &__args[0], nil, 1)
 }
 packed_vector4_array_resize :: proc "contextless" (self: ^PackedVector4Array, new_size: i64) -> i64 {
+	if packed_layout_known && packed_stored_resize(self, new_size, Vector4{}) { return 0 }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "resize", 848867239) }
 	__a_new_size := new_size

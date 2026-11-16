@@ -772,6 +772,17 @@ already written. An empty range gives an empty array with no allocation. The eng
 so do `duplicate`, `to_byte_array` and the `to_int32_array` family of `PackedByteArray`: a
 replacement of each was written and measured no faster than the engine call.
 
+The generated `push_back`, `append`, `resize` and `append_array` of the same nine types
+(`packed_stored_push`, `packed_stored_resize`, `packed_stored_append`) write the storage in place
+where the engine would neither allocate nor free: the reference count is 1, the new size fits the
+capacity in the header, and a `resize` leaves more than nothing and at least a quarter of the
+capacity, below which CowData shrinks the storage. `resize` gives new elements the value the
+engine constructs, zero or opaque black for a Color, and `append_array` of an array onto itself
+copies the elements as they stood. Every other case calls the engine: shared or absent storage,
+growth past the capacity, and a negative size, where it prints. `insert`, `remove_at` and `erase`
+always call the engine, because their in-place replacements measured no faster than the engine
+call, and so do `sort`, `clear` and every `PackedStringArray` write that changes the size.
+
 `find` and `rfind` test whole blocks of eight elements with no branch per element, so the
 compares vectorize, and search the block holding a match one by one. Vector4 and Color elements
 are the exception: each is compared as one four-float vector, element by element, and `rfind`
@@ -797,7 +808,11 @@ and `reverse` are checked by `_check_packed_fill_case` on three copies of each a
 twice, reversed then filled, and filled while the storage is still shared. `slice` is checked by
 `_check_replaced_packed_copies`: 3000 seeded arrays of every type, each sliced at bounds either
 side of 0, of each end and of each other, the result grown and shrunk to prove its storage, with
-`duplicate`, `to_byte_array` and the byte array conversions compared alongside.
+`duplicate`, `to_byte_array` and the byte array conversions compared alongside. The writes that
+change the size are checked by `_check_replaced_packed_edits`: on 1500 seeded arrays of every
+type, `push_back`, `append`, `resize`, `insert`, `remove_at`, `erase` and `append_array` in turn,
+on storage shared and not, within the capacity and past it, at indices in range and out of it,
+with the bytes after each step and every returned value compared.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -821,12 +836,17 @@ side of 0, of each end and of each other, the result grown and shrunk to prove i
 | `PackedByteArray.fill` of 256 | 105 ns | 1.7 ns |
 | `PackedStringArray.bsearch` | 13.9 ns | 10.3 ns |
 | `PackedInt64Array.slice` of 32 | 22.0 ns | 17.5 ns |
+| `PackedInt64Array.push_back` | 4.4 ns | 2.2 ns |
+| `PackedInt64Array.resize` | 5.5 ns | 2.6 ns |
+| `PackedInt64Array.append_array` of 8 | 11.2 ns | 3.6 ns |
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an array of 0 to 63,
 and `find` of "12" in a PackedStringArray of "0" to "15". The rows from `PackedByteArray.count`
 down search 64 ascending elements for element 40, `rfind` from the end. `set` stores at index 4
 of 16 in an array that shares its storage with no other, as do the `fill` and `reverse` rows.
-`slice` takes elements 8 to 40 of 64 and destroys the result.
+`slice` takes elements 8 to 40 of 64 and destroys the result. The last three rows write an array
+of 32 to 64 elements in storage for 64: `resize` goes between 32 and 40 elements, and the other
+two include a `resize` back to 32 each time the storage fills.
 
 ## Sine and cosine
 

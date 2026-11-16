@@ -132,6 +132,20 @@ IN_PLACE = {
                     ("PackedFloat64Array", "value"), ("PackedVector2Array", "value"),
                     ("PackedVector3Array", "value"), ("PackedColorArray", "value"),
                     ("PackedVector4Array", "value"))},
+    # The writes that change the size, where the engine would neither allocate nor free.
+    **{k: s for t, e, v, fresh in (
+           ("PackedByteArray", "u8", "u8(value)", "u8(0)"), ("PackedInt32Array", "i32", "i32(value)", "i32(0)"),
+           ("PackedInt64Array", "i64", "value", "i64(0)"), ("PackedFloat32Array", "f32", "f32(value)", "f32(0)"),
+           ("PackedFloat64Array", "f64", "value", "f64(0)"), ("PackedVector2Array", "Vector2", "value", "Vector2{}"),
+           ("PackedVector3Array", "Vector3", "value", "Vector3{}"),
+           ("PackedColorArray", "Color", "value", "Color{0, 0, 0, 1}"),
+           ("PackedVector4Array", "Vector4", "value", "Vector4{}"))
+       for k, s in (
+           ((t, "push_back"), f"\tif packed_layout_known && packed_stored_push(self, {v}) {{ return false }}\n"),
+           ((t, "append"), f"\tif packed_layout_known && packed_stored_push(self, {v}) {{ return false }}\n"),
+           ((t, "resize"), f"\tif packed_layout_known && packed_stored_resize(self, new_size, {fresh}) {{ return 0 }}\n"),
+           ((t, "append_array"), f"\tif packed_layout_known {{ other := transmute([2]rawptr)array; "
+                                 f"if packed_stored_append({e}, self, other[PACKED_DATA_WORD]) {{ return }} }}\n"))},
     **{(t, "fill"): f"\tif packed_layout_known && packed_stored_fill(self, {v}) {{ return }}\n"
        for t, v in (("PackedByteArray", "u8(value)"), ("PackedInt32Array", "i32(value)"),
                     ("PackedInt64Array", "value"), ("PackedFloat32Array", "f32(value)"),

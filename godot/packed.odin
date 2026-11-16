@@ -288,6 +288,56 @@ packed_stored_reverse :: #force_inline proc "contextless" ($E: typeid, a: rawptr
 	return true
 }
 
+// The storage of packed array `a` and its header, when `a` has storage and alone holds it; nil
+// otherwise. The header is the reference count, the capacity and the size. Only when
+// `packed_layout_known`.
+@(private)
+packed_owned :: #force_inline proc "contextless" (a: rawptr) -> (p: rawptr, h: [^]i64) {
+	p = ([^]rawptr)(a)[PACKED_DATA_WORD]
+	if p == nil { return nil, nil }
+	h = ([^]i64)(uintptr(p) - PACKED_DATA_OFFSET)
+	if intrinsics.atomic_load(&h[0]) != 1 { return nil, nil }
+	return p, h
+}
+
+// The writes below change the size of packed array `a` where the engine would neither allocate
+// nor free: `a` alone holds its storage, the new size fits the capacity, and it is not so far
+// under the capacity that CowData shrinks the storage (below a quarter of it, or to nothing).
+// Each returns false with nothing written otherwise, and the generated method then calls the
+// engine. Not for a String element, whose store counts references. Only when `packed_layout_known` (tools/odin_bindgen.py IN_PLACE).
+
+// Vector::push_back: `v` after the last element.
+packed_stored_push :: #force_inline proc "contextless" (a: rawptr, v: $E) -> bool {
+	p, h := packed_owned(a)
+	if p == nil || h[2] >= h[1] { return false }
+	#no_bounds_check ([^]E)(p)[h[2]] = v
+	h[2] += 1
+	return true
+}
+
+// Vector::resize_initialized, which the packed arrays' `resize` is: the size becomes `size`, each
+// new element `fresh`, the value the engine constructs.
+packed_stored_resize :: #force_inline proc "contextless" (a: rawptr, size: i64, fresh: $E) -> bool {
+	p, h := packed_owned(a)
+	if p == nil || size <= 0 || size > h[1] || size < h[1] >> 2 { return false }
+	#no_bounds_check for i in h[2] ..< size { ([^]E)(p)[i] = fresh }
+	h[2] = size
+	return true
+}
+
+// Vector::append_array: the `E` elements of the storage `other`, which may be that of `a`
+// itself, after the last element of `a`. Nothing to append is done whoever holds `a`.
+packed_stored_append :: #force_inline proc "contextless" ($E: typeid, a: rawptr, other: rawptr) -> bool {
+	if other == nil { return true }
+	count := (^i64)(uintptr(other) - PACKED_SIZE_OFFSET)^
+	if count == 0 { return true }
+	p, h := packed_owned(a)
+	if p == nil || count > h[1] - h[2] { return false }
+	#no_bounds_check { intrinsics.mem_copy_non_overlapping(&([^]E)(p)[h[2]], other, int(count) * size_of(E)) }
+	h[2] += count
+	return true
+}
+
 // Sets `packed_layout_known` from packed arrays of known size: one shared by two references, one
 // grown by a push so its capacity differs from its size, and one emptied by a resize.
 check_packed_layout :: proc "contextless" () {
@@ -304,13 +354,17 @@ check_packed_layout :: proc "contextless" () {
 	c := packed_vector3_array_new()
 	packed_vector3_array_resize(&c, 37)
 	packed_vector3_array_push_back(&c, Vector3{})
+	// A second push must fit the capacity the first one grew to, and leave it as it was.
+	capacity := packed_stored_size(&c) == 38 ? ([^]i64)(uintptr(([^]rawptr)(&c)[PACKED_DATA_WORD]) - PACKED_DATA_OFFSET)[1] : 0
+	packed_vector3_array_push_back(&c, Vector3{})
 	e := packed_int64_array_new()
 	packed_int64_array_resize(&e, 2)
 	packed_int64_array_resize(&e, 0)
 	packed_layout_known =
 		holds(&a, gde.packed_byte_array_operator_index_const(&a, 0), 3, 2) &&
 		holds(&b, gde.packed_byte_array_operator_index_const(&b, 0), 3, 2) &&
-		holds(&c, gde.packed_vector3_array_operator_index_const(&c, 0), 38, 1) &&
+		holds(&c, gde.packed_vector3_array_operator_index_const(&c, 0), 39, 1) && capacity > 39 &&
+		([^]i64)(uintptr(([^]rawptr)(&c)[PACKED_DATA_WORD]) - PACKED_DATA_OFFSET)[1] == capacity &&
 		([^]rawptr)(&e)[PACKED_DATA_WORD] == nil
 	destroy[.PACKED_INT64_ARRAY](&e)
 	destroy[.PACKED_VECTOR3_ARRAY](&c)

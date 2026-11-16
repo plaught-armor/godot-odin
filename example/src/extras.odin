@@ -156,6 +156,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_buffers", bag_replaced_buffers, {"texts"})
 	godot.method(b, "replaced_byte_texts", bag_replaced_byte_texts, {"digits"})
 	godot.method(b, "replaced_packed_copies", bag_replaced_packed_copies, {"digits", "ranges"})
+	godot.method(b, "replaced_packed_edits", bag_replaced_packed_edits, {"digits", "ranges"})
 	godot.method(b, "replaced_int_texts", bag_replaced_int_texts, {"numbers", "base", "capitalize_hex"})
 	godot.method(b, "replaced_chrs", bag_replaced_chrs, {"codes"})
 	godot.method(b, "replaced_scientifics", bag_replaced_scientifics, {"numbers"})
@@ -1534,6 +1535,153 @@ bag_replaced_packed_copies :: proc(self: ^Bag, digits: godot.PackedStringArray, 
 		godot.packed_string_array_append(&out, godot.packed_read_string(&digits)[0])
 		godot.packed_string_array_append(&out, godot.packed_read_string(&copied)[0])
 		godot.destroy[.PACKED_STRING_ARRAY](&copied)
+	}
+	return out
+}
+
+// Appends to `out` the bytes of packed array `v` in hexadecimal.
+packed_hex :: proc(out: ^godot.PackedStringArray, v: ^$A, to_bytes: proc "contextless" (_: ^A) -> godot.PackedByteArray) {
+	bytes := to_bytes(v)
+	text := godot.packed_byte_array_hex_encode(&bytes)
+	godot.packed_string_array_append(out, text)
+	godot.destroy[.STRING](&text)
+	godot.destroy[.PACKED_BYTE_ARRAY](&bytes)
+}
+
+// Runs the writes that change a packed array's size on `r`, with its middle element as the value
+// and `begin` and `end` as indices, and appends seven texts to `out`: a duplicate pushed onto
+// while it shares storage, `r` untouched by that, `r` after resize, push_back and append, after
+// insert, remove_at and erase, after append_array of itself, of a duplicate and of a short array
+// that fits its capacity, after a last resize, and the values the calls returned. Then destroys
+// `r`. An empty `r` is first resized to one element.
+packed_edits :: proc(
+	out: ^godot.PackedStringArray,
+	r: ^$A,
+	free: gde.PtrDestructor,
+	begin, end: i64,
+	to_bytes: proc "contextless" (_: ^A) -> godot.PackedByteArray,
+	duplicate: proc "contextless" (_: ^A) -> A,
+	get: proc "contextless" (_: ^A, _: i64) -> $V,
+	push_back, append: proc "contextless" (_: ^A, _: V) -> bool,
+	insert: proc "contextless" (_: ^A, _: i64, _: V) -> i64,
+	remove_at: proc "contextless" (_: ^A, _: i64),
+	erase: proc "contextless" (_: ^A, _: V) -> bool,
+	resize: proc "contextless" (_: ^A, _: i64) -> i64,
+	append_array: proc "contextless" (_: ^A, _: A),
+) {
+	if godot.packed_stored_size(r) == 0 { resize(r, 1) }
+	size := godot.packed_stored_size(r)
+	v := get(r, size >> 1)
+	codes := godot.packed_byte_array_new()
+	shared := duplicate(r)
+	godot.packed_byte_array_append(&codes, i64(push_back(&shared, v)))
+	packed_hex(out, &shared, to_bytes)
+	packed_hex(out, r, to_bytes)
+	free(&shared)
+	godot.packed_byte_array_append(&codes, resize(r, size + 5))
+	godot.packed_byte_array_append(&codes, resize(r, size + 2))
+	godot.packed_byte_array_append(&codes, i64(push_back(r, v)))
+	godot.packed_byte_array_append(&codes, i64(append(r, v)))
+	packed_hex(out, r, to_bytes)
+	godot.packed_byte_array_append(&codes, insert(r, begin, v))
+	godot.packed_byte_array_append(&codes, insert(r, 1, v))
+	remove_at(r, end)
+	remove_at(r, 0)
+	godot.packed_byte_array_append(&codes, i64(erase(r, v)))
+	packed_hex(out, r, to_bytes)
+	append_array(r, r^)
+	held := duplicate(r)
+	append_array(r, held)
+	free(&held)
+	tail := duplicate(r)
+	resize(&tail, 2)
+	resize(r, godot.packed_stored_size(r) + 4)
+	resize(r, godot.packed_stored_size(r) - 3)
+	append_array(r, tail)
+	free(&tail)
+	packed_hex(out, r, to_bytes)
+	godot.packed_byte_array_append(&codes, resize(r, begin % 50))
+	packed_hex(out, r, to_bytes)
+	text := godot.packed_byte_array_hex_encode(&codes)
+	godot.packed_string_array_append(out, text)
+	godot.destroy[.STRING](&text)
+	godot.destroy[.PACKED_BYTE_ARRAY](&codes)
+	free(r)
+}
+
+// For the bytes each of `digits` spells in hexadecimal and the pair of `ranges` at the same
+// place, what `packed_edits` appends for their to_int32_array, to_int64_array, to_float32_array,
+// to_float64_array, to_vector2_array, to_vector3_array, to_vector4_array and to_color_array and
+// then for the bytes themselves: 63 texts each. test.gd builds the same from the engine's methods.
+bag_replaced_packed_edits :: proc(self: ^Bag, digits: godot.PackedStringArray, ranges: godot.PackedInt64Array) -> godot.PackedStringArray {
+	digits, ranges := digits, ranges
+	out := godot.packed_string_array_new()
+	pairs := godot.packed_read_int64(&ranges)
+	for &d, i in godot.packed_read_string(&digits) {
+		if 2 * i + 1 >= len(pairs) { break }
+		begin, end := pairs[2 * i], pairs[2 * i + 1]
+		bytes := godot.string_hex_decode(&d)
+		{
+			r := godot.packed_byte_array_to_int32_array(&bytes)
+			packed_edits(&out, &r, godot.destroy[.PACKED_INT32_ARRAY], begin, end, godot.packed_int32_array_to_byte_array,
+				godot.packed_int32_array_duplicate, godot.packed_int32_array_get, godot.packed_int32_array_push_back, godot.packed_int32_array_append,
+				godot.packed_int32_array_insert, godot.packed_int32_array_remove_at, godot.packed_int32_array_erase, godot.packed_int32_array_resize,
+				godot.packed_int32_array_append_array)
+		}
+		{
+			r := godot.packed_byte_array_to_int64_array(&bytes)
+			packed_edits(&out, &r, godot.destroy[.PACKED_INT64_ARRAY], begin, end, godot.packed_int64_array_to_byte_array,
+				godot.packed_int64_array_duplicate, godot.packed_int64_array_get, godot.packed_int64_array_push_back, godot.packed_int64_array_append,
+				godot.packed_int64_array_insert, godot.packed_int64_array_remove_at, godot.packed_int64_array_erase, godot.packed_int64_array_resize,
+				godot.packed_int64_array_append_array)
+		}
+		{
+			r := godot.packed_byte_array_to_float32_array(&bytes)
+			packed_edits(&out, &r, godot.destroy[.PACKED_FLOAT32_ARRAY], begin, end, godot.packed_float32_array_to_byte_array,
+				godot.packed_float32_array_duplicate, godot.packed_float32_array_get, godot.packed_float32_array_push_back, godot.packed_float32_array_append,
+				godot.packed_float32_array_insert, godot.packed_float32_array_remove_at, godot.packed_float32_array_erase, godot.packed_float32_array_resize,
+				godot.packed_float32_array_append_array)
+		}
+		{
+			r := godot.packed_byte_array_to_float64_array(&bytes)
+			packed_edits(&out, &r, godot.destroy[.PACKED_FLOAT64_ARRAY], begin, end, godot.packed_float64_array_to_byte_array,
+				godot.packed_float64_array_duplicate, godot.packed_float64_array_get, godot.packed_float64_array_push_back, godot.packed_float64_array_append,
+				godot.packed_float64_array_insert, godot.packed_float64_array_remove_at, godot.packed_float64_array_erase, godot.packed_float64_array_resize,
+				godot.packed_float64_array_append_array)
+		}
+		{
+			r := godot.packed_byte_array_to_vector2_array(&bytes)
+			packed_edits(&out, &r, godot.destroy[.PACKED_VECTOR2_ARRAY], begin, end, godot.packed_vector2_array_to_byte_array,
+				godot.packed_vector2_array_duplicate, godot.packed_vector2_array_get, godot.packed_vector2_array_push_back, godot.packed_vector2_array_append,
+				godot.packed_vector2_array_insert, godot.packed_vector2_array_remove_at, godot.packed_vector2_array_erase, godot.packed_vector2_array_resize,
+				godot.packed_vector2_array_append_array)
+		}
+		{
+			r := godot.packed_byte_array_to_vector3_array(&bytes)
+			packed_edits(&out, &r, godot.destroy[.PACKED_VECTOR3_ARRAY], begin, end, godot.packed_vector3_array_to_byte_array,
+				godot.packed_vector3_array_duplicate, godot.packed_vector3_array_get, godot.packed_vector3_array_push_back, godot.packed_vector3_array_append,
+				godot.packed_vector3_array_insert, godot.packed_vector3_array_remove_at, godot.packed_vector3_array_erase, godot.packed_vector3_array_resize,
+				godot.packed_vector3_array_append_array)
+		}
+		{
+			r := godot.packed_byte_array_to_vector4_array(&bytes)
+			packed_edits(&out, &r, godot.destroy[.PACKED_VECTOR4_ARRAY], begin, end, godot.packed_vector4_array_to_byte_array,
+				godot.packed_vector4_array_duplicate, godot.packed_vector4_array_get, godot.packed_vector4_array_push_back, godot.packed_vector4_array_append,
+				godot.packed_vector4_array_insert, godot.packed_vector4_array_remove_at, godot.packed_vector4_array_erase, godot.packed_vector4_array_resize,
+				godot.packed_vector4_array_append_array)
+		}
+		{
+			r := godot.packed_byte_array_to_color_array(&bytes)
+			packed_edits(&out, &r, godot.destroy[.PACKED_COLOR_ARRAY], begin, end, godot.packed_color_array_to_byte_array,
+				godot.packed_color_array_duplicate, godot.packed_color_array_get, godot.packed_color_array_push_back, godot.packed_color_array_append,
+				godot.packed_color_array_insert, godot.packed_color_array_remove_at, godot.packed_color_array_erase, godot.packed_color_array_resize,
+				godot.packed_color_array_append_array)
+		}
+		// A byte array is its own bytes, and a duplicate gives them as `to_byte_array` would.
+		packed_edits(&out, &bytes, godot.destroy[.PACKED_BYTE_ARRAY], begin, end, godot.packed_byte_array_duplicate,
+			godot.packed_byte_array_duplicate, godot.packed_byte_array_get, godot.packed_byte_array_push_back, godot.packed_byte_array_append,
+			godot.packed_byte_array_insert, godot.packed_byte_array_remove_at, godot.packed_byte_array_erase, godot.packed_byte_array_resize,
+			godot.packed_byte_array_append_array)
 	}
 	return out
 }

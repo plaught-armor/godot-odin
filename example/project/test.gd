@@ -485,6 +485,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_buffers(b2)
 	failures += _check_replaced_byte_texts(b2)
 	failures += _check_replaced_packed_copies(b2)
+	failures += _check_replaced_packed_edits(b2)
 	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
@@ -1681,6 +1682,90 @@ func _check_replaced_packed_copies(b2: Bag) -> int:
 	if filled < 30000:
 		print("FAIL: Bag.replaced_packed_copies saw only %d arrays with elements, too few to prove anything" % filled)
 		return 1
+	return 0
+
+
+# The bytes of the packed array `r` in hexadecimal.
+func _packed_hex(r: Variant) -> String:
+	return r.hex_encode() if r is PackedByteArray else r.to_byte_array().hex_encode()
+
+
+# What Bag.replaced_packed_edits gives for the packed array `r`, built from the engine's methods
+# in the same order: see `packed_edits` in example/src/extras.odin. Changes `r`.
+func _packed_edits(r: Variant, begin: int, end: int) -> PackedStringArray:
+	var out := PackedStringArray()
+	if r.size() == 0:
+		r.resize(1)
+	var size: int = r.size()
+	var v: Variant = r[size >> 1]
+	var codes := PackedByteArray()
+	var shared: Variant = r.duplicate()
+	codes.append(int(shared.push_back(v)))
+	out.append(_packed_hex(shared))
+	out.append(_packed_hex(r))
+	codes.append(r.resize(size + 5))
+	codes.append(r.resize(size + 2))
+	codes.append(int(r.push_back(v)))
+	codes.append(int(r.append(v)))
+	out.append(_packed_hex(r))
+	codes.append(r.insert(begin, v))
+	codes.append(r.insert(1, v))
+	r.remove_at(end)
+	r.remove_at(0)
+	codes.append(int(r.erase(v)))
+	out.append(_packed_hex(r))
+	r.append_array(r)
+	var held: Variant = r.duplicate()
+	r.append_array(held)
+	var tail: Variant = r.duplicate()
+	tail.resize(2)
+	r.resize(r.size() + 4)
+	r.resize(r.size() - 3)
+	r.append_array(tail)
+	out.append(_packed_hex(r))
+	codes.append(r.resize(begin % 50))
+	out.append(_packed_hex(r))
+	out.append(codes.hex_encode())
+	return out
+
+
+# push_back, append, append_array, insert, remove_at, erase and resize of the nine packed arrays
+# of plain values, from Bag.replaced_packed_edits, against the engine's methods called from
+# GDScript (the bindings replace the first three and resize, and call the engine for the rest): 1500 seeded random byte arrays and each array they convert to, written while the
+# storage is shared and while it is not, within the capacity and past it, at indices inside,
+# outside and before the start, where the engine prints an error and the bindings call it. The
+# seed is fixed so a failure repeats. Returns 1 on a mismatch.
+func _check_replaced_packed_edits(b2: Bag) -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261135
+	var digits := PackedStringArray()
+	var ranges := PackedInt64Array()
+	var want := PackedStringArray()
+	var sizes: Array[int] = [0, 4, 8, 12, 16, 24, 48, 48, 96, 96, 144, 240, -1, -1]
+	var ends: Array[int] = [0, 1, -1, 2, -2, 3, 5, -5, 9, -9, 40, -40, 2147483647, -2147483648, 9223372036854775807]
+	for round: int in 1500:
+		var size: int = sizes[round % sizes.size()]
+		var bytes := PackedByteArray()
+		bytes.resize(rng.randi_range(0, 100) if size < 0 else size)
+		for at: int in bytes.size():
+			bytes[at] = rng.randi_range(0, 255)
+		var begin: int = ends[rng.randi_range(0, ends.size() - 1)]
+		var end: int = ends[rng.randi_range(0, ends.size() - 1)]
+		digits.append(bytes.hex_encode())
+		ranges.append(begin)
+		ranges.append(end)
+		for r: Variant in [bytes.to_int32_array(), bytes.to_int64_array(), bytes.to_float32_array(), bytes.to_float64_array(),
+				bytes.to_vector2_array(), bytes.to_vector3_array(), bytes.to_vector4_array(), bytes.to_color_array(), bytes]:
+			want.append_array(_packed_edits(r, begin, end))
+	var got: PackedStringArray = b2.replaced_packed_edits(digits, ranges)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_packed_edits gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	for at: int in want.size():
+		if got[at] != want[at]:
+			print("FAIL: Bag.replaced_packed_edits on %s with %d and %d, array %d, text %d, gave %s, not %s" % [digits[at / 63],
+					ranges[2 * (at / 63)], ranges[2 * (at / 63) + 1], at % 63 / 7, at % 7, got[at], want[at]])
+			return 1
 	return 0
 
 

@@ -3320,6 +3320,12 @@ Packed_Op :: enum i64 {
 	STRING_FIND,      // packed_string_array_find
 	SLICE_CALL,       // the engine's PackedInt64Array.slice of elements 8 to 40
 	SLICE,            // packed_int64_array_slice of the same
+	PUSH_CALL,        // the engine's PackedInt64Array.push_back within the capacity
+	PUSH,             // packed_int64_array_push_back of the same
+	RESIZE_CALL,      // the engine's PackedInt64Array.resize between 32 and 40 within the capacity
+	RESIZE,           // packed_int64_array_resize of the same
+	APPEND_ARRAY_CALL, // the engine's PackedInt64Array.append_array of 8 elements within the capacity
+	APPEND_ARRAY,     // packed_int64_array_append_array of the same
 }
 
 // Nanoseconds per `kind` round on 0 to 63 in a PackedInt64Array and "0" to "15" in a
@@ -3398,6 +3404,53 @@ packed_ns :: proc(self: ^Bench, kind: Packed_Op, n: i64) -> f64 {
 			}
 			sum += godot.packed_stored_size(&r)
 			godot.destroy[.PACKED_INT64_ARRAY](&r)
+		}
+	case .PUSH_CALL, .PUSH, .RESIZE_CALL, .RESIZE, .APPEND_ARRAY_CALL, .APPEND_ARRAY:
+		// The written array holds 32 to 64 elements in storage for 64, so no round allocates. One
+		// that reaches an end is resized back by the bindings, the same for both rows of a pair.
+		w := godot.packed_of(xs[:])
+		defer godot.destroy[.PACKED_INT64_ARRAY](&w)
+		godot.packed_int64_array_resize(&w, 32)
+		eight := godot.packed_of(xs[:8])
+		defer godot.destroy[.PACKED_INT64_ARRAY](&eight)
+		subject := &w
+		push_fn := godot.builtin_method(.PACKED_INT64_ARRAY, "push_back", 694024632)
+		resize_fn := godot.builtin_method(.PACKED_INT64_ARRAY, "resize", 848867239)
+		append_array_fn := godot.builtin_method(.PACKED_INT64_ARRAY, "append_array", 2090311302)
+		for i in 0 ..< n {
+			p := intrinsics.volatile_load(&subject)
+			value := i
+			#partial switch kind {
+			case .PUSH_CALL, .PUSH:
+				if godot.packed_stored_size(p) == 64 { godot.packed_int64_array_resize(p, 32) }
+				if kind == .PUSH {
+					sum += i64(godot.packed_int64_array_push_back(p, value))
+				} else {
+					r: u8
+					args := [1]gde.ConstTypePtr{&value}
+					push_fn(p, &args[0], &r, 1)
+					sum += i64(r)
+				}
+			case .RESIZE_CALL, .RESIZE:
+				size := 32 + 8 * (i & 1)
+				if kind == .RESIZE {
+					sum += godot.packed_int64_array_resize(p, size)
+				} else {
+					r: i64
+					args := [1]gde.ConstTypePtr{&size}
+					resize_fn(p, &args[0], &r, 1)
+					sum += r
+				}
+			case .APPEND_ARRAY_CALL, .APPEND_ARRAY:
+				if godot.packed_stored_size(p) == 64 { godot.packed_int64_array_resize(p, 32) }
+				if kind == .APPEND_ARRAY {
+					godot.packed_int64_array_append_array(p, eight)
+				} else {
+					args := [1]gde.ConstTypePtr{&eight}
+					append_array_fn(p, &args[0], nil, 1)
+				}
+			}
+			sum += godot.packed_stored_size(p)
 		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
