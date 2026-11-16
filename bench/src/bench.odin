@@ -3318,6 +3318,8 @@ Packed_Op :: enum i64 {
 	FIND,             // packed_int64_array_find
 	STRING_FIND_CALL, // the engine's PackedStringArray.find
 	STRING_FIND,      // packed_string_array_find
+	SLICE_CALL,       // the engine's PackedInt64Array.slice of elements 8 to 40
+	SLICE,            // packed_int64_array_slice of the same
 }
 
 // Nanoseconds per `kind` round on 0 to 63 in a PackedInt64Array and "0" to "15" in a
@@ -3382,6 +3384,21 @@ packed_ns :: proc(self: ^Bench, kind: Packed_Op, n: i64) -> f64 {
 		}
 	case .STRING_FIND:
 		for _ in 0 ..< n { sum += godot.packed_string_array_find(&sa, key, intrinsics.volatile_load(&from)) }
+	case .SLICE_CALL, .SLICE:
+		slice_fn := godot.builtin_method(.PACKED_INT64_ARRAY, "slice", 1726550804)
+		for _ in 0 ..< n {
+			p := intrinsics.volatile_load(&ref)
+			begin, end := i64(8), intrinsics.volatile_load(&at)
+			r: godot.PackedInt64Array
+			if kind == .SLICE {
+				r = godot.packed_int64_array_slice(p, begin, end)
+			} else {
+				args := [2]gde.ConstTypePtr{&begin, &end}
+				slice_fn(p, &args[0], &r, 2)
+			}
+			sum += godot.packed_stored_size(&r)
+			godot.destroy[.PACKED_INT64_ARRAY](&r)
+		}
 	}
 	ns := f64(time.tick_since(start)) / f64(n)
 	self.total += sum

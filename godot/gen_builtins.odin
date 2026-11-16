@@ -2836,6 +2836,7 @@ packed_byte_array_reverse :: proc "contextless" (self: ^PackedByteArray) {
 	__fn(self, nil, nil, 0)
 }
 packed_byte_array_slice :: proc "contextless" (self: ^PackedByteArray, begin: i64, end: i64) -> PackedByteArray {
+	if out, ok := packed_sliced(PackedByteArray, u8, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_BYTE_ARRAY, "slice", 2278869132) }
 	__a_begin := begin
@@ -3408,6 +3409,7 @@ packed_int32_array_reverse :: proc "contextless" (self: ^PackedInt32Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_int32_array_slice :: proc "contextless" (self: ^PackedInt32Array, begin: i64, end: i64) -> PackedInt32Array {
+	if out, ok := packed_sliced(PackedInt32Array, i32, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT32_ARRAY, "slice", 1216021098) }
 	__a_begin := begin
@@ -3568,6 +3570,7 @@ packed_int64_array_reverse :: proc "contextless" (self: ^PackedInt64Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_int64_array_slice :: proc "contextless" (self: ^PackedInt64Array, begin: i64, end: i64) -> PackedInt64Array {
+	if out, ok := packed_sliced(PackedInt64Array, i64, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_INT64_ARRAY, "slice", 1726550804) }
 	__a_begin := begin
@@ -3728,6 +3731,7 @@ packed_float32_array_reverse :: proc "contextless" (self: ^PackedFloat32Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_float32_array_slice :: proc "contextless" (self: ^PackedFloat32Array, begin: i64, end: i64) -> PackedFloat32Array {
+	if out, ok := packed_sliced(PackedFloat32Array, f32, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT32_ARRAY, "slice", 1418229160) }
 	__a_begin := begin
@@ -3888,6 +3892,7 @@ packed_float64_array_reverse :: proc "contextless" (self: ^PackedFloat64Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_float64_array_slice :: proc "contextless" (self: ^PackedFloat64Array, begin: i64, end: i64) -> PackedFloat64Array {
+	if out, ok := packed_sliced(PackedFloat64Array, f64, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_FLOAT64_ARRAY, "slice", 2192974324) }
 	__a_begin := begin
@@ -4206,6 +4211,7 @@ packed_vector2_array_reverse :: proc "contextless" (self: ^PackedVector2Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_vector2_array_slice :: proc "contextless" (self: ^PackedVector2Array, begin: i64, end: i64) -> PackedVector2Array {
+	if out, ok := packed_sliced(PackedVector2Array, Vector2, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR2_ARRAY, "slice", 3864005350) }
 	__a_begin := begin
@@ -4366,6 +4372,7 @@ packed_vector3_array_reverse :: proc "contextless" (self: ^PackedVector3Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_vector3_array_slice :: proc "contextless" (self: ^PackedVector3Array, begin: i64, end: i64) -> PackedVector3Array {
+	if out, ok := packed_sliced(PackedVector3Array, Vector3, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR3_ARRAY, "slice", 2086131305) }
 	__a_begin := begin
@@ -4526,6 +4533,7 @@ packed_color_array_reverse :: proc "contextless" (self: ^PackedColorArray) {
 	__fn(self, nil, nil, 0)
 }
 packed_color_array_slice :: proc "contextless" (self: ^PackedColorArray, begin: i64, end: i64) -> PackedColorArray {
+	if out, ok := packed_sliced(PackedColorArray, Color, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_COLOR_ARRAY, "slice", 2451797139) }
 	__a_begin := begin
@@ -4686,6 +4694,7 @@ packed_vector4_array_reverse :: proc "contextless" (self: ^PackedVector4Array) {
 	__fn(self, nil, nil, 0)
 }
 packed_vector4_array_slice :: proc "contextless" (self: ^PackedVector4Array, begin: i64, end: i64) -> PackedVector4Array {
+	if out, ok := packed_sliced(PackedVector4Array, Vector4, self, begin, end); ok { return out }
 	@(static) __fn: gde.PtrBuiltInMethod
 	if __fn == nil { __fn = builtin_method(.PACKED_VECTOR4_ARRAY, "slice", 2942803855) }
 	__a_begin := begin

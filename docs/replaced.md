@@ -764,6 +764,14 @@ The generated `fill` of the same nine types (`packed_stored_fill`) and `reverse`
 of 1, and call the engine for shared storage. `reverse` moves a String as its one pointer, as the
 engine's swap does; `PackedStringArray.fill` always calls the engine.
 
+The generated `slice` of the same nine types (`packed_sliced`) follows `Vector::slice`: `begin` and
+`end` are held to the size either side of 0 and counted from the end when negative, and the
+elements between them are copied into storage that `packed_storage` allocates with its header
+already written. An empty range gives an empty array with no allocation. The engine is called when
+`begin` lies after `end`, where it prints. `PackedStringArray.slice` always calls the engine, and
+so do `duplicate`, `to_byte_array` and the `to_int32_array` family of `PackedByteArray`: a
+replacement of each was written and measured no faster than the engine call.
+
 `find` and `rfind` test whole blocks of eight elements with no branch per element, so the
 compares vectorize, and search the block holding a match one by one. Vector4 and Color elements
 are the exception: each is compared as one four-float vector, element by element, and `rfind`
@@ -786,7 +794,10 @@ seeded random sets, half of them of up to 40 elements with a value set at random
 checked by `_check_packed_set_case`: two sets in turn on a copy of each array, in range and out of
 it, on storage shared and then not, against the engine's and with the original unchanged. `fill`
 and `reverse` are checked by `_check_packed_fill_case` on three copies of each array, reversed
-twice, reversed then filled, and filled while the storage is still shared.
+twice, reversed then filled, and filled while the storage is still shared. `slice` is checked by
+`_check_replaced_packed_copies`: 3000 seeded arrays of every type, each sliced at bounds either
+side of 0, of each end and of each other, the result grown and shrunk to prove its storage, with
+`duplicate`, `to_byte_array` and the byte array conversions compared alongside.
 
 | Method | Engine call | Replacement |
 |---|---|---|
@@ -809,11 +820,13 @@ twice, reversed then filled, and filled while the storage is still shared.
 | `PackedInt64Array.reverse` of 16 | 5.6 ns | 4.3 ns |
 | `PackedByteArray.fill` of 256 | 105 ns | 1.7 ns |
 | `PackedStringArray.bsearch` | 13.9 ns | 10.3 ns |
+| `PackedInt64Array.slice` of 32 | 22.0 ns | 17.5 ns |
 
 Timings are from `bench/build.sh`: `get` of element 40 and `find` of 40 in an array of 0 to 63,
 and `find` of "12" in a PackedStringArray of "0" to "15". The rows from `PackedByteArray.count`
 down search 64 ascending elements for element 40, `rfind` from the end. `set` stores at index 4
 of 16 in an array that shares its storage with no other, as do the `fill` and `reverse` rows.
+`slice` takes elements 8 to 40 of 64 and destroys the result.
 
 ## Sine and cosine
 

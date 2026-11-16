@@ -155,6 +155,7 @@ register_extras :: proc() {
 	godot.method(b, "replaced_uri_decodes", bag_replaced_uri_decodes, {"texts"})
 	godot.method(b, "replaced_buffers", bag_replaced_buffers, {"texts"})
 	godot.method(b, "replaced_byte_texts", bag_replaced_byte_texts, {"digits"})
+	godot.method(b, "replaced_packed_copies", bag_replaced_packed_copies, {"digits", "ranges"})
 	godot.method(b, "replaced_int_texts", bag_replaced_int_texts, {"numbers", "base", "capitalize_hex"})
 	godot.method(b, "replaced_chrs", bag_replaced_chrs, {"codes"})
 	godot.method(b, "replaced_scientifics", bag_replaced_scientifics, {"numbers"})
@@ -1426,6 +1427,113 @@ bag_replaced_byte_texts :: proc(self: ^Bag, digits: godot.PackedStringArray) -> 
 			godot.packed_string_array_append(&out, v)
 			godot.destroy[.STRING](&v)
 		}
+	}
+	return out
+}
+
+// Appends to `out` the bytes, in hexadecimal, of the packed array `r`, of a duplicate that was
+// reversed and of its slice from `begin` to `end`, then destroys the three. The reversal must
+// leave `r` as it was, since the two share storage until one is written. The slice is grown and
+// shrunk again first, so the engine reallocates storage the bindings made.
+packed_copies :: proc(
+	out: ^godot.PackedStringArray,
+	r: ^$A,
+	free: gde.PtrDestructor,
+	begin, end: i64,
+	to_bytes: proc "contextless" (_: ^A) -> godot.PackedByteArray,
+	duplicate: proc "contextless" (_: ^A) -> A,
+	slice: proc "contextless" (_: ^A, _: i64, _: i64) -> A,
+	reverse: proc "contextless" (_: ^A),
+	resize: proc "contextless" (_: ^A, _: i64) -> i64,
+) {
+	d := duplicate(r)
+	reverse(&d)
+	s := slice(r, begin, end)
+	size := godot.packed_stored_size(&s)
+	resize(&s, size + 1)
+	resize(&s, size)
+	for v in ([3]^A{r, &d, &s}) {
+		bytes := to_bytes(v)
+		text := godot.packed_byte_array_hex_encode(&bytes)
+		godot.packed_string_array_append(out, text)
+		godot.destroy[.STRING](&text)
+		godot.destroy[.PACKED_BYTE_ARRAY](&bytes)
+		free(v)
+	}
+}
+
+// For the bytes each of `digits` spells in hexadecimal and the pair of `ranges` at the same
+// place, what `packed_copies` appends for the bytes themselves and for their to_int32_array,
+// to_int64_array, to_float32_array, to_float64_array, to_vector2_array, to_vector3_array,
+// to_vector4_array and to_color_array: 27 texts each. Then the first text of `digits` and of a
+// reversed duplicate of it, when there is one. test.gd builds the same from the engine's methods.
+bag_replaced_packed_copies :: proc(self: ^Bag, digits: godot.PackedStringArray, ranges: godot.PackedInt64Array) -> godot.PackedStringArray {
+	digits, ranges := digits, ranges
+	out := godot.packed_string_array_new()
+	pairs := godot.packed_read_int64(&ranges)
+	for &d, i in godot.packed_read_string(&digits) {
+		if 2 * i + 1 >= len(pairs) { break }
+		begin, end := pairs[2 * i], pairs[2 * i + 1]
+		bytes := godot.string_hex_decode(&d)
+		{
+			r := godot.packed_byte_array_to_int32_array(&bytes)
+			packed_copies(&out, &r, godot.destroy[.PACKED_INT32_ARRAY], begin, end, godot.packed_int32_array_to_byte_array,
+				godot.packed_int32_array_duplicate, godot.packed_int32_array_slice, godot.packed_int32_array_reverse,
+				godot.packed_int32_array_resize)
+		}
+		{
+			r := godot.packed_byte_array_to_int64_array(&bytes)
+			packed_copies(&out, &r, godot.destroy[.PACKED_INT64_ARRAY], begin, end, godot.packed_int64_array_to_byte_array,
+				godot.packed_int64_array_duplicate, godot.packed_int64_array_slice, godot.packed_int64_array_reverse,
+				godot.packed_int64_array_resize)
+		}
+		{
+			r := godot.packed_byte_array_to_float32_array(&bytes)
+			packed_copies(&out, &r, godot.destroy[.PACKED_FLOAT32_ARRAY], begin, end, godot.packed_float32_array_to_byte_array,
+				godot.packed_float32_array_duplicate, godot.packed_float32_array_slice, godot.packed_float32_array_reverse,
+				godot.packed_float32_array_resize)
+		}
+		{
+			r := godot.packed_byte_array_to_float64_array(&bytes)
+			packed_copies(&out, &r, godot.destroy[.PACKED_FLOAT64_ARRAY], begin, end, godot.packed_float64_array_to_byte_array,
+				godot.packed_float64_array_duplicate, godot.packed_float64_array_slice, godot.packed_float64_array_reverse,
+				godot.packed_float64_array_resize)
+		}
+		{
+			r := godot.packed_byte_array_to_vector2_array(&bytes)
+			packed_copies(&out, &r, godot.destroy[.PACKED_VECTOR2_ARRAY], begin, end, godot.packed_vector2_array_to_byte_array,
+				godot.packed_vector2_array_duplicate, godot.packed_vector2_array_slice, godot.packed_vector2_array_reverse,
+				godot.packed_vector2_array_resize)
+		}
+		{
+			r := godot.packed_byte_array_to_vector3_array(&bytes)
+			packed_copies(&out, &r, godot.destroy[.PACKED_VECTOR3_ARRAY], begin, end, godot.packed_vector3_array_to_byte_array,
+				godot.packed_vector3_array_duplicate, godot.packed_vector3_array_slice, godot.packed_vector3_array_reverse,
+				godot.packed_vector3_array_resize)
+		}
+		{
+			r := godot.packed_byte_array_to_vector4_array(&bytes)
+			packed_copies(&out, &r, godot.destroy[.PACKED_VECTOR4_ARRAY], begin, end, godot.packed_vector4_array_to_byte_array,
+				godot.packed_vector4_array_duplicate, godot.packed_vector4_array_slice, godot.packed_vector4_array_reverse,
+				godot.packed_vector4_array_resize)
+		}
+		{
+			r := godot.packed_byte_array_to_color_array(&bytes)
+			packed_copies(&out, &r, godot.destroy[.PACKED_COLOR_ARRAY], begin, end, godot.packed_color_array_to_byte_array,
+				godot.packed_color_array_duplicate, godot.packed_color_array_slice, godot.packed_color_array_reverse,
+				godot.packed_color_array_resize)
+		}
+		// A byte array is its own bytes, and a duplicate gives them as `to_byte_array` would.
+		packed_copies(&out, &bytes, godot.destroy[.PACKED_BYTE_ARRAY], begin, end, godot.packed_byte_array_duplicate,
+			godot.packed_byte_array_duplicate, godot.packed_byte_array_slice, godot.packed_byte_array_reverse,
+			godot.packed_byte_array_resize)
+	}
+	if godot.packed_stored_size(&digits) > 0 {
+		copied := godot.packed_string_array_duplicate(&digits)
+		godot.packed_string_array_reverse(&copied)
+		godot.packed_string_array_append(&out, godot.packed_read_string(&digits)[0])
+		godot.packed_string_array_append(&out, godot.packed_read_string(&copied)[0])
+		godot.destroy[.PACKED_STRING_ARRAY](&copied)
 	}
 	return out
 }

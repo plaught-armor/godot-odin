@@ -110,6 +110,11 @@ IN_PLACE = {
     ("PackedByteArray", "get_string_from_utf32"): "\tif out, ok := bytes_utf32_text(self); ok { return out }\n",
     ("PackedByteArray", "hex_encode"): "\tif out, ok := bytes_hex_text(self); ok { return out }\n",
     ("PackedByteArray", "get_string_from_wchar"): "\twhen ODIN_OS != .Windows { if out, ok := bytes_utf32_text(self); ok { return out } }\n",
+    **{(t, "slice"): f"\tif out, ok := packed_sliced({t}, {e}, self, begin, end); ok {{ return out }}\n"
+       for t, e in (("PackedByteArray", "u8"), ("PackedInt32Array", "i32"), ("PackedInt64Array", "i64"),
+                    ("PackedFloat32Array", "f32"), ("PackedFloat64Array", "f64"),
+                    ("PackedVector2Array", "Vector2"), ("PackedVector3Array", "Vector3"),
+                    ("PackedColorArray", "Color"), ("PackedVector4Array", "Vector4"))},
     ("String", "uri_decode"): "\tif out, ok := uri_decoded(self, true); ok { return out }\n",
     ("String", "uri_file_decode"): "\tif out, ok := uri_decoded(self, false); ok { return out }\n",
     ("StringName", "uri_decode"): "\tif dict_layout_known { if out, ok := uri_decoded(name_text(self), true); ok { return out } }\n",

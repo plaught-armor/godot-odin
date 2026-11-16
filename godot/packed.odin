@@ -62,11 +62,38 @@ packed_byte_storage :: #force_inline proc "contextless" (a: ^PackedByteArray, n:
 		packed_byte_array_resize(a, i64(n))
 		return ([^]u8)(gde.packed_byte_array_operator_index(a, 0))
 	}
-	base := ([^]i64)(gde.mem_alloc2(uint(PACKED_DATA_OFFSET + n), gde.Bool(0)))
+	return packed_storage(u8, a, n)
+}
+
+// Gives the packed array `a` of `E`, which must be all zero bits, storage for `n` elements, `n`
+// above 0, and returns it with nothing written. Only when `packed_layout_known`: it allocates
+// and fills the header itself, the reference count 1 and the capacity and size the engine's
+// `resize` from empty would set, and the engine frees such storage as its own.
+@(private)
+packed_storage :: #force_inline proc "contextless" ($E: typeid, a: rawptr, n: int) -> [^]E {
+	base := ([^]i64)(gde.mem_alloc2(uint(PACKED_DATA_OFFSET + n * size_of(E)), gde.Bool(0)))
 	base[0], base[1], base[2] = 1, i64(n), i64(n)
 	data := rawptr(uintptr(base) + PACKED_DATA_OFFSET)
 	([^]rawptr)(a)[PACKED_DATA_WORD] = data
-	return ([^]u8)(data)
+	return ([^]E)(data)
+}
+
+// Vector::slice for elements that are plain values: the elements of `self` from `begin` up to
+// `end`, each counted from the end when negative and held to the size. False when the layout is
+// not proven and when `begin` lies after `end`, where the engine prints an error.
+@(private)
+packed_sliced :: #force_inline proc "contextless" ($A: typeid, $E: typeid, self: ^A, begin, end: i64) -> (out: A, ok: bool) {
+	if !packed_layout_known { return {}, false }
+	xs := packed_stored(E, self)
+	size := i64(len(xs))
+	first, last := clamp(begin, -size, size), clamp(end, -size, size)
+	if first < 0 { first += size }
+	if last < 0 { last += size }
+	if first > last { return {}, false }
+	if first == last { return {}, true }
+	w := packed_storage(E, &out, int(last - first))
+	intrinsics.mem_copy_non_overlapping(w, &xs[first], int(last - first) * size_of(E))
+	return out, true
 }
 
 // The bytes of `self` as characters, one each, up to the first byte of 0: the engine's

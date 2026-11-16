@@ -484,6 +484,7 @@ func _check_extras() -> int:
 	failures += _check_replaced_uri_decodes(b2)
 	failures += _check_replaced_buffers(b2)
 	failures += _check_replaced_byte_texts(b2)
+	failures += _check_replaced_packed_copies(b2)
 	failures += _check_replaced_same_typed(b2)
 	failures += _check_replaced_callables(b2)
 	failures += _check_replaced_paths(b2, PackedStringArray(["", "/", ".", "..", "a", "/root",
@@ -1619,6 +1620,66 @@ func _check_replaced_escapes(b2: Bag) -> int:
 			return 1
 	if changed < 5000:
 		print("FAIL: Bag.replaced_escapes saw only %d texts unescaped, too few to prove anything" % changed)
+		return 1
+	return 0
+
+
+# The bytes, in hexadecimal, of the packed array `r`, of a reversed duplicate of it and of its
+# slice from `begin` to `end`, as Bag.replaced_packed_copies gives them.
+func _packed_copies(r: Variant, begin: int, end: int) -> PackedStringArray:
+	var d: Variant = r.duplicate()
+	d.reverse()
+	var s: Variant = r.slice(begin, end)
+	if r is PackedByteArray:
+		return [r.hex_encode(), d.hex_encode(), s.hex_encode()]
+	return [r.to_byte_array().hex_encode(), d.to_byte_array().hex_encode(), s.to_byte_array().hex_encode()]
+
+
+# duplicate, slice and to_byte_array of the packed arrays, and to_int32_array, to_int64_array,
+# to_float32_array, to_float64_array, to_vector2_array, to_vector3_array, to_vector4_array and
+# to_color_array of PackedByteArray, from Bag.replaced_packed_copies, against the engine's methods
+# called from GDScript: 3000 seeded random byte arrays, most of a size that makes whole elements
+# of every type and some not, where the engine prints an error and the bindings call it, each with
+# a range whose ends lie inside, outside, before the start and the wrong way round. A duplicate
+# is reversed, which must leave the original alone. The seed is fixed so a failure repeats.
+# Returns 1 on a mismatch.
+func _check_replaced_packed_copies(b2: Bag) -> int:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261134
+	var digits := PackedStringArray()
+	var ranges := PackedInt64Array()
+	var want := PackedStringArray()
+	var sizes: Array[int] = [0, 4, 8, 12, 16, 24, 48, 48, 96, 96, 144, 240, -1, -1]
+	var ends: Array[int] = [0, 1, -1, 2, -2, 3, 5, -5, 9, -9, 40, -40, 2147483647, -2147483648, 9223372036854775807]
+	for round: int in 3000:
+		var size: int = sizes[round % sizes.size()]
+		var bytes := PackedByteArray()
+		bytes.resize(rng.randi_range(0, 100) if size < 0 else size)
+		for at: int in bytes.size():
+			bytes[at] = rng.randi_range(0, 255)
+		var begin: int = ends[rng.randi_range(0, ends.size() - 1)]
+		var end: int = ends[rng.randi_range(0, ends.size() - 1)]
+		digits.append(bytes.hex_encode())
+		ranges.append(begin)
+		ranges.append(end)
+		for r: Variant in [bytes.to_int32_array(), bytes.to_int64_array(), bytes.to_float32_array(), bytes.to_float64_array(),
+				bytes.to_vector2_array(), bytes.to_vector3_array(), bytes.to_vector4_array(), bytes.to_color_array(), bytes]:
+			want.append_array(_packed_copies(r, begin, end))
+	want.append(digits[0])
+	want.append(digits[digits.size() - 1])
+	var got: PackedStringArray = b2.replaced_packed_copies(digits, ranges)
+	if got.size() != want.size():
+		print("FAIL: Bag.replaced_packed_copies gave %d values, not %d" % [got.size(), want.size()])
+		return 1
+	var filled := 0
+	for at: int in want.size():
+		filled += int(not want[at].is_empty())
+		if got[at] != want[at]:
+			print("FAIL: Bag.replaced_packed_copies on %s from %d to %d, array %d, copy %d, gave %s, not %s" % [digits[at / 27],
+					ranges[2 * (at / 27)], ranges[2 * (at / 27) + 1], at % 27 / 3, at % 3, got[at], want[at]])
+			return 1
+	if filled < 30000:
+		print("FAIL: Bag.replaced_packed_copies saw only %d arrays with elements, too few to prove anything" % filled)
 		return 1
 	return 0
 

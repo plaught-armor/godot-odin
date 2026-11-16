@@ -474,6 +474,8 @@ func _initialize() -> void:
 	_report("Odin packed_int64_array_find", func() -> float: return b.packed_ns(5, N))
 	_report("Engine PackedStringArray.find call", func() -> float: return b.packed_ns(6, N))
 	_report("Odin packed_string_array_find", func() -> float: return b.packed_ns(7, N))
+	_report("Engine PackedInt64Array.slice call", func() -> float: return b.packed_ns(8, N))
+	_report("Odin packed_int64_array_slice", func() -> float: return b.packed_ns(9, N))
 	_report("Engine Array.size call", func() -> float: return b.array_ns(0, N))
 	_report("Odin array_size", func() -> float: return b.array_ns(1, N))
 	_report("Engine Array.get call", func() -> float: return b.array_ns(2, N))
