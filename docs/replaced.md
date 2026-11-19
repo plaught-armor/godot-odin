@@ -9,7 +9,9 @@ from GDScript, which does not go through these bindings: `_check_replaced_ops`,
 `_check_replaced_strs` and `_check_replaced_matches` run every method in the table on fixed edge
 cases and on 3000 seeded random Strings, and `_check_replaced_wildcards` runs the last five on
 20000 seeded random patterns and texts. When upgrading the engine, regenerate the bindings, run
-`example/build.sh`, and update the "Checked against" column once it passes. A failure there means
+`example/build.sh`, and update the "Checked against" column once it passes, along with
+`REPLACED_CHECKED_MAJOR` and `REPLACED_CHECKED_MINOR` in `godot/class.odin`. On an engine newer
+than those, the library logs one warning at load; the replacements still run. A failure there means
 the engine changed the method's behaviour, and the replacement must follow it or be dropped from
 `REPLACED`.
 

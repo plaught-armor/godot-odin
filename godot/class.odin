@@ -221,11 +221,30 @@ initialize :: proc "c" (userdata: rawptr, level: gde.InitializationLevel) {
 	load_variants()
 	check_quaternion_version()
 	check_caps_version()
+	check_replaced_version()
 	empty_name = static_name("")
 	gde.string_new_with_latin1_chars(&empty_string, "")
 	emit_bind = method_bind("Object", "emit_signal", 4047867050)
 	on_register()
 	scene_classes = len(registered)
+}
+
+// The newest engine minor version whose behaviour changes the replaced builtin methods follow
+// (see docs/replaced.md). Raise it, with that page's "Checked against" column, once
+// `example/build.sh` passes on a newer engine.
+@(private) REPLACED_CHECKED_MAJOR :: 4
+@(private) REPLACED_CHECKED_MINOR :: 8
+
+// Warns once at load when the engine is newer than the replaced methods were checked against.
+// The replacements still run: a newer engine may have changed a method they mirror.
+@(private)
+check_replaced_version :: proc() {
+	v: gde.GodotVersion2
+	gde.get_godot_version2(&v)
+	if v.major < REPLACED_CHECKED_MAJOR || (v.major == REPLACED_CHECKED_MAJOR && v.minor <= REPLACED_CHECKED_MINOR) { return }
+	warn("godot-odin: the replaced builtin methods were checked up to Godot %d.%d, not on %d.%d. " +
+		"Run example/build.sh against this engine before relying on them (see docs/replaced.md).",
+		REPLACED_CHECKED_MAJOR, REPLACED_CHECKED_MINOR, v.major, v.minor)
 }
 
 @(private)
